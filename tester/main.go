@@ -4,19 +4,23 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 )
 
 // 1. IPアドレス と port を指定して、メッセージを送信する
-func sendRequest(w io.Writer, request string) {
+func sendRequest(w io.Writer, request io.Reader) {
 	n := 7
-	bs := []byte(request)
-	for i := 0; i < len(request); {
-		sent, err := w.Write(bs[i : i+n])
-		if sent <= 0 || err != nil {
+	rb := make([]byte, n, n)
+	for {
+		read_bytes, rErr := request.Read(rb)
+		if read_bytes <= 0 || (rErr != nil && rErr != io.EOF) {
 			break
 		}
-		fmt.Println("sent", sent, "bytes:", string(bs[i:i+n]))
-		i += sent
+		sent, sErr := w.Write(rb[0:read_bytes])
+		if sent <= 0 || sErr != nil {
+			break
+		}
+		fmt.Println("sent", sent, "bytes:", string(rb[0:read_bytes]))
 	}
 }
 
@@ -31,7 +35,8 @@ func main() {
 	if err != nil {
 		fmt.Println("listen error")
 	}
-	sendRequest(conn, "GET / HTTP/1.0\r\n\r\n")
+	sendRequest(conn, os.Stdin)
+	// sendRequest(conn, "GET / HTTP/1.0\r\n\r\n")
 	status, err := io.ReadAll(conn)
 	if err != nil {
 		fmt.Println("listen error")
