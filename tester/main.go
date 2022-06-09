@@ -8,7 +8,16 @@ import (
 
 // 1. IPアドレス と port を指定して、メッセージを送信する
 func sendRequest(w io.Writer, request string) {
-	fmt.Fprintf(w, request)
+	n := 7
+	bs := []byte(request)
+	for i := 0; i < len(request); {
+		sent, err := w.Write(bs[i : i+n])
+		if sent <= 0 || err != nil {
+			break
+		}
+		fmt.Println("sent", sent, "bytes:", string(bs[i:i+n]))
+		i += sent
+	}
 }
 
 // 2. レスポンスを受け取って表示する
@@ -18,11 +27,10 @@ func sendRequest(w io.Writer, request string) {
 
 // localhost:80
 func main() {
-	conn, err := net.Dial("tcp", "localhost:80")
+	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
 		fmt.Println("listen error")
 	}
-//	fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
 	sendRequest(conn, "GET / HTTP/1.0\r\n\r\n")
 	status, err := io.ReadAll(conn)
 	if err != nil {
