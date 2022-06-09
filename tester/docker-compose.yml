@@ -1,0 +1,11 @@
+version: "3.7"
+
+services:
+  vm:
+    build:
+      context: vm
+    volumes:
+      - ./dev:/home/dev
+    ports:
+      - "8080:80"
+
