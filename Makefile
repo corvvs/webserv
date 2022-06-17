@@ -2,41 +2,49 @@ NAME		=	webserv
 CXX			=	c++
 CXXFLAGS	=	-Wall -Wextra -Werror
 
-SRCDIR		=	./src
-OBJDIR		=	./obj
-DPSDIR		=	./dps
+SRC_DIR		=	./src
+OBJ_DIR		=	./obj
+DPS_DIR		=	./dps
+TESTS_DIR	=	./tests
 
-OBJDIRS		=	$(shell find  $(SRCDIR) -type d | xargs -I{} echo $(OBJDIR)/{})
-DPSDIRS		=	$(shell find  $(SRCDIR) -type d | xargs -I{} echo $(DPSDIR)/{})
+OBJ_DIRS		=	$(shell find  $(SRC_DIR) -type d | xargs -I{} echo $(OBJ_DIR)/{})
+DPS_DIRS		=	$(shell find  $(SRC_DIR) -type d | xargs -I{} echo $(DPS_DIR)/{})
 
-SRCS		=	$(shell find $(SRCDIR) -type f -name "*.cpp")
-OBJS		=	$(addprefix $(OBJDIR)/,  $(SRCS:.cpp=.o))
-DPS			=	$(addprefix $(DPSDIR)/,  $(SRCS:.cpp=.d))
+SRCS		=	$(shell find $(SRC_DIR) -type f -name "*.cpp")
+OBJS		=	$(addprefix $(OBJ_DIR)/,  $(SRCS:.cpp=.o))
+DPS			=	$(addprefix $(DPS_DIR)/,  $(SRCS:.cpp=.d))
 -include $(DPS)
 
 .PHONY: all
-all: $(OBJDIRS) $(DPSDIRS) $(NAME)
+all: $(OBJ_DIRS) $(DPS_DIRS) $(NAME)
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS)
 
 $(OBJDIR)/%.o: %.cpp
-	$(CXX) $(CXXFLAGS)  -MMD -MP -MF $(DPSDIR)/$(*).d -c $< -o $@
+	$(CXX) $(CXXFLAGS)  -MMD -MP -MF $(DPS_DIR)/$(*).d -c $< -o $@
 
 
-$(OBJDIRS):
-	mkdir -p $(OBJDIRS)
+$(OBJ_DIRS):
+	mkdir -p $(OBJ_DIRS)
 
-$(DPSDIRS):
-	mkdir -p $(DPSDIRS)
+$(DPS_DIRS):
+	mkdir -p $(DPS_DIRS)
 
 .PHONY: clean
 clean:
-	rm -rf $(OBJDIR) $(DPSDIR)
+	rm -rf $(OBJ_DIR) $(DPS_DIR)
+	make -C $(TESTS_DIR) clean
 
 .PHONY: fclean
 fclean: clean
 	rm -f $(NAME)
+	make -C $(TESTS_DIR) fclean
 
 .PHONY: re
 re: fclean all
+
+.PHONY: test
+test:
+	cd $(TESTS_DIR) && \
+	make -C .
