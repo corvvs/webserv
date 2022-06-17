@@ -21,7 +21,7 @@ all: $(OBJ_DIRS) $(DPS_DIRS) $(NAME)
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS)
 
-$(OBJDIR)/%.o: %.cpp
+$(OBJ_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS)  -MMD -MP -MF $(DPS_DIR)/$(*).d -c $< -o $@
 
 
