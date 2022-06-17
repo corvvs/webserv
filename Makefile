@@ -46,5 +46,8 @@ re: fclean all
 
 .PHONY: test
 test:
-	cd $(TESTS_DIR) && \
-	make -C .
+	make -C $(TESTS_DIR)
+
+.PHONY: run_test
+run_test: test
+	./tests/tests

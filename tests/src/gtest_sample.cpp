@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
 
-TEST(Counter, Increment) {
+TEST(SAMPLE, SAMPLE) {
   EXPECT_EQ(0, 0);
 }
