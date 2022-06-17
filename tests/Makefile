@@ -7,7 +7,6 @@ all:  $(NAME)
 
 $(NAME): $(BUILD_DIR) $(LIB)
 	cd $(BUILD_DIR) && \
-	pwd && \
 	cmake .. && \
 	make -C . && \
 	$(NAME)
