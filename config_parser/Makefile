@@ -1,6 +1,9 @@
 NAME := a.out
-SRCS := test.cpp \
-		ConfigParser.cpp
+# SRCS := test.cpp \
+# 		ConfigParser.cpp
+
+SRCS := lexer.cpp \
+		test_common.cpp
 
 OBJS := $(SRCS:.cpp=.o)
 all: $(NAME)
