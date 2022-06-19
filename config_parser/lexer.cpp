@@ -78,6 +78,12 @@ strLine create_str_line(std::string line, int lineno)
     return sl;
 }
 
+void error_exit(int line, const std::string &msg)
+{
+    std::cout << "webserv: [emerg] " << msg << " :" << line << std::endl;
+    exit(1);
+}
+
 std::vector<strLine> file_read(std::string filename)
 {
     std::vector<strLine> v;
@@ -143,7 +149,7 @@ std::vector<ngxToken> tokenize(std::string filename)
         std::string::iterator cur = it->str.begin();
         while (cur != it->str.end())
         {
-//            std::cout << "line: " << line << "| char: " << *cur << std::endl;
+            //            std::cout << "line: " << line << "| char: " << *cur << std::endl;
             // 空文字が来たらこれまでのtokenをtokenの配列に追加する
             if (is_space(*cur))
             {
@@ -168,7 +174,7 @@ std::vector<ngxToken> tokenize(std::string filename)
                 int line_at_start = line;
                 while (*cur != '\n')
                 {
-//                    debug(*cur);
+                    //                    debug(*cur);
                     token += *cur;
                     cur++;
                     if (cur == it->str.end())
@@ -261,9 +267,48 @@ ngxToken lex()
     return ngxToken();
 }
 
+bool balance_braces(std::vector<ngxToken> tokens)
+{
+    int depth = 0;
+    int line = 0;
+    for (std::vector<ngxToken>::iterator it = tokens.begin(); it != tokens.end(); it++)
+    {
+        line = it->line;
+        if (it->value == "}" && !it->isQuoted)
+        {
+            depth -= 1;
+        }
+        else if (it->value == "{" && !it->isQuoted)
+        {
+            depth += 1;
+        }
+
+        if (depth < 0)
+        {
+            const std::string msg = "unexpected \"}\"";
+            error_exit(line, msg);
+            //            throw std::runtime_error(msg);
+        }
+    }
+
+    if (depth > 0)
+    {
+        const std::string msg = "unexpected end of file, expecting \"}\"";
+        error_exit(line, msg);
+        //        throw std::runtime_error(msg);
+    }
+    return true;
+}
+
 int main()
 {
-    std::string filename = "./default.conf";
+    std::string filename = "./conf/01_default.conf";
+    //    std::string filename = "./conf/02_unexpected_brace.conf";
+    //    std::string filename = "./conf/03_unexpected_eof.conf";
 
-    tokenize(filename);
+    std::vector<ngxToken> t = tokenize(filename);
+    if (balance_braces(t))
+    {
+        std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
+    }
 }
