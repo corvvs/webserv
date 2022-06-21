@@ -132,8 +132,8 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
     std::string token;
     int token_line;
 
-    DSOUT() << "===config data===" << std::endl;
-    print(lines);
+//    DSOUT() << "===config data===" << std::endl;
+//    print(lines);
     // 一文字ずつ読んでいく
     for (std::vector<strLine>::iterator it = lines.begin(); it != lines.end(); it++)
     {
@@ -242,8 +242,6 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
             tokens.push_back(create_ngx_token(token, token_line, false));
         }
     }
-    DSOUT() << "===tokenize===" << std::endl;
-    print(tokens);
     return tokens;
 }
 
@@ -287,5 +285,8 @@ std::vector<ngxToken> Lexer::lex(const std::string &filename)
     {
         std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
     }
+//    DSOUT() << "===tokenize===" << std::endl;
+//    print(t);
+
     return t;
 }

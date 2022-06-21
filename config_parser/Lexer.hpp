@@ -1,3 +1,5 @@
+#ifndef LEXER_HPP
+#define LEXER_HPP
 #include <string>
 #include <vector>
 
@@ -44,3 +46,5 @@ public:
     bool balance_braces(std::vector<ngxToken> tokens);
     std::vector<ngxToken> lex(const std::string &filename);
 };
+
+#endif

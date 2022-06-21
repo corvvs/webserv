@@ -2,13 +2,15 @@ NAME := a.out
 # SRCS := test.cpp \
 # 		ConfigParser.cpp
 
-SRCS := Lexer.cpp \
-		test_common.cpp \
+SRCS := test_common.cpp \
+		Lexer.cpp \
+		Parser.cpp \
+		Analyzer.cpp \
 		main.cpp
 
 OBJS := $(SRCS:.cpp=.o)
 all: $(NAME)
-CXXFLAGS := -Wall -Wextra -Werror -g -fsanitize=address -std=c++98
+CXXFLAGS := -Wall -Wextra -Werror -g -fsanitize=address #-std=c++98
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(SRCS) -o $(NAME)
