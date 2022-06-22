@@ -13,10 +13,11 @@ DPS_DIRS		=	$(shell find  $(SRC_DIR) -type d | xargs -I{} echo $(DPS_DIR)/{})
 SRCS		=	$(shell find $(SRC_DIR) -type f -name "*.cpp")
 OBJS		=	$(addprefix $(OBJ_DIR)/,  $(SRCS:.cpp=.o))
 DPS			=	$(addprefix $(DPS_DIR)/,  $(SRCS:.cpp=.d))
--include $(DPS)
 
 .PHONY: all
 all: $(OBJ_DIRS) $(DPS_DIRS) $(NAME)
+
+-include $(DPS)
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS)
@@ -51,3 +52,7 @@ test:
 .PHONY: run_test
 run_test: test
 	./tests/tests
+
+p:
+	echo $(OBJ_DIRS)
+	echo $(O)
