@@ -1,12 +1,7 @@
 #include "SocketListening.hpp"
 #include "../debug/debug.hpp"
 #include "SocketConnected.hpp"
-
-static void cpp_bzero(void *mem, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    ((unsigned char *)mem)[i] = 0;
-  }
-}
+#include "strings.h"
 
 SocketListening::SocketListening(t_socket_domain sdomain, t_socket_type stype)
     : ASocket(sdomain, stype) {}
@@ -23,7 +18,7 @@ SocketListening *SocketListening::bind(t_socket_domain sdomain,
   t_fd fd = sock->fd;
 
   sockaddr_in sa;
-  cpp_bzero(&sa, sizeof(sa));
+  bzero(&sa, sizeof(sa));
   int d = sockdomain(sdomain);
   sa.sin_family = d;
   sa.sin_port = htons(port);

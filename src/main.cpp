@@ -13,4 +13,6 @@ int main(void) {
   std::string s(100, 0);
   c->receive((void *)s.data(), s.size(), 0);
   std::cout << s << std::endl;
+  delete l;
+  delete c;
 }
