@@ -22,7 +22,7 @@ public:
     ~Parser();
 
     static void Parse(std::string filename);
-    static std::vector<Directive> parse(std::vector<ngxToken> &tokens, std::vector<std::string> ctx);
+    static std::vector<Directive> parse(std::vector<wsToken> &tokens, std::vector<std::string> ctx);
 
 private:
 };

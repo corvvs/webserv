@@ -61,7 +61,7 @@ void print_parsed_data(std::vector<Directive> d, bool is_block, std::string befo
 void Parser::Parse(std::string filename)
 {
     Lexer lexer;
-    std::vector<ngxToken> tokens = lexer.lex(filename);
+    std::vector<wsToken> tokens = lexer.lex(filename);
 
     std::vector<std::string> ctx;
 
@@ -73,26 +73,19 @@ void Parser::Parse(std::string filename)
 
 // TODO: 再帰的に処理をする
 static int advance = 0;
-std::vector<Directive> Parser::parse(std::vector<ngxToken> &tokens, std::vector<std::string> ctx)
+std::vector<Directive> Parser::parse(std::vector<wsToken> &tokens, std::vector<std::string> ctx)
 {
     std::vector<Directive> parsed;
 
     // 再帰的にパースする
     // advanceの数に進める
-    std::vector<ngxToken>::iterator it = tokens.begin() + advance;
+    std::vector<wsToken>::iterator it = tokens.begin() + advance;
     for (; it != tokens.end(); it++, advance++)
     {
         debug(it->value);
-        // エラーがあった場合
-        if (!it->error.empty())
-        {
-            error_exit(it->error);
-            return parsed;
-        }
-
         // blockの解析中
         // 閉じていたら閉じていたら終了
-        if (it->value == "}" && !it->isQuoted)
+        if (it->value == "}" && !it->is_quoted)
         {
             break;
         }
@@ -105,7 +98,7 @@ std::vector<Directive> Parser::parse(std::vector<ngxToken> &tokens, std::vector<
         std::vector<std::string> comments_in_args;
 
         // コメントのチェック
-        if (it->value[0] == '#' && !it->isQuoted)
+        if (it->value[0] == '#' && !it->is_quoted)
         {
             comments_in_args.push_back(it->value);
             stmt.directive = "#";
@@ -119,9 +112,9 @@ std::vector<Directive> Parser::parse(std::vector<ngxToken> &tokens, std::vector<
         advance++;
 
         // parse arguments by reading tokens
-        while (it->isQuoted || (it->value != "{" && it->value != ";" && it->value != "}"))
+        while (it->is_quoted || (it->value != "{" && it->value != ";" && it->value != "}"))
         {
-            if (it->value[0] == '#' && !it->isQuoted)
+            if (it->value[0] == '#' && !it->is_quoted)
             {
                 comments_in_args.push_back(it->value.substr(0, it->value.size() - 1));
             }
@@ -152,10 +145,10 @@ std::vector<Directive> Parser::parse(std::vector<ngxToken> &tokens, std::vector<
         }
 
         debug(it->value);
-        debug(it->isQuoted);
+        debug(it->is_quoted);
         // "{" で終わってた場合はcontextを調べる
         std::vector<std::string> inner;
-        if (it->value == "{" && !it->isQuoted)
+        if (it->value == "{" && !it->is_quoted)
         {
             inner = enterBlockCtx(stmt, ctx); // get context for block
             std::vector<Directive> block;

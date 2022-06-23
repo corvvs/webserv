@@ -8,18 +8,11 @@
 
 /*************************************************************/
 // debug
-std::ostream &operator<<(std::ostream &os, const ngxToken &nt)
+std::ostream &operator<<(std::ostream &os, const wsToken &nt)
 {
     os << "line: " << nt.line << " "
-       << std::boolalpha << "quote: " << nt.isQuoted << " "
-       << "value: " << nt.value
-       << nt.error;
-    return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const charLine &cl)
-{
-    os << cl.line << ": " << cl.chars;
+       << std::boolalpha << "quote: " << nt.is_quoted << " "
+       << "value: " << nt.value;
     return os;
 }
 
@@ -47,108 +40,50 @@ Lexer::~Lexer(void)
 {
 }
 
-void Lexer::error_exit(int line, const std::string &msg)
-{
-    std::cout << "webserv: [emerg] " << msg << " :" << line << std::endl;
-    exit(1);
-}
-
-ngxToken Lexer::create_ngx_token(
-    std::string value,
-    int line,
-    bool isQuoted,
-    std::string error = "")
-{
-    ngxToken new_token;
-    new_token.value = value;
-    new_token.line = line;
-    new_token.isQuoted = isQuoted;
-    new_token.error = error;
-    return new_token;
-}
-
-strLine Lexer::create_str_line(std::string line, int lineno)
-{
-    strLine sl;
-
-    sl.str = line;
-    sl.line = lineno;
-    return sl;
-}
-
-std::vector<strLine> Lexer::file_read(std::string filename)
-{
-    std::vector<strLine> v;
-
-    std::ifstream input_file(filename);
-    if (!input_file.is_open())
-    {
-        throw std::runtime_error("file not opened");
-    }
-    std::string line;
-    int lineno = 1;
-    while (std::getline(input_file, line))
-    {
-        v.push_back(create_str_line(line, lineno));
-        lineno += 1;
-    }
-    return v;
-}
-
-std::string Lexer::trim_space(std::string s)
-{
-    const std::string spaces = " \f\n\r\t\v";
-    std::string res;
-
-    std::string::size_type left = s.find_first_not_of(spaces);
-    if (left != std::string::npos)
-    {
-        std::string::size_type right = s.find_last_not_of(spaces);
-        res = s.substr(left, right - left + 1);
-    }
-    return res;
-}
-
-// bool is_space(std::string s)
-// {
-//     return trim_space(s).size() == 0;
-// }
-
-bool Lexer::is_space(char c)
-{
-    const std::string spaces = " \f\n\r\t\v";
-
-    return spaces.find(c) != std::string::npos;
-}
-
-std::vector<ngxToken> Lexer::tokenize(std::string filename)
+std::vector<wsToken> Lexer::lex(const std::string &filename)
 {
     std::vector<strLine> lines(file_read(filename));
+    std::vector<wsToken> t = tokenize(lines);
+    if (balance_braces(t))
+    {
+        std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
+    }
+    //    DSOUT() << "===tokenize===" << std::endl;
+    //    print(t);
 
-    std::vector<ngxToken> tokens;
+    return t;
+}
 
-    bool ok;
-    (void)ok;
-    std::string token;
-    int token_line;
+/**
+ * 1. strLineループ(vector<string>)
+ * 2. 1文字ずつ読む(stringを分解する)
+ * 3. スペースのチェック
+ * 4. コメントのチェック
+ * 5. 引用符のチェック
+ * 6. 特殊文字のチェック
+ */
+std::vector<wsToken> Lexer::tokenize(std::vector<strLine> lines)
+{
+    std::vector<wsToken> tokens;
 
     //    DSOUT() << "===config data===" << std::endl;
     //    print(lines);
-    // 一文字ずつ読んでいく
     for (std::vector<strLine>::iterator it = lines.begin(); it != lines.end(); it++)
     {
         int line = it->line;
+        int token_line;
+        std::string token;
         std::string::iterator cur = it->str.begin();
         while (cur != it->str.end())
         {
             //            debug(*cur);
             //            std::cout << "line: " << line << "| char: " << *cur << std::endl;
-            // 空文字が来たらこれまでのtokenをtokenの配列に追加する
             if (is_space(*cur))
             {
+                // スペースが区切り文字扱いなのでこれまでのトークンをpbする
                 if (!token.empty())
                 {
-                    tokens.push_back(create_ngx_token(token, token_line, false));
+                    tokens.push_back(wsToken(token, token_line, false));
                     token = "";
                 }
                 while (is_space(*cur))
@@ -161,13 +96,13 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
                 }
                 continue;
             }
-            // コメントだった場合
-            if (token.empty() && *cur == '#')
+
+            // 繋がっている場合は普通の文字として扱う
+            if (is_comment(*cur) && token.empty())
             {
                 int line_at_start = line;
                 while (*cur != '\n')
                 {
-                    //                    debug(*cur);
                     token += *cur;
                     cur++;
                     if (cur == it->str.end())
@@ -175,11 +110,8 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
                         break;
                     }
                 }
-                // コメントを追加する
-                tokens.push_back(create_ngx_token(token, line_at_start, false));
+                tokens.push_back(wsToken(token, line_at_start, false));
                 token = "";
-
-                // また頭からまた見ていく
                 continue;
             }
 
@@ -188,16 +120,9 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
                 token_line = line;
             }
 
-            // 引用符
-            if (*cur == '"' || *cur == '\'')
+            // 繋がっている場合は普通の文字として扱う
+            if (is_quote(*cur) && token.empty())
             {
-                if (!token.empty())
-                {
-                    // 引用符がトークンの中にある場合は他と同様に扱う
-                    token_line = *cur;
-                    continue;
-                }
-
                 char quote = *cur;
                 cur++;
 
@@ -212,25 +137,24 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
                 }
 
                 // quoteに囲まれているのでtrue
-                tokens.push_back(create_ngx_token(token, token_line, true));
+                tokens.push_back(wsToken(token, token_line, true));
                 token = "";
                 cur++;
                 continue;
             }
 
-            // 完全なトークンのように扱われる特殊文字を処理する
-            if (*cur == '{' || *cur == '}' || *cur == ';')
+            if (is_special(*cur))
             {
+                // 特殊文字は区切り文字として扱われるのでこれまでtokenをpbする
                 if (!token.empty())
                 {
-                    tokens.push_back(create_ngx_token(token, token_line, false));
+                    tokens.push_back(wsToken(token, token_line, false));
                     token = "";
                 }
 
-                // 単体でトークンとみなされる
-                std::string c = "";
-                c += *cur;
-                tokens.push_back(create_ngx_token(c, token_line, false));
+                // 特殊文字は単体でトークンとして扱う
+                std::string c(1, *cur);
+                tokens.push_back(wsToken(c, token_line, false));
                 cur++;
                 continue;
             }
@@ -240,24 +164,24 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
 
         if (!token.empty())
         {
-            tokens.push_back(create_ngx_token(token, token_line, false));
+            tokens.push_back(wsToken(token, token_line, false));
         }
     }
     return tokens;
 }
 
-bool Lexer::balance_braces(std::vector<ngxToken> tokens)
+bool Lexer::balance_braces(std::vector<wsToken> tokens)
 {
     int depth = 0;
     int line = 0;
-    for (std::vector<ngxToken>::iterator it = tokens.begin(); it != tokens.end(); it++)
+    for (std::vector<wsToken>::iterator it = tokens.begin(); it != tokens.end(); it++)
     {
         line = it->line;
-        if (it->value == "}" && !it->isQuoted)
+        if (it->value == "}" && !it->is_quoted)
         {
             depth -= 1;
         }
-        else if (it->value == "{" && !it->isQuoted)
+        else if (it->value == "{" && !it->is_quoted)
         {
             depth += 1;
         }
@@ -266,7 +190,6 @@ bool Lexer::balance_braces(std::vector<ngxToken> tokens)
         {
             const std::string msg = "unexpected \"}\"";
             error_exit(line, msg);
-            //            throw std::runtime_error(msg);
         }
     }
 
@@ -274,20 +197,56 @@ bool Lexer::balance_braces(std::vector<ngxToken> tokens)
     {
         const std::string msg = "unexpected end of file, expecting \"}\"";
         error_exit(line, msg);
-        //        throw std::runtime_error(msg);
     }
     return true;
 }
 
-std::vector<ngxToken> Lexer::lex(const std::string &filename)
+void Lexer::error_exit(int line, const std::string &msg)
 {
-    std::vector<ngxToken> t = tokenize(filename);
-    if (balance_braces(t))
-    {
-        std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
-    }
-//    DSOUT() << "===tokenize===" << std::endl;
-//    print(t);
+    std::cout << "webserv: [emerg] " << msg << " :" << line << std::endl;
+    exit(1);
+}
 
-    return t;
+// TODO: ファイルがディレクトリだった場合に弾くようにする
+// ファイルを読んで行数と文字列のペアを持つようにする
+std::vector<strLine> Lexer::file_read(std::string filename)
+{
+    std::vector<strLine> v;
+
+    std::ifstream input_file(filename);
+    if (!input_file.is_open())
+    {
+        throw std::runtime_error("file not opened");
+    }
+
+    std::string line;
+    int lineno = 1;
+    while (std::getline(input_file, line))
+    {
+        v.push_back(strLine(line, lineno));
+        lineno += 1;
+    }
+    return v;
+}
+
+bool Lexer::is_space(char c)
+{
+    const std::string spaces = " \f\n\r\t\v";
+
+    return spaces.find(c) != std::string::npos;
+}
+
+bool Lexer::is_comment(char c)
+{
+    return c == '#';
+}
+
+bool Lexer::is_quote(char c)
+{
+    return c == '"' || c == '\'';
+}
+
+bool Lexer::is_special(char c)
+{
+    return c == '{' || c == '}' || c == ';';
 }

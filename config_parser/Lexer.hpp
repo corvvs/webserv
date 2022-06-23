@@ -3,48 +3,52 @@
 #include <string>
 #include <vector>
 
-struct ngxToken
+// TODO: structのコンストラクタもcppに書く必要あるか確認する
+struct wsToken
 {
     std::string value;
     int line;
-    bool isQuoted;
-    std::string error;
+    bool is_quoted;
+
+    wsToken(std::string v, int l, bool is_q)
+        : value(v), line(l), is_quoted(is_q)
+    {
+    }
 };
 
-struct charLine
-{
-    std::string chars;
-    int line;
-};
-
+// TODO: privateにする(debug用で外に出してる)
 struct strLine
 {
     std::string str;
     int line;
+
+    strLine(std::string s, int l)
+        : str(s), line(l)
+    {
+    }
 };
 
 class Lexer
 {
+    // TODO: read(): 1つのトークンを返す関数を作成する
+    // read()だけpublicにする
 public:
     Lexer(void);
     ~Lexer(void);
 
-    ngxToken create_ngx_token(
-        std::string value,
-        int line,
-        bool isQuoted,
-        std::string error);
+    std::vector<wsToken> lex(const std::string &filename);
 
-    strLine create_str_line(std::string line, int lineno);
+private:
+    std::vector<strLine> file_read(std::string filename);
+    bool balance_braces(std::vector<wsToken> tokens);
+    std::vector<wsToken> tokenize(std::vector<strLine> lines);
 
     void error_exit(int line, const std::string &msg);
-    std::vector<strLine> file_read(std::string filename);
 
-    std::string trim_space(std::string s);
     bool is_space(char c);
-    std::vector<ngxToken> tokenize(std::string filename);
-    bool balance_braces(std::vector<ngxToken> tokens);
-    std::vector<ngxToken> lex(const std::string &filename);
+    bool is_comment(char c);
+    bool is_special(char c);
+    bool is_quote(char c);
 };
 
 #endif

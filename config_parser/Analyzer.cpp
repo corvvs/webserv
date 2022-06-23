@@ -137,7 +137,7 @@ int get_contexts(std::vector<std::string> blockCtx)
 
 std::vector<int> get_directives(std::string directive)
 {
-    std::map<std::string, std::vector<int>> directives;
+    std::map<std::string, std::vector<int> > directives;
     // http
 
     std::vector<int> v;
