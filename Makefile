@@ -53,6 +53,3 @@ test:
 run_test: test
 	./tests/tests
 
-p:
-	echo $(OBJ_DIRS)
-	echo $(O)
