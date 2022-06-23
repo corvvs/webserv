@@ -53,9 +53,10 @@ namespace HTTP {
         V_ERROR
     };
 
-    typedef char                            byte_type;
+    typedef char                            char_type;
+    typedef unsigned char                   byte_type;
     // バイト列
-    typedef std::basic_string<byte_type>    byte_string;
+    typedef std::basic_string<char_type>    byte_string;
     // ヘッダのキーの型
     typedef byte_string                     header_key_type;
     // ヘッダの値の型

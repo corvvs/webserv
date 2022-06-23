@@ -1,4 +1,5 @@
 #include "CharFilter.hpp"
+#define ELEMS 32
 
 HTTP::CharFilter::CharFilter(const byte_string& chars) {
     fill(chars);
@@ -8,7 +9,7 @@ HTTP::CharFilter::CharFilter(const char *chars) {
     fill(byte_string(chars));
 }
 
-HTTP::CharFilter::CharFilter(uint8_t from, uint8_t to) {
+HTTP::CharFilter::CharFilter(byte_type from, byte_type to) {
     fill(from, to);
 }
 
@@ -18,7 +19,7 @@ HTTP::CharFilter::CharFilter(const CharFilter& other) {
 
 HTTP::CharFilter& HTTP::CharFilter::operator=(const CharFilter& rhs) {
     if (this != &rhs) {
-        memcpy(filter, rhs.filter, sizeof(uint64_t) * 4);
+        memcpy(filter, rhs.filter, 32);
     }
     return *this;
 }
@@ -30,7 +31,7 @@ HTTP::CharFilter& HTTP::CharFilter::operator=(const byte_string& rhs) {
 
 HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter& rhs) const {
     CharFilter n(*this);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < ELEMS; ++i) {
         n.filter[i] |= rhs.filter[i];
     }
     return n;
@@ -38,7 +39,7 @@ HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter& rhs) const {
 
 HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter& rhs) const {
     CharFilter n(*this);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < ELEMS; ++i) {
         n.filter[i] &= rhs.filter[i];
     }
     return n;
@@ -46,7 +47,7 @@ HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter& rhs) const {
 
 HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter& rhs) const {
     CharFilter n(*this);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < ELEMS; ++i) {
         n.filter[i] ^= rhs.filter[i];
     }
     return n;
@@ -54,7 +55,7 @@ HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter& rhs) const {
 
 HTTP::CharFilter HTTP::CharFilter::operator~() const {
     CharFilter n(*this);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < ELEMS; ++i) {
         n.filter[i] = ~n.filter[i];
     }
     return n;
@@ -65,25 +66,25 @@ HTTP::CharFilter HTTP::CharFilter::operator-(const CharFilter& rhs) const {
 }
 
 void HTTP::CharFilter::fill(const byte_string& chars) {
-    memset(filter, 0, sizeof(uint64_t) * 4);
-    // 6 の出どころは 2^6 = 64.
+    memset(filter, 0, ELEMS);
+    // 3 の出どころは 2^3 = 8.
     for (byte_string::size_type i = 0; i < chars.size(); ++i) {
-        uint8_t c = chars[i];
-        filter[(c >> 6)] |= (uint64_t)1 << (c & (((uint64_t)1 << 6) - 1));
+        byte_type c = chars[i];
+        filter[(c >> 3)] |= (unsigned int)1 << (c & (((unsigned int)1 << 3) - 1));
     }
 }
 
-void HTTP::CharFilter::fill(uint8_t from, uint8_t to) {
-    memset(filter, 0, sizeof(uint64_t) * 4);
+void HTTP::CharFilter::fill(byte_type from, byte_type to) {
+    memset(filter, 0, 32);
     for (; from <= to; ++from) {
-        uint8_t c = from;
-        filter[(c >> 6)] |= (uint64_t)1 << (c & (((uint64_t)1 << 6) - 1));
+        byte_type c = from;
+        filter[(c >> 3)] |= (unsigned int)1 << (c & (((unsigned int)1 << 3) - 1));
         if (from == to) { break; }
     }
 }
 
-bool HTTP::CharFilter::includes(uint8_t c) const {
-    uint64_t x = (filter[(c >> 6)] & ((uint64_t)1 << (c & (((uint64_t)1 << 6) - 1))));
+bool HTTP::CharFilter::includes(byte_type c) const {
+    int x = (filter[(c >> 3)] & ((unsigned int)1 << (c & (((unsigned int)1 << 3) - 1))));
     return x;
 }
 
@@ -93,7 +94,7 @@ bool HTTP::CharFilter::includes(uint8_t c) const {
 // 0xa  = 0b1010
 // 0xaa = 0b10101010
 
-// uint8_t x;
+// byte_type x;
 // x & 0x55 = x & 0b01010101 -> x の偶数ビットのみ残す
 // x & 0xaa = x & 0b10101010 -> x の奇数ビットのみ残す
 // (x & 0xaa) >> 1 -> x の奇数ビットを偶数ビットにずらす
@@ -124,14 +125,11 @@ bool HTTP::CharFilter::includes(uint8_t c) const {
 
 HTTP::byte_string::size_type    HTTP::CharFilter::size() const {
     byte_string::size_type n = 0;
-    for (int i = 0; i < 4; ++i) {
-        uint64_t x = filter[i];
-        x = (x & 0x5555555555555555UL) + ((x & 0xaaaaaaaaaaaaaaaaUL) >> 1);
-        x = (x & 0x3333333333333333UL) + ((x & 0xccccccccccccccccUL) >> 2);
-        x = (x & 0x0f0f0f0f0f0f0f0fUL) + ((x & 0xf0f0f0f0f0f0f0f0UL) >> 4);
-        x = (x & 0x00ff00ff00ff00ffUL) + ((x & 0xff00ff00ff00ff00UL) >> 8);
-        x = (x & 0x0000ffff0000ffffUL) + ((x & 0xffff0000ffff0000UL) >> 16);
-        x = (x & 0x00000000ffffffffUL) + ((x & 0xffffffff00000000UL) >> 32);
+    for (int i = 0; i < ELEMS; ++i) {
+        unsigned int x = filter[i];
+        x = (x & 0x55U) + ((x & 0xaaU) >> 1);
+        x = (x & 0x33U) + ((x & 0xccU) >> 2);
+        x = (x & 0x0fU) + ((x & 0xf0U) >> 4);
         n += x;
     }
     return n;
@@ -140,8 +138,8 @@ HTTP::byte_string::size_type    HTTP::CharFilter::size() const {
 HTTP::byte_string   HTTP::CharFilter::str() const {
     HTTP::byte_string   out;
     out.reserve(size());
-    for (unsigned int i = 0; i < 4 * 8 * sizeof(uint64_t); ++i) {
-        uint8_t c = i;
+    for (unsigned int i = 0; i < 256; ++i) {
+        byte_type c = i;
         if (includes(c)) { out.push_back(c); }
     }
     return out;

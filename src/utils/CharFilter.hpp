@@ -12,14 +12,14 @@ namespace HTTP {
     // 単純な文字集合クラス
     class CharFilter {
     private:
-        uint64_t    filter[4];
+        unsigned char   filter[32];
 
     public:
         CharFilter(const byte_string& chars);
         CharFilter(const char* chars);
         CharFilter(const CharFilter& other);
         // by exclusive char-range
-        CharFilter(uint8_t from, uint8_t to);
+        CharFilter(byte_type from, byte_type to);
 
         CharFilter& operator=(const CharFilter& rhs);
         CharFilter& operator=(const byte_string& rhs);
@@ -36,9 +36,9 @@ namespace HTTP {
 
         // 文字集合を文字列`chars`を使って初期化する
         void        fill(const byte_string& chars);
-        void        fill(uint8_t from, uint8_t to);
+        void        fill(byte_type from, byte_type to);
         // `c` が文字集合に含まれるかどうか
-        bool        includes(uint8_t c) const;
+        bool        includes(byte_type c) const;
         // 文字集合のサイズ
         byte_string::size_type  size() const;
 

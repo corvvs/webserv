@@ -219,14 +219,13 @@ public:
     // `pos`が指定された場合, 位置`pos`以降のみを検索する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
     size_type       rfind(const string_class& str, size_type pos = 0) const {
-        for (size_type i = size() - str.size(); pos <= i;) {
+        for (size_type i = size() - str.size(); pos <= i; --i) {
             size_type j = 0;
             for (; j < str.size() && operator[](i + j) == str[j]; ++j);
             if (j == str.size()) {
                 return i;
             }
             if (pos == i) { break; }
-            --i;
         }
         return npos;
     }
@@ -329,7 +328,7 @@ public:
 };
 
 namespace HTTP {
-    typedef LightString<byte_type>  light_string;
+    typedef LightString<char_type>  light_string;
 }
 
 template <class T>
