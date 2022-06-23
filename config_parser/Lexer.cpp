@@ -132,8 +132,8 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
     std::string token;
     int token_line;
 
-//    DSOUT() << "===config data===" << std::endl;
-//    print(lines);
+    //    DSOUT() << "===config data===" << std::endl;
+    //    print(lines);
     // 一文字ずつ読んでいく
     for (std::vector<strLine>::iterator it = lines.begin(); it != lines.end(); it++)
     {
@@ -141,6 +141,7 @@ std::vector<ngxToken> Lexer::tokenize(std::string filename)
         std::string::iterator cur = it->str.begin();
         while (cur != it->str.end())
         {
+            //            debug(*cur);
             //            std::cout << "line: " << line << "| char: " << *cur << std::endl;
             // 空文字が来たらこれまでのtokenをtokenの配列に追加する
             if (is_space(*cur))

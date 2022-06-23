@@ -2,6 +2,7 @@
 #include "Parser.hpp"
 #include "Analyzer.hpp"
 #include <iostream>
+#include "test_common.hpp"
 
 void error_exit(std::string msg);
 
@@ -16,10 +17,10 @@ std::vector<std::string> enterBlockCtx(Directive stmt, std::vector<std::string> 
 {
     if (ctx.size() > 0 && ctx[0] == "http" && stmt.directive == "location")
     {
-        std::vector<std::string> res;
-        res.push_back("http");
-        res.push_back("location");
-        return res;
+        ctx.clear();
+        ctx.push_back("http");
+        ctx.push_back("location");
+        return ctx;
     }
 
     // 他のブロックコンテキストは、locationのようにネストすることができないので、追加するだけ
@@ -29,6 +30,8 @@ std::vector<std::string> enterBlockCtx(Directive stmt, std::vector<std::string> 
 
 bool analyze(Directive stmt, std::string term, std::vector<std::string> ctx)
 {
+    // debug(stmt.directive);
+    // debug(ctx);
     std::vector<int> masks = get_directives(stmt.directive);
     int currCtx = get_contexts(ctx);
 
@@ -39,13 +42,16 @@ bool analyze(Directive stmt, std::string term, std::vector<std::string> ctx)
         error_exit(msg);
     }
 
+    // debug(masks.size());
     // ディレクティブがこのコンテキストで使用できない場合はエラーを投げる
     std::vector<int> ctxMasks;
     for (std::vector<int>::iterator it = masks.begin(); it != masks.end(); it++)
     {
-        if ((*it & currCtx) != 0)
+        int mask = *it;
+        // debug(mask);
+        if ((mask & currCtx) != 0)
         {
-            ctxMasks.push_back(*it);
+            ctxMasks.push_back(mask);
         }
     }
     if (ctxMasks.size() == 0)
@@ -66,7 +72,7 @@ bool analyze(Directive stmt, std::string term, std::vector<std::string> ctx)
         }
 
         // シンプルディレクティブで ";"が続いていなかったらエラーを投げる
-        if ((mask & ngxConfBlock) != 0 && term != ";")
+        if ((mask & ngxConfBlock) == 0 && term != ";")
         {
             const std::string msg = "directive \"" + stmt.directive + "\" is not terminated by \";\"";
             error_exit(msg);
@@ -79,7 +85,7 @@ bool analyze(Directive stmt, std::string term, std::vector<std::string> ctx)
             ((mask & ngxConf1More) != 0 && stmt.args.size() >= 1) ||
             ((mask & ngxConf2More) != 0 && stmt.args.size() >= 2))
         {
-            return false;
+            return true;
         }
         else if ((mask & ngxConfFlag) != 0 && stmt.args.size() == 1 && !validFlag(stmt.args[0]))
         {
@@ -92,7 +98,6 @@ bool analyze(Directive stmt, std::string term, std::vector<std::string> ctx)
             error_exit(msg);
         }
     }
-    error_exit("error");
     return false;
 }
 
@@ -146,7 +151,6 @@ std::vector<int> get_directives(std::string directive)
     v.push_back(ngxMailMainConf | ngxConfBlock | ngxConfNoArgs);
     v.push_back(ngxStreamMainConf | ngxConfBlock | ngxConfNoArgs);
     v.push_back(ngxStreamUpsConf | ngxConf1More);
-
     directives["server"] = v;
 
     // listen
@@ -160,7 +164,7 @@ std::vector<int> get_directives(std::string directive)
     v.clear();
     v.push_back(ngxHttpSrvConf | ngxConf1More);
     v.push_back(ngxMailMainConf | ngxMailSrvConf | ngxConfTake1);
-    directives["server"] = v;
+    directives["server_name"] = v;
 
     // location
     v.clear();

@@ -9,6 +9,7 @@
 
 #define debug(var)  do{std::cout << "[" << __FILE__ << ":" << __LINE__ << "] " << #var << " : ";view(var);}while(0)
 template<typename T> void view(T e){std::cout << e << std::endl;}
+template<typename T> void view(std::vector<T> e){for(std::size_t i = 0; i < e.size(); i++) std::cout<< e[i] << std::endl;}
 
 std::ostream&   debug_out(
     const char *filename,

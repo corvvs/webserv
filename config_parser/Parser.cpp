@@ -1,5 +1,6 @@
 #include <iostream>
 #include <map>
+#include <utility>
 #include "Parser.hpp"
 #include "Lexer.hpp"
 #include "Analyzer.hpp"
@@ -19,9 +20,43 @@ Parser::~Parser()
 {
 }
 
-// bool analyze(std::string fname, Directive stmt, std::string term, std::vector<std::string> ctx)
-//{
-// }
+void print_parsed_data(std::vector<Directive> d, bool is_block, std::string before)
+{
+    std::string dir;
+    if (is_block)
+    {
+        dir = "block";
+    }
+    else
+    {
+        dir = "Directive";
+    }
+    for (size_t i = 0; i < d.size(); i++)
+    {
+        std::cout << before << dir << "[" << i << "].directive : " << d[i].directive << std::endl;
+
+        if (d[i].args.size() == 0)
+        {
+            std::cout << before << dir << "[" << i << "].args : {}" << std::endl;
+        }
+        else
+        {
+            for (size_t j = 0; j < d[i].args.size(); j++)
+            {
+                std::cout << before << dir << "[" << i << "].args[" << j << "]: " << d[i].args[j] << std::endl;
+            }
+        }
+        if (d[i].block.size() == 0)
+        {
+            std::cout << before << dir << "[" << i << "].block : {}" << std::endl;
+        }
+        else
+        {
+            std::string b = before + dir + "[" + std::to_string(i) + "]" + ".";
+            print_parsed_data(d[i].block, true, b);
+        }
+    }
+}
 
 void Parser::Parse(std::string filename)
 {
@@ -31,33 +66,14 @@ void Parser::Parse(std::string filename)
     std::vector<std::string> ctx;
 
     // filename, status, ctx
-    //    std::vector<Directive> parsed = parse(tokens, false);
-    std::vector<Directive> parsed = parse(tokens, ctx, false, 0);
+    std::vector<Directive> parsed = parse(tokens, ctx);
 
-    /// debug
-    std::vector<Directive>::iterator it = parsed.begin();
-    for (; it != parsed.end(); it++)
-    {
-        std::cout << "directive: " << it->directive << std::endl;
-        std::cout << "line     : " << it->line << std::endl;
-
-        std::cout << "args     : ";
-        for (std::vector<std::string>::iterator s_it = it->args.begin(); s_it != it->args.end(); s_it++)
-        {
-            std::cout << *s_it << " ";
-        }
-        std::cout << std::endl;
-        std::cout << "comment   : " << it->comment << std::endl;
-    }
+    print_parsed_data(parsed, false, "");
 }
 
-// TODO:
-// 再帰的処理になるので、どこまで処理したのかを覚えておく必要がある
-// コルーチン的な処理がしたい
-
-// FIXME: ひとまずiteratorを引数で受けることでそこから処理を行うようにする
-// std::vector<Directive> Parser::parse(std::vector<ngxToken> tokens, bool consume)
-std::vector<Directive> Parser::parse(std::vector<ngxToken> tokens, std::vector<std::string> ctx, bool consume, int advance)
+// TODO: 再帰的に処理をする
+static int advance = 0;
+std::vector<Directive> Parser::parse(std::vector<ngxToken> &tokens, std::vector<std::string> ctx)
 {
     std::vector<Directive> parsed;
 
@@ -81,18 +97,6 @@ std::vector<Directive> Parser::parse(std::vector<ngxToken> tokens, std::vector<s
             break;
         }
 
-        if (consume)
-        {
-            if (it->value == "{" && !it->isQuoted)
-            {
-                // TODO: 途中から処理したい
-                //                parse(tokens, true);
-                parse(tokens, std::vector<std::string>(), true, advance);
-                //                error_exit("consume");
-            }
-            continue;
-        }
-
         Directive stmt;
         stmt.directive = it->value;
         stmt.line = it->line;
@@ -111,7 +115,8 @@ std::vector<Directive> Parser::parse(std::vector<ngxToken> tokens, std::vector<s
         }
 
         // ここで一個すすめる？
-        // it++;
+        it++;
+        advance++;
 
         // parse arguments by reading tokens
         while (it->isQuoted || (it->value != "{" && it->value != ";" && it->value != "}"))
@@ -125,35 +130,51 @@ std::vector<Directive> Parser::parse(std::vector<ngxToken> tokens, std::vector<s
                 stmt.args.push_back(it->value);
             }
             it++;
+            advance++;
             // 終端のチェック必要
             if (it == tokens.end())
             {
-                exit(42);
-                // TODO:どうするか
+                // TODO: 後ほど変更する
+                return parsed;
             }
         }
 
-        //        if (analyze())
-        //        {
-        //        }
+        // DOUT() << "analyze" << std::endl;
+        // debug(stmt.directive);
+        // debug(stmt.line);
+        // debug(stmt.args);
+        // debug(stmt.comment);
+        // debug(it->value);
+        // debug(ctx);
+        if (!analyze(stmt, it->value, ctx))
+        {
+            error_exit("analyze error");
+        }
 
+        debug(it->value);
+        debug(it->isQuoted);
         // "{" で終わってた場合はcontextを調べる
+        std::vector<std::string> inner;
         if (it->value == "{" && !it->isQuoted)
         {
-            // TODO:
-            std::vector<std::string> inner = enterBlockCtx(stmt, ctx); // get context for block
+            inner = enterBlockCtx(stmt, ctx); // get context for block
             std::vector<Directive> block;
-            block = parse(tokens, inner, false, advance + 1);
+            advance += 1;
+            block = parse(tokens, inner);
             if (block.size() == 0)
             {
                 error_exit("block error");
             }
             stmt.block = block;
+            it = tokens.begin() + advance;
+            if (it == tokens.end())
+            {
+                parsed.push_back(stmt);
+                return parsed;
+            }
         }
 
         parsed.push_back(stmt);
-
-        // コメントを追加する
 
         for (std::vector<std::string>::iterator com_it = comments_in_args.begin(); com_it != comments_in_args.end(); com_it++)
         {
@@ -168,5 +189,10 @@ std::vector<Directive> Parser::parse(std::vector<ngxToken> tokens, std::vector<s
         }
     }
 
+    if (it == tokens.end())
+    {
+        return parsed;
+    }
+    advance += 1;
     return parsed;
 }

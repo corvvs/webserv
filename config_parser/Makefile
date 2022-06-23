@@ -10,7 +10,7 @@ SRCS := test_common.cpp \
 
 OBJS := $(SRCS:.cpp=.o)
 all: $(NAME)
-CXXFLAGS := -Wall -Wextra -Werror -g -fsanitize=address #-std=c++98
+CXXFLAGS := -Wall -Wextra -Werror -g -fsanitize=address -std=c++98
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(SRCS) -o $(NAME)
