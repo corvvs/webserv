@@ -18,13 +18,16 @@ struct Directive
     }
 };
 
+// DEBUG用
+void print_parsed_data(std::vector<Directive> d, bool is_block = false, std::string before = "");
+
 class Parser
 {
 public:
     Parser();
     ~Parser();
 
-    void Parse(std::string filename);
+    std::vector<Directive> Parse(std::string filename);
     std::vector<Directive> parse(std::vector<std::string> ctx);
 
 private:

@@ -6,32 +6,6 @@
 #include "test_common.hpp"
 #include "Lexer.hpp"
 
-/*************************************************************/
-// debug
-std::ostream &operator<<(std::ostream &os, const wsToken &nt)
-{
-    os << "line: " << nt.line << " "
-       << std::boolalpha << "quote: " << nt.is_quoted << " "
-       << "value: " << nt.value;
-    return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const strLine &cl)
-{
-    os << cl.line << ": " << cl.str;
-    return os;
-}
-
-template <class T>
-void print(T t)
-{
-    for (typename T::iterator it = t.begin(); it != t.end(); it++)
-    {
-        std::cout << *it << std::endl;
-    }
-}
-/*************************************************************/
-
 Lexer::Lexer(void) : idx_(0)
 {
 }
@@ -41,7 +15,7 @@ Lexer::~Lexer(void)
 }
 
 /**
- * @brief 1つのトークンを返す
+ * @brief トークンを1つ返す
  */
 wsToken *Lexer::read(void)
 {
@@ -56,20 +30,17 @@ wsToken *Lexer::read(void)
     }
 }
 
-std::vector<wsToken> Lexer::lex(const std::string &filename)
+void Lexer::lex(const std::string &filename)
 {
     std::vector<strLine> lines(file_read(filename));
     std::vector<wsToken> t = tokenize(lines);
     if (balance_braces(t))
     {
-        std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
+        //        std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
     }
-    DSOUT() << "===tokenize===" << std::endl;
-    print(t);
 
     // メンバ変数に代入
     tokens_ = t;
-    return t;
 }
 
 /**
@@ -84,8 +55,6 @@ std::vector<wsToken> Lexer::tokenize(std::vector<strLine> lines)
 {
     std::vector<wsToken> tokens;
 
-    //    DSOUT() << "===config data===" << std::endl;
-    //    print(lines);
     for (std::vector<strLine>::iterator it = lines.begin(); it != lines.end(); it++)
     {
         std::string token;
@@ -93,8 +62,6 @@ std::vector<wsToken> Lexer::tokenize(std::vector<strLine> lines)
         std::string::iterator cur = it->str.begin();
         while (cur != it->str.end())
         {
-            //            debug(*cur);
-            //            std::cout << "line: " << line << "| char: " << *cur << std::endl;
             if (is_space(*cur))
             {
                 // スペースが区切り文字扱いなのでこれまでのトークンをpbする
@@ -262,3 +229,26 @@ bool Lexer::is_special(char c)
 {
     return c == '{' || c == '}' || c == ';';
 }
+
+/*************************************************************/
+// TODO: 後で消す(debug)
+std::ostream &operator<<(std::ostream &os, const wsToken &token)
+{
+    std::string line = std::to_string(token.line);
+    if (token.line < 10)
+    {
+        line = "0" + line;
+    }
+
+    os << "[L] : " << line << " "
+       << "[Quote]: " << token.is_quoted << " "
+       << "[Val]: " << token.value;
+    return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const strLine &sl)
+{
+    os << sl.line << ": " << sl.str;
+    return os;
+}
+/*************************************************************/

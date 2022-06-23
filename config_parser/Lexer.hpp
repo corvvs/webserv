@@ -28,13 +28,16 @@ struct strLine
     }
 };
 
+std::ostream &operator<<(std::ostream &os, const wsToken &token);
+std::ostream &operator<<(std::ostream &os, const strLine &sl);
+
 class Lexer
 {
 public:
     Lexer(void);
     ~Lexer(void);
 
-    std::vector<wsToken> lex(const std::string &filename);
+    void lex(const std::string &filename);
 
     wsToken *read(void);
 
