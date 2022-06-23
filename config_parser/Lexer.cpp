@@ -32,12 +32,28 @@ void print(T t)
 }
 /*************************************************************/
 
-Lexer::Lexer(void)
+Lexer::Lexer(void) : idx_(0)
 {
 }
 
 Lexer::~Lexer(void)
 {
+}
+
+/**
+ * @brief 1つのトークンを返す
+ */
+wsToken *Lexer::read(void)
+{
+    if (tokens_.size() <= (size_t)idx_)
+    {
+        return NULL;
+    }
+    else
+    {
+        idx_ += 1;
+        return &tokens_[idx_ - 1];
+    }
 }
 
 std::vector<wsToken> Lexer::lex(const std::string &filename)
@@ -48,9 +64,11 @@ std::vector<wsToken> Lexer::lex(const std::string &filename)
     {
         std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
     }
-    //    DSOUT() << "===tokenize===" << std::endl;
-    //    print(t);
+    DSOUT() << "===tokenize===" << std::endl;
+    print(t);
 
+    // メンバ変数に代入
+    tokens_ = t;
     return t;
 }
 
@@ -70,9 +88,8 @@ std::vector<wsToken> Lexer::tokenize(std::vector<strLine> lines)
     //    print(lines);
     for (std::vector<strLine>::iterator it = lines.begin(); it != lines.end(); it++)
     {
-        int line = it->line;
-        int token_line;
         std::string token;
+        int token_line = it->line;
         std::string::iterator cur = it->str.begin();
         while (cur != it->str.end())
         {
@@ -100,7 +117,7 @@ std::vector<wsToken> Lexer::tokenize(std::vector<strLine> lines)
             // 繋がっている場合は普通の文字として扱う
             if (is_comment(*cur) && token.empty())
             {
-                int line_at_start = line;
+                int line_at_start = token_line;
                 while (*cur != '\n')
                 {
                     token += *cur;
@@ -113,11 +130,6 @@ std::vector<wsToken> Lexer::tokenize(std::vector<strLine> lines)
                 tokens.push_back(wsToken(token, line_at_start, false));
                 token = "";
                 continue;
-            }
-
-            if (token.empty())
-            {
-                token_line = line;
             }
 
             // 繋がっている場合は普通の文字として扱う

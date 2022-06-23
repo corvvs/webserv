@@ -30,15 +30,19 @@ struct strLine
 
 class Lexer
 {
-    // TODO: read(): 1つのトークンを返す関数を作成する
-    // read()だけpublicにする
 public:
     Lexer(void);
     ~Lexer(void);
 
     std::vector<wsToken> lex(const std::string &filename);
 
+    wsToken *read(void);
+
 private:
+    // member variables
+    std::vector<wsToken> tokens_;
+    int idx_;
+
     std::vector<strLine> file_read(std::string filename);
     bool balance_braces(std::vector<wsToken> tokens);
     std::vector<wsToken> tokenize(std::vector<strLine> lines);
