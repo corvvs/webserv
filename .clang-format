@@ -4,6 +4,7 @@ IndentWidth: 4
 AlignConsecutiveAssignments: true
 AlignTrailingComments: true
 AllowShortBlocksOnASingleLine: "Empty"
+AllowShortFunctionsOnASingleLine: "Empty"
 AllowShortCaseLabelsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: true
 BinPackArguments: false
