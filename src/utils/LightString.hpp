@@ -26,7 +26,7 @@ public:
 private:
 
     // 参照先string
-    const string_class& base;
+    const string_class* base;
     // `base`のこのオブジェクトが参照している部分の最初のインデックス
     // first <= last が成り立つ
     size_type           first;
@@ -37,29 +37,29 @@ private:
 
 public:
 
-    LightString(): base(blank_str) {
+    LightString(): base(&blank_str) {
         first = last;
     }
 
     LightString(const string_class& str):
-        base(str),
+        base(&str),
         first(0),
         last(str.length()) {}
 
     LightString(const string_class& str, const_iterator f, const_iterator l):
-        base(str),
+        base(&str),
         first(std::distance(str.begin(), f)),
         last(std::max(first, std::min(str.size(), (size_type)std::distance(str.begin(), l)))) {}
 
     LightString(const string_class& str, size_type fi, size_type li = npos):
-        base(str),
+        base(&str),
         first(fi),
         last(std::max(first, std::min(str.size(), li))) {
             DXOUT(first << ":" << last);
         }
 
     LightString(const string_class& str, const IndexRange& range):
-        base(str),
+        base(&str),
         first(range.first),
         last(std::max(first, std::min(str.size(), range.second))) {}
 
@@ -69,14 +69,16 @@ public:
         last(std::max(first, lstr.first + std::min(lstr.size(), li))) {}
 
     LightString& operator=(const LightString& rhs) {
-        const_cast<string_class&>(base) = rhs.base;
+        string_class* p = const_cast<string_class*>(base);
+        p = const_cast<string_class*>(rhs.base);
         first = rhs.first;
         last = rhs.last;
         return *this;
     }
 
     LightString& operator=(const string_class& rhs) {
-        const_cast<string_class&>(base) = rhs;
+        string_class* p = const_cast<string_class*>(base);
+        p = const_cast<string_class*>(&rhs);
         first = 0;
         last = rhs.length();
         return *this;
@@ -84,13 +86,13 @@ public:
 
     // 参照先文字列を取得
     const string_class& get_base() const {
-        return base;
+        return *base;
     }
 
     // std::string を生成
     string_class    str() const {
-        if (first == last) { return ""; }
-        return string_class(base.begin() + first, base.begin() + last);
+        if (!base || first == last) { return ""; }
+        return string_class(base->begin() + first, base->begin() + last);
     }
 
     size_type       size() const {
@@ -102,31 +104,35 @@ public:
     }
 
     iterator        begin() {
-        return base.begin() + first;
+        return base->begin() + first;
     }
 
     const_iterator  begin() const {
-        return base.begin() + first;
+        return base->begin() + first;
     }
 
     iterator        end() {
-        return base.begin() + last;
+        return base->begin() + last;
     }
 
     const_iterator  end() const {
-        return base.begin() + last;
+        return base->begin() + last;
     }
 
     const_reference operator[](size_type pos) const {
-        return base[first + pos];
+        return (*base)[first + pos];
     }
 
     reference       operator[](size_type pos) {
-        return base[first + pos];
+        return (*base)[first + pos];
     }
 
     element         cat(size_type pos) {
-        return base[first + pos];
+        return (*base)[first + pos];
+    }
+
+    const element   cat(size_type pos) const {
+        return (*base)[first + pos];
     }
 
     // `str` に含まれる文字が(LightString内で)最初に出現する位置を返す
@@ -155,7 +161,7 @@ public:
         }
         for (typename string_class::size_type i = last; first + pos < i;) {
             --i;
-            if (filter.includes(base[i])) {
+            if (filter.includes((*base)[i])) {
                 return i - first;
             }
         }
