@@ -9,7 +9,7 @@ AllowShortCaseLabelsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: true
 BinPackArguments: false
 BinPackParameters: false
-BreakBeforeBinaryOperators: "None"
+BreakBeforeBinaryOperators: "BOS_None"
 BreakBeforeBraces: "Attach"
 BreakConstructorInitializersBeforeComma: true
 ColumnLimit: 120
