@@ -21,8 +21,8 @@ class EventPollLoop : public IObserver {
 private:
   typedef std::vector<pollfd> fd_vector;
   typedef std::map<t_fd, ISocketLike *> socket_map;
-  typedef std::map<t_fd, int> index_map;
-  typedef std::set<int> gap_set;
+  typedef std::map<t_fd, size_t> index_map;
+  typedef std::set<size_t> gap_set;
   typedef std::vector<t_socket_reservation> update_queue;
 
   fd_vector fds;
@@ -40,8 +40,6 @@ private:
   void reserve(ISocketLike *socket, t_socket_operation from,
                t_socket_operation to);
   void update();
-
-  void debug_monitor();
 
 public:
   EventPollLoop();

@@ -3,10 +3,10 @@
 
 #include "Iobserver.hpp"
 #include "Isocketlike.hpp"
-#include <errno.h>
+#include <cerrno>
 #include <map>
 #include <sys/select.h>
-#include <sys/time.h>
+#include <ctime>
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>

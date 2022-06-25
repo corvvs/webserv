@@ -75,19 +75,15 @@ void EventSelectLoop::scan_fd_set(socket_map &sockmap, fd_set *sockset,
 
 // イベントループ
 void EventSelectLoop::loop() {
-  fd_set read_set;
-  fd_set write_set;
-  fd_set exception_set;
-  timeval tv;
-
   while (true) {
     update();
+
+    fd_set read_set;
+    fd_set write_set;
+    fd_set exception_set;
     prepare_fd_set(read_map, &read_set);
     prepare_fd_set(write_map, &write_set);
     prepare_fd_set(exception_map, &exception_set);
-
-    tv.tv_sec = 10;
-    tv.tv_usec = 0;
 
     t_fd max_fd = -1;
     if (!read_map.empty()) {
@@ -100,6 +96,7 @@ void EventSelectLoop::loop() {
       max_fd = std::max(max_fd, exception_map.rbegin()->first);
     }
 
+    timeval tv = {10, 0};
     int count = select(max_fd + 1, &read_set, &write_set, &exception_set, &tv);
     if (count < 0) {
       DSOUT() << strerror(errno) << std::endl;

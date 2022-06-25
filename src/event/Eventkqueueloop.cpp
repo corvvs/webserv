@@ -1,4 +1,5 @@
 #include "Eventkqueueloop.hpp"
+#include "../debug/debug.hpp"
 
 const int EventKqueueLoop::nev = 10;
 
@@ -25,13 +26,15 @@ EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_socket_operation t) {
         return EVFILT_WRITE;
     case SHMT_EXCEPTION:
         return EVFILT_EXCEPT;
+    case SHMT_NONE:
+      return 0;
     default:
-        return 0;
+      throw std::runtime_error("unexpected map_type");
     }
 }
 
 void    EventKqueueLoop::loop() {
-    while (1) {
+    while (true) {
         update();
 
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
@@ -40,13 +43,13 @@ void    EventKqueueLoop::loop() {
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (int i = 0; i < count; i++) {
-                int fd = evlist[i].ident;
+                int fd = static_cast<int >(evlist[i].ident);
                 ISocketLike* sock = sockmap[fd];
                 sock->timeout(*this, now);
             }
         } else {
             for (int i = 0; i < count; i++) {
-                int fd = evlist[i].ident;
+                int fd = static_cast<int >(evlist[i].ident);
                 ISocketLike* sock = sockmap[fd];
                 sock->notify(*this);
             }
@@ -78,7 +81,7 @@ void    EventKqueueLoop::reserve_transit(ISocketLike* socket, t_socket_operation
 void    EventKqueueLoop::update() {
     std::vector< t_kevent > changelist;
     changelist.reserve(upqueue.size());
-    if (upqueue.size() == 0) { return; }
+    if (upqueue.empty()) { return; }
     int n = 0;
     for (update_queue::iterator it = upqueue.begin(); it != upqueue.end(); it++) {
         t_kevent        ke;
@@ -98,7 +101,7 @@ void    EventKqueueLoop::update() {
         errno = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
-            std::cout
+            DOUT()
                 << "errno: " << errno  << ", "
                 << changelist.size() << ", "
                 << n << ", " << count << std::endl;

@@ -1,4 +1,5 @@
 #include "Eventpollloop.hpp"
+#include "../debug/debug.hpp"
 
 EventPollLoop::EventPollLoop(): nfds(0) {
 }
@@ -11,48 +12,31 @@ EventPollLoop::~EventPollLoop() {
 
 // イベントループ
 void    EventPollLoop::loop() {
-    while (1) {
+    while (true) {
         update();
-        debug_monitor();
 
-        int count = poll(&*fds.begin(), fds.size(), 10 * 1000);
+        const int count = poll(&*fds.begin(), fds.size(), 10 * 1000);
 
         if (count < 0) {
             throw std::runtime_error("poll error");
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
-                int i = indexmap[it->first];
+                size_t i = indexmap[it->first];
                 if (fds[i].fd >= 0) {
                     it->second->timeout(*this, now);
                 }
             }
         } else {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
-                int i = indexmap[it->first];
+                size_t i = indexmap[it->first];
                 if (fds[i].fd >= 0 && fds[i].revents) {
-                    std::cout << "[S]FD-" << it->first << ": revents: " << fds[i].revents << std::endl;
+                    DOUT() << "[S]FD-" << it->first << ": revents: " << fds[i].revents << std::endl;
                     it->second->notify(*this);
                 }
             }
         }
     }
-}
-
-void    EventPollLoop::debug_monitor() {
-    // 監視状態の表示
-    std::cout << "[S] polling count: " << nfds << std::endl;
-    std::cout << "[S]";
-    for (fd_vector::iterator it = fds.begin(); it != fds.end(); it++) {
-        std::cout << " ";
-        if (it->fd >= 0) {
-            std::cout << it->fd;
-        } else {
-            std::cout << "xx";
-        }
-        std::cout << ":" << it->events;
-    }
-    std::cout << std::endl;
 }
 
 void    EventPollLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
@@ -92,8 +76,10 @@ t_poll_eventmask    EventPollLoop::mask(t_socket_operation t) {
         return POLLOUT;
     case SHMT_EXCEPTION:
         return POLLPRI;
+    case SHMT_NONE:
+      return 0;
     default:
-        return 0;
+      throw std::runtime_error("unexpected map_type");
     }
 }
 
@@ -103,7 +89,7 @@ void    EventPollLoop::update() {
     EventPollLoop::update_queue::iterator   it;
     for (it = clearqueue.begin(); it != clearqueue.end(); it++) {
         ISocketLike* sock = it->sock;
-        int i = indexmap[sock->get_fd()];
+        size_t i = indexmap[sock->get_fd()];
         fds[i].fd = -1;
         sockmap.erase(sock->get_fd());
         indexmap.erase(sock->get_fd());
@@ -113,12 +99,12 @@ void    EventPollLoop::update() {
     }
     for (it = movequeue.begin(); it != movequeue.end(); it++) {
         ISocketLike* sock = it->sock;
-        int i = indexmap[sock->get_fd()];
+        size_t i = indexmap[sock->get_fd()];
         fds[i].events = mask(it->to);
     }
     for (it = setqueue.begin(); it != setqueue.end(); it++) {
         ISocketLike* sock = it->sock;
-        int i;
+        size_t i;
         if (gapset.empty()) {
             pollfd p = {};
             p.fd = sock->get_fd();
