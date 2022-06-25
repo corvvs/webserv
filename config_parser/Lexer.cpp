@@ -85,6 +85,9 @@ const char *Lexer::quote(const char *p, tokenMgr &tmgr) {
         tmgr.token += *p;
         p++;
     }
+    if (*p == quote_type) {
+        p++;
+    }
     tmgr.is_quoted = true;
     add(tmgr);
     tmgr.is_quoted = false;
