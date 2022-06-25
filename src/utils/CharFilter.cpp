@@ -70,7 +70,9 @@ void HTTP::CharFilter::fill(const byte_string& chars) {
     // 3 の出どころは 2^3 = 8.
     for (byte_string::size_type i = 0; i < chars.size(); ++i) {
         byte_type c = chars[i];
-        filter[(c >> 3)] |= (unsigned int)1 << (c & (((unsigned int)1 << 3) - 1));
+        unsigned int element_index = c >> 3;
+        unsigned int bit_index = c & (((unsigned int)1 << 3) - 1);
+        filter[element_index] |= (unsigned int)1 << bit_index;
     }
 }
 
@@ -78,13 +80,17 @@ void HTTP::CharFilter::fill(byte_type from, byte_type to) {
     memset(filter, 0, ELEMS);
     for (; from <= to; ++from) {
         byte_type c = from;
-        filter[(c >> 3)] |= (unsigned int)1 << (c & (((unsigned int)1 << 3) - 1));
+        unsigned int element_index = c >> 3;
+        unsigned int bit_index = c & (((unsigned int)1 << 3) - 1);
+        filter[element_index] |= (unsigned int)1 << bit_index;
         if (from == to) { break; }
     }
 }
 
 bool HTTP::CharFilter::includes(byte_type c) const {
-    int x = (filter[(c >> 3)] & ((unsigned int)1 << (c & (((unsigned int)1 << 3) - 1))));
+    unsigned int element_index = c >> 3;
+    unsigned int bit_index = c & (((unsigned int)1 << 3) - 1);
+    int x = (filter[element_index] & ((unsigned int)1 << bit_index));
     return x;
 }
 
