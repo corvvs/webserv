@@ -9,6 +9,7 @@ const std::string blank_str = "";
 
 // 別のstringの一部分をiteratorペアとして参照する軽量string
 // C++17以降にある string_view と思えば良いか
+// **元の文字列の変更は許可しない**
 template <class T>
 class LightString {
 public:
@@ -26,7 +27,7 @@ public:
 private:
 
     // 参照先string
-    const string_class* base;
+    string_class const* base;
     // `base`のこのオブジェクトが参照している部分の最初のインデックス
     // first <= last が成り立つ
     size_type           first;
@@ -38,7 +39,7 @@ private:
 public:
 
     LightString(): base(&blank_str) {
-        first = last;
+        first = last = blank_str.size();
     }
 
     LightString(const string_class& str):
@@ -69,16 +70,14 @@ public:
         last(std::max(first, lstr.first + std::min(lstr.size(), li))) {}
 
     LightString& operator=(const LightString& rhs) {
-        string_class* p = const_cast<string_class*>(base);
-        p = const_cast<string_class*>(rhs.base);
+        base = rhs.base;
         first = rhs.first;
         last = rhs.last;
         return *this;
     }
 
     LightString& operator=(const string_class& rhs) {
-        string_class* p = const_cast<string_class*>(base);
-        p = const_cast<string_class*>(&rhs);
+        base = &rhs;
         first = 0;
         last = rhs.length();
         return *this;
@@ -93,6 +92,11 @@ public:
     string_class    str() const {
         if (!base || first == last) { return ""; }
         return string_class(base->begin() + first, base->begin() + last);
+    }
+
+    // ダブルクオートで囲んだ std::string を生成
+    string_class    qstr() const {
+        return "\"" + str() + "\"";
     }
 
     size_type       size() const {
@@ -123,15 +127,7 @@ public:
         return (*base)[first + pos];
     }
 
-    reference       operator[](size_type pos) {
-        return (*base)[first + pos];
-    }
-
-    element         cat(size_type pos) {
-        return (*base)[first + pos];
-    }
-
-    const element   cat(size_type pos) const {
+    element         operator[](size_type pos) {
         return (*base)[first + pos];
     }
 
@@ -144,7 +140,7 @@ public:
             return npos;
         }
         for (typename string_class::size_type i = pos; i < size(); ++i) {
-            if (filter.includes(operator[](i))) {
+            if (filter.includes((*this)[i])) {
                 return i;
             }
         }
@@ -180,7 +176,7 @@ public:
             return npos;
         }
         for (size_type i = pos; i < size(); ++i) {
-            if (!filter.includes(operator[](i))) {
+            if (!filter.includes((*this)[i])) {
                 return i;
             }
         }
@@ -200,7 +196,7 @@ public:
         }
         for (size_type i = size(); 0 + pos < i;) {
             --i;
-            if (!filter.includes(operator[](i))) {
+            if (!filter.includes((*this)[i])) {
                 return i;
             }
         }
@@ -213,7 +209,7 @@ public:
     size_type       find(const string_class& str, size_type pos = 0) const {
         for (size_type i = pos; i + str.size() <= size(); ++i) {
             size_type j = 0;
-            for (; j < str.size() && operator[](i + j) == str[j]; ++j);
+            for (; j < str.size() && (*this)[i + j] == str[j]; ++j);
             if (j == str.size()) {
                 return i;
             }
@@ -227,7 +223,7 @@ public:
     size_type       rfind(const string_class& str, size_type pos = 0) const {
         for (size_type i = size() - str.size(); pos <= i; --i) {
             size_type j = 0;
-            for (; j < str.size() && operator[](i + j) == str[j]; ++j);
+            for (; j < str.size() && (*this)[i + j] == str[j]; ++j);
             if (j == str.size()) {
                 return i;
             }
@@ -255,13 +251,17 @@ public:
 
     // 「`pos`以降で最初に`filter`にマッチしなくなる位置」の直前までを参照する LightString を生成して返す
     // `pos`以前の部分も含まれることに注意.
-    // ※ substr(0, find_first_not_of(filter, pos)) と等価
+    // ※ substr(0, find_first_not_of(filter, pos)) と*ほぼ*等価
     LightString substr_while(const filter_type& filter, size_type pos = 0) const {
         size_type n = find_first_not_of(filter, pos);
-        return substr(0, n);
+        if (n == npos) {
+            return substr(pos);
+        } else {
+            return substr(pos, n - pos);
+        }
     }
 
-    // 「`pos`以降で最初に`filter`にマッチしなくなる位置」から後の部分参照する LightString を生成して返す
+    // 「`pos`以降で最初に`filter`にマッチしなくなる位置」から後の部分を参照する LightString を生成して返す
     // ※ substr(find_first_not_of(filter, pos)) と等価
     LightString substr_after(const filter_type& filter, size_type pos = 0) const {
         size_type n = find_first_not_of(filter, pos);
@@ -270,13 +270,17 @@ public:
 
     // 「`pos`以降で最初に`filter`にマッチする位置」の直前までを参照する LightString を生成して返す
     // `pos`以前の部分も含まれることに注意.
-    // ※ substr(0, find_first_of(filter, pos)) と等価
+    // ※ substr(0, find_first_of(filter, pos)) と*ほぼ*等価
     LightString substr_before(const filter_type& filter, size_type pos = 0) const {
         size_type n = find_first_of(filter, pos);
-        return substr(0, n);
+        if (n == npos) {
+            return substr(pos);
+        } else {
+            return substr(pos, n - pos);
+        }
     }
 
-    // 「`pos`以降で最初に`filter`にマッチする位置」から後の部分参照する LightString を生成して返す
+    // 「`pos`以降で最初に`filter`にマッチする位置」から後の部分を参照する LightString を生成して返す
     // ※ substr(find_first_of(filter, pos)) と等価
     LightString substr_from(const filter_type& filter, size_type pos = 0) const {
         size_type n = find_first_of(filter, pos);
@@ -289,7 +293,7 @@ public:
         size_type word_to = 0;
         bool prev_is_sp = true;
         for (size_type i = 0; i <= size(); ++i) {
-            if (i == size() || filter.includes(operator[](i))) {
+            if (i == size() || filter.includes((*this)[i])) {
                 word_to = i;
                 if (prev_is_sp) {
                     word_from = i;
@@ -339,7 +343,7 @@ namespace HTTP {
 
 template <class T>
 std::ostream&   operator<<(std::ostream& out, const LightString<T>& ls) {
-    return out << typename LightString<T>::string_class(ls.begin(), ls.end());
+    return out << ls.str();
 }
 
 #endif

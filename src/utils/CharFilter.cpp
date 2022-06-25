@@ -19,7 +19,7 @@ HTTP::CharFilter::CharFilter(const CharFilter& other) {
 
 HTTP::CharFilter& HTTP::CharFilter::operator=(const CharFilter& rhs) {
     if (this != &rhs) {
-        memcpy(filter, rhs.filter, 32);
+        memcpy(filter, rhs.filter, ELEMS);
     }
     return *this;
 }
@@ -75,7 +75,7 @@ void HTTP::CharFilter::fill(const byte_string& chars) {
 }
 
 void HTTP::CharFilter::fill(byte_type from, byte_type to) {
-    memset(filter, 0, 32);
+    memset(filter, 0, ELEMS);
     for (; from <= to; ++from) {
         byte_type c = from;
         filter[(c >> 3)] |= (unsigned int)1 << (c & (((unsigned int)1 << 3) - 1));
