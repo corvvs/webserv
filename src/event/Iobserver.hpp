@@ -10,6 +10,13 @@
 // - ソケットライクオブジェクトの状態変化を監視し, 変化があったら通知を出すこと
 class IObserver {
 public:
+  enum t_socket_operation { SHMT_NONE, SHMT_READ, SHMT_WRITE, SHMT_EXCEPTION };
+
+  struct t_socket_reservation {
+    ISocketLike *sock;
+    t_socket_operation from;
+    t_socket_operation to;
+  };
   virtual ~IObserver(){};
 
   // ソケット監視ループ
