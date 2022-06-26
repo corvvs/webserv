@@ -22,9 +22,6 @@ typedef int t_fd;
 typedef uint16_t t_port;
 typedef uint32_t t_addressv4;
 
-// socket holder map type
-// observation target -> OT
-
 class ISocketLike;
 
 int sockdomain(t_socket_domain d);

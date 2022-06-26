@@ -16,15 +16,16 @@ EventSelectLoop::~EventSelectLoop() {
   destroy_all(exception_map);
 }
 
-void EventSelectLoop::watch(ISocketLike *socket, t_socket_operation map_type) {
+void EventSelectLoop::watch(ISocketLike *socket,
+                            t_observation_target map_type) {
   switch (map_type) {
-  case SHMT_READ:
+  case OT_READ:
     read_map[socket->get_fd()] = socket;
     break;
-  case SHMT_WRITE:
+  case OT_WRITE:
     write_map[socket->get_fd()] = socket;
     break;
-  case SHMT_EXCEPTION:
+  case OT_EXCEPTION:
     exception_map[socket->get_fd()] = socket;
     break;
   default:
@@ -33,15 +34,15 @@ void EventSelectLoop::watch(ISocketLike *socket, t_socket_operation map_type) {
 }
 
 void EventSelectLoop::unwatch(ISocketLike *socket,
-                              t_socket_operation map_type) {
+                              t_observation_target map_type) {
   switch (map_type) {
-  case SHMT_READ:
+  case OT_READ:
     read_map.erase(socket->get_fd());
     break;
-  case SHMT_WRITE:
+  case OT_WRITE:
     write_map.erase(socket->get_fd());
     break;
-  case SHMT_EXCEPTION:
+  case OT_EXCEPTION:
     exception_map.erase(socket->get_fd());
     break;
   default:
@@ -115,8 +116,8 @@ void EventSelectLoop::loop() {
   }
 }
 
-void EventSelectLoop::reserve(ISocketLike *socket, t_socket_operation from,
-                              t_socket_operation to) {
+void EventSelectLoop::reserve(ISocketLike *socket, t_observation_target from,
+                              t_observation_target to) {
   t_socket_reservation pre = {socket, from, to};
   up_queue.push_back(pre);
 }
@@ -124,19 +125,20 @@ void EventSelectLoop::reserve(ISocketLike *socket, t_socket_operation from,
 // 次のselectの前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
 void EventSelectLoop::reserve_clear(ISocketLike *socket,
-                                    t_socket_operation from) {
-  reserve(socket, from, SHMT_NONE);
+                                    t_observation_target from) {
+  reserve(socket, from, OT_NONE);
 }
 
 // 次のselectの前に, このソケットを監視対象に追加する
-void EventSelectLoop::reserve_set(ISocketLike *socket, t_socket_operation to) {
-  reserve(socket, SHMT_NONE, to);
+void EventSelectLoop::reserve_set(ISocketLike *socket,
+                                  t_observation_target to) {
+  reserve(socket, OT_NONE, to);
 }
 
 // 次のselectの前に, このソケットの監視方法を変更する
 void EventSelectLoop::reserve_transit(ISocketLike *socket,
-                                      t_socket_operation from,
-                                      t_socket_operation to) {
+                                      t_observation_target from,
+                                      t_observation_target to) {
   reserve(socket, from, to);
 }
 
@@ -144,10 +146,10 @@ void EventSelectLoop::reserve_transit(ISocketLike *socket,
 void EventSelectLoop::update() {
   for (EventSelectLoop::update_queue::iterator it = up_queue.begin();
        it != up_queue.end(); it++) {
-    if (it->from != SHMT_NONE) {
+    if (it->from != OT_NONE) {
       unwatch(it->sock, it->from);
     }
-    if (it->to != SHMT_NONE) {
+    if (it->to != OT_NONE) {
       watch(it->sock, it->to);
     } else {
       delete it->sock;

@@ -25,12 +25,12 @@ private:
 
   void prepare_fd_set(socket_map &sockmap, fd_set *sockset);
   void scan_fd_set(socket_map &sockmap, fd_set *sockset, t_time_epoch_ms now);
-  void reserve(ISocketLike *socket, t_socket_operation from,
-               t_socket_operation to);
+  void reserve(ISocketLike *socket, t_observation_target from,
+               t_observation_target to);
   void update();
 
-  void watch(ISocketLike *socket, t_socket_operation map_type);
-  void unwatch(ISocketLike *socket, t_socket_operation map_type);
+  void watch(ISocketLike *socket, t_observation_target map_type);
+  void unwatch(ISocketLike *socket, t_observation_target map_type);
 
   void destroy_all(socket_map &m);
 
@@ -39,10 +39,10 @@ public:
   ~EventSelectLoop();
 
   void loop();
-  void reserve_clear(ISocketLike *socket, t_socket_operation from);
-  void reserve_set(ISocketLike *socket, t_socket_operation to);
-  void reserve_transit(ISocketLike *socket, t_socket_operation from,
-                       t_socket_operation to);
+  void reserve_clear(ISocketLike *socket, t_observation_target from);
+  void reserve_set(ISocketLike *socket, t_observation_target to);
+  void reserve_transit(ISocketLike *socket, t_observation_target from,
+                       t_observation_target to);
 };
 
 #endif

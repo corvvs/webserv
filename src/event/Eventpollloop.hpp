@@ -35,10 +35,10 @@ private:
   update_queue movequeue;
   update_queue setqueue;
 
-  t_poll_eventmask mask(t_socket_operation t);
+  t_poll_eventmask mask(t_observation_target t);
 
-  void reserve(ISocketLike *socket, t_socket_operation from,
-               t_socket_operation to);
+  void reserve(ISocketLike *socket, t_observation_target from,
+               t_observation_target to);
   void update();
 
 public:
@@ -46,10 +46,10 @@ public:
   ~EventPollLoop();
 
   void loop();
-  void reserve_clear(ISocketLike *socket, t_socket_operation from);
-  void reserve_set(ISocketLike *socket, t_socket_operation to);
-  void reserve_transit(ISocketLike *socket, t_socket_operation from,
-                       t_socket_operation to);
+  void reserve_clear(ISocketLike *socket, t_observation_target from);
+  void reserve_set(ISocketLike *socket, t_observation_target to);
+  void reserve_transit(ISocketLike *socket, t_observation_target from,
+                       t_observation_target to);
 };
 
 #endif

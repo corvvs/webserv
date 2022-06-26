@@ -39,44 +39,48 @@ void    EventPollLoop::loop() {
     }
 }
 
-void    EventPollLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventPollLoop::reserve(ISocketLike* socket, t_observation_target from,
+                            t_observation_target to) {
     t_socket_reservation  pre = {socket, from, to};
-    if (from != SHMT_NONE && to == SHMT_NONE) {
+    if (from != OT_NONE && to == OT_NONE) {
         clearqueue.push_back(pre);
     }
-    if (from != SHMT_NONE && to != SHMT_NONE) {
+    if (from != OT_NONE && to != OT_NONE) {
         movequeue.push_back(pre);
     }
-    if (from == SHMT_NONE && to != SHMT_NONE) {
+    if (from == OT_NONE && to != OT_NONE) {
         setqueue.push_back(pre);
     }
 }
 
 // このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventPollLoop::reserve_clear(ISocketLike* socket, t_socket_operation from) {
-    reserve(socket, from, SHMT_NONE);
+void    EventPollLoop::reserve_clear(ISocketLike* socket,
+                                  t_observation_target from) {
+    reserve(socket, from, OT_NONE);
 }
 
 // このソケットを監視対象に追加する
-void    EventPollLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
-    reserve(socket, SHMT_NONE, to);
+void    EventPollLoop::reserve_set(ISocketLike* socket, t_observation_target to) {
+    reserve(socket, OT_NONE, to);
 }
 
 // このソケットの監視方法を変更する
-void    EventPollLoop::reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventPollLoop::reserve_transit(ISocketLike* socket,
+                                    t_observation_target from,
+                                    t_observation_target to) {
     reserve(socket, from, to);
 }
 
-t_poll_eventmask    EventPollLoop::mask(t_socket_operation t) {
+t_poll_eventmask    EventPollLoop::mask(t_observation_target t) {
     switch (t) {
-    case SHMT_READ:
+    case OT_READ:
         return POLLIN;
-    case SHMT_WRITE:
+    case OT_WRITE:
         return POLLOUT;
-    case SHMT_EXCEPTION:
+    case OT_EXCEPTION:
         return POLLPRI;
-    case SHMT_NONE:
+    case OT_NONE:
       return 0;
     default:
       throw std::runtime_error("unexpected map_type");

@@ -29,10 +29,10 @@ private:
   static const int nev;
   t_kqueue kq;
 
-  t_kfilter filter(t_socket_operation t);
+  t_kfilter filter(t_observation_target t);
 
-  void reserve(ISocketLike *socket, t_socket_operation from,
-               t_socket_operation to);
+  void reserve(ISocketLike *socket, t_observation_target from,
+               t_observation_target to);
   void update();
 
 public:
@@ -40,10 +40,10 @@ public:
   ~EventKqueueLoop();
 
   void loop();
-  void reserve_clear(ISocketLike *socket, t_socket_operation from);
-  void reserve_set(ISocketLike *socket, t_socket_operation to);
-  void reserve_transit(ISocketLike *socket, t_socket_operation from,
-                       t_socket_operation to);
+  void reserve_clear(ISocketLike *socket, t_observation_target from);
+  void reserve_set(ISocketLike *socket, t_observation_target to);
+  void reserve_transit(ISocketLike *socket, t_observation_target from,
+                       t_observation_target to);
 };
 
 #endif

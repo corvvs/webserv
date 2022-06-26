@@ -18,15 +18,15 @@ EventKqueueLoop::~EventKqueueLoop() {
     }
 }
 
-EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_socket_operation t) {
+EventKqueueLoop::t_kfilter  EventKqueueLoop::filter(t_observation_target t) {
     switch (t) {
-    case SHMT_READ:
+    case OT_READ:
         return EVFILT_READ;
-    case SHMT_WRITE:
+    case OT_WRITE:
         return EVFILT_WRITE;
-    case SHMT_EXCEPTION:
+    case OT_EXCEPTION:
         return EVFILT_EXCEPT;
-    case SHMT_NONE:
+    case OT_NONE:
       return 0;
     default:
       throw std::runtime_error("unexpected map_type");
@@ -57,24 +57,29 @@ void    EventKqueueLoop::loop() {
     }
 }
 
-void    EventKqueueLoop::reserve(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventKqueueLoop::reserve(ISocketLike* socket, t_observation_target from,
+                              t_observation_target to) {
     t_socket_reservation  pre = {socket, from, to};
     upqueue.push_back(pre);
 }
 
 // 次の kevent の前に, このソケットを監視対象から除外する
 // (その際ソケットはdeleteされる)
-void    EventKqueueLoop::reserve_clear(ISocketLike* socket, t_socket_operation from) {
-    reserve(socket, from, SHMT_NONE);
+void    EventKqueueLoop::reserve_clear(ISocketLike* socket,
+                                    t_observation_target from) {
+    reserve(socket, from, OT_NONE);
 }
 
 // 次の kevent の前に, このソケットを監視対象に追加する
-void    EventKqueueLoop::reserve_set(ISocketLike* socket, t_socket_operation to) {
-    reserve(socket, SHMT_NONE, to);
+void    EventKqueueLoop::reserve_set(ISocketLike* socket,
+                                  t_observation_target to) {
+    reserve(socket, OT_NONE, to);
 }
 
 // 次の kevent の前に, このソケットの監視方法を変更する
-void    EventKqueueLoop::reserve_transit(ISocketLike* socket, t_socket_operation from, t_socket_operation to) {
+void    EventKqueueLoop::reserve_transit(ISocketLike* socket,
+                                      t_observation_target from,
+                                      t_observation_target to) {
     reserve(socket, from, to);
 }
 
@@ -87,7 +92,7 @@ void    EventKqueueLoop::update() {
         t_kevent        ke;
         ISocketLike*    sock = it->sock;
         t_fd            fd = sock->get_fd();
-        if (it->to == SHMT_NONE) {
+        if (it->to == OT_NONE) {
             sockmap.erase(fd);
             delete sock;
         } else {
