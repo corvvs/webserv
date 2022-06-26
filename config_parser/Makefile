@@ -9,8 +9,9 @@ SRCS := test_common.cpp \
 		main.cpp
 
 OBJS := $(SRCS:.cpp=.o)
-all: $(NAME)
 CXXFLAGS := -Wall -Wextra -Werror -g3 -fsanitize=address -std=c++98
+
+all: $(NAME)
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(SRCS) -o $(NAME)
@@ -24,7 +25,13 @@ fclean: clean
 
 re: fclean all
 
-t: test
+d: debug
+debug: CXXFLAGS += -DDEBUG=1
+debug: re test
 
+t: test
 test: $(NAME)
 	./$(NAME)
+
+.PHONY: all clean fclean re
+.PHONY: test debug

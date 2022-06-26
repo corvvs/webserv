@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 /// public functions
@@ -11,10 +12,12 @@
 Lexer::Lexer(void) : idx_(0) {}
 Lexer::~Lexer(void) {}
 
-// パーサーが呼び出す関数
-// トークンを1つ渡す
-wsToken *Lexer::read(void) {
-    if (tokens_.size() <= (size_t)idx_) {
+/*＊
+ * パーサーが使う用の関数
+ * トークンを1つ返す
+ */
+Lexer::wsToken *Lexer::read(void) {
+    if (tokens_.size() <= idx_) {
         return NULL;
     } else {
         idx_ += 1;
@@ -23,29 +26,43 @@ wsToken *Lexer::read(void) {
 }
 
 void Lexer::lex(const std::string &filename) {
-    std::vector<strLine> lines(file_read(filename));
+    std::vector<strLine> lines(read_file(filename));
     tokenize(lines);
     balance_braces();
-    //        std::cout << "webserv: the configuration file " << filename << " syntax is ok" << std::endl;
 }
 
 /// private functions
 
-void Lexer::error_exit(int line, const std::string &msg) const {
-    std::cout << "webserv: [emerg] " << msg << " :" << line << std::endl;
-    exit(1);
+void Lexer::check_file(const std::string &path) const {
+    struct stat st;
+
+    if (stat(path.c_str(), &st) != 0) {
+        throw std::runtime_error("webserv: [emerg] open() \"" + path + "\" failed (2: No such file or directory)");
+    }
+
+    switch (st.st_mode & S_IFMT) {
+        case S_IFDIR:
+            throw std::runtime_error("webserv: [crit] stat() \"" + path + "\" failed (21: Is a directory)");
+        case S_IFREG:
+            if ((st.st_mode & S_IRUSR) == 0) {
+                throw std::runtime_error("webserv: [emerg] stat() \"" + path + "\"" + "failed (13: Permission denied)");
+            }
+            break;
+        default:
+            throw std::runtime_error("webserv: [crit] stat() \"" + path + "\" failed (Invalid file type)");
+    }
 }
 
-// TODO: ファイルがディレクトリだった場合に弾くようにする
-std::vector<strLine> Lexer::file_read(std::string filename) const {
-    std::vector<strLine> v;
+std::vector<Lexer::strLine> Lexer::read_file(const std::string &path) const {
+    check_file(path); // Throw an exception if it is incorrect
 
-    std::ifstream input_file(filename);
+    std::ifstream input_file(path);
     if (!input_file.is_open()) {
-        throw std::runtime_error("file not opened");
+        throw std::runtime_error("webserv: [crit] \"" + path + "\" failed (Not opened)");
     }
 
     std::string line;
+    std::vector<strLine> v;
     int lineno = 1;
     while (std::getline(input_file, line)) {
         v.push_back(strLine(line, lineno));
@@ -55,7 +72,7 @@ std::vector<strLine> Lexer::file_read(std::string filename) const {
 }
 
 void Lexer::add(tokenMgr &tmgr) {
-    tokens_.push_back(wsToken(tmgr.token, tmgr.line, tmgr.is_quoted));
+    tokens_.push_back(Lexer::wsToken(tmgr.token, tmgr.line, tmgr.is_quoted));
     tmgr.token = "";
 }
 
@@ -94,26 +111,24 @@ const char *Lexer::quote(const char *p, tokenMgr &tmgr) {
     return p;
 }
 
-// 特殊文字は単体で区切り文字として扱われるのでこれまでのトークンとは別でpushする
+// 特殊文字は単体で区切り文字として扱う
 const char *Lexer::special_char(const char *p, tokenMgr &tmgr) {
     if (!tmgr.token.empty()) {
         add(tmgr);
     }
-
     tmgr.token += *p;
     add(tmgr);
-
     p++;
     return p;
 }
 
 /**
- * 1. strLineループ(vector<string>)
- * 2. 1文字ずつ読む(stringを分解する)
- * 3. スペースのチェック
- * 4. コメントのチェック
- * 5. 引用符のチェック
- * 6. 特殊文字のチェック
+ * strLineループ(vector<string>)
+ * 1文字ずつ読む(stringを分解する)
+ * 1. スペースのチェック
+ * 2. コメントのチェック
+ * 3. 引用符のチェック
+ * 4. 特殊文字のチェック
  */
 void Lexer::tokenize(std::vector<strLine> lines) {
     tokenMgr tmgr;
@@ -166,28 +181,24 @@ bool Lexer::balance_braces(void) const {
     int depth = 0;
     int line  = 0;
 
-    for (std::vector<wsToken>::const_iterator it = tokens_.begin(); it != tokens_.end(); it++) {
+    for (std::vector<Lexer::wsToken>::const_iterator it = tokens_.begin(); it != tokens_.end(); it++) {
         line = it->line;
         if (it->value == "}" && !it->is_quoted) {
             depth -= 1;
         } else if (it->value == "{" && !it->is_quoted) {
             depth += 1;
         }
-
         if (depth < 0) {
-            const std::string msg = "unexpected \"}\"";
-            error_exit(line, msg);
+            throw std::runtime_error("webserv: [emerg] unexpected \"}\" :" + std::to_string(line));
         }
     }
-
     if (depth > 0) {
-        const std::string msg = "unexpected end of file, expecting \"}\"";
-        error_exit(line, msg);
+        throw std::runtime_error("webserv: [emerg] unexpected end of file, expecting \"}\" :" + std::to_string(line));
     }
     return true;
 }
 
-std::ostream &operator<<(std::ostream &os, const wsToken &token) {
+std::ostream &operator<<(std::ostream &os, const Lexer::wsToken &token) {
     std::string line = std::to_string(token.line);
     if (token.line < 10) {
         line = "0" + line;
@@ -196,10 +207,5 @@ std::ostream &operator<<(std::ostream &os, const wsToken &token) {
     os << "[L] : " << line << " "
        << "[Quote]: " << token.is_quoted << " "
        << "[Val]: " << token.value;
-    return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const strLine &sl) {
-    os << sl.line << ": " << sl.str;
     return os;
 }

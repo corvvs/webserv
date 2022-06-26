@@ -1,20 +1,15 @@
 #ifndef CONFIGPARSER_HPP
 #define CONFIGPARSER_HPP
 
+#include <map>
 #include <string>
+#include <vector>
 
-class ConfigParser
-{
+class ConfigParser {
 public:
-    enum context_type
-    {
-        CTX_HTTP,
-        CTX_SERVER,
-        CTX_LOCATION
-    };
+    enum context_type { CTX_HTTP, CTX_SERVER, CTX_LOCATION };
 
-    enum directive_type
-    {
+    enum directive_type {
         DIR_HTTP,
         DIR_SERVER,
         DIR_LISTEN,
@@ -32,13 +27,23 @@ public:
     // member variables
     std::string data_;
 
-    // member functions
-    ConfigParser(const std::string& filepath = "./default.conf");
-    ConfigParser(const ConfigParser& other);
-    ConfigParser& operator=(const ConfigParser& other);
-    ~ConfigParser();
-private:
+    /**
+     * vector<string> v;
+     * v[0] = "server1";
+     * v[1] = "server2";
+     * parsed_data_["server_name"] = v;
+     */
+    std::map<std::string, std::vector<std::string>> parsed_data_;
 
+    // member functions
+    ConfigParser(const std::string &filepath = "./default.conf");
+    ConfigParser(const ConfigParser &other);
+    ConfigParser &operator=(const ConfigParser &other);
+    ~ConfigParser(void);
+
+    void parse(void);
+
+private:
 };
 
 #endif

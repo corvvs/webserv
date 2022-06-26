@@ -4,39 +4,52 @@
 #include <iostream>
 #include <vector>
 
-void test_lexer(const std::string &filename)
-{
+void test_lexer(const std::string &filename) {
     Lexer lexer;
-    lexer.lex(filename);
 
-    wsToken *token;
+    try {
+        lexer.lex(filename);
+    } catch (const std::runtime_error &e) {
+        std::cout << e.what() << std::endl;
+        return;
+    }
+
+#ifdef DEBUG
     std::cout << "===============LEX===============" << std::endl;
-    while ((token = lexer.read()) != NULL)
-    {
+    Lexer::wsToken *token;
+    while ((token = lexer.read()) != NULL) {
         std::cout << *token << std::endl;
     }
+#else
+    std::cout << "lexer : the configuration file " + filename + " syntax is ok" << std::endl;
+#endif
 }
 
-void test_parser(const std::string &filename)
-{
+void test_parser(const std::string &filename) {
     std::vector<Directive> parsed;
     Parser parser;
-    parsed = parser.Parse(filename);
+    try {
+        parsed = parser.Parse(filename);
+    } catch (const std::runtime_error &e) {
+        std::cout << e.what() << std::endl;
+        return;
+    }
 
+#ifdef DEBUG
     std::cout << "==============PARSE==============" << std::endl;
     print_parsed_data(parsed);
+#else
+    std::cout << "parser: the configuration file " + filename + " syntax is ok" << std::endl;
+#endif
 }
 
-int main()
-{
-    //     std::string filename = "./conf/valid/01_default.conf";
-    //     std::string filename = "./conf/invalid/02_unexpected_brace.conf";
-    //     std::string filename = "./conf/invalid/03_unexpected_eof.conf";
-    //     std::string filename = "./conf/invalid/04_wrong_comment.conf";
-    //     std::string filename = "./conf/invalid/05_wrong_quote.conf";
-
-    std::string filename = "./conf/test.conf";
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        return 0;
+    }
+    const char *filename = argv[1];
 
     test_lexer(filename);
     test_parser(filename);
+    return 0;
 }
