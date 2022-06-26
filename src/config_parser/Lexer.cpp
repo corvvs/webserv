@@ -27,11 +27,11 @@ Lexer::wsToken *Lexer::read(void) {
 void Lexer::lex(const std::string &filename) {
     std::vector<strLine> lines(read_file(filename));
     tokenize(lines);
-    balance_braces();
 }
 
 /// private functions
 
+// TODO: パーサー追加時に例外クラスを変更する
 // ファイルの形式が不正な場合は例外を投げる
 void Lexer::check_file(const std::string &path) const {
     struct stat st;
@@ -175,28 +175,6 @@ void Lexer::tokenize(std::vector<strLine> lines) {
             add(tmgr);
         }
     }
-}
-
-// `{`と`}`の数が正しいか調べる
-bool Lexer::balance_braces(void) const {
-    int depth = 0;
-    int line  = 0;
-
-    for (std::vector<Lexer::wsToken>::const_iterator it = tokens_.begin(); it != tokens_.end(); it++) {
-        line = it->line;
-        if (it->value == "}" && !it->is_quoted) {
-            depth -= 1;
-        } else if (it->value == "{" && !it->is_quoted) {
-            depth += 1;
-        }
-        if (depth < 0) {
-            throw std::runtime_error("webserv: [emerg] unexpected \"}\" :" + std::to_string(line));
-        }
-    }
-    if (depth > 0) {
-        throw std::runtime_error("webserv: [emerg] unexpected end of file, expecting \"}\" :" + std::to_string(line));
-    }
-    return true;
 }
 
 std::ostream &operator<<(std::ostream &os, const Lexer::wsToken &token) {

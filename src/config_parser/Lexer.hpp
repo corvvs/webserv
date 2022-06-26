@@ -30,7 +30,7 @@ private:
         std::string token;
         int line;
         bool is_quoted;
-        tokenMgr() : token(""), line(0), is_quoted(false) {}
+        tokenMgr(void) : token(""), line(0), is_quoted(false) {}
     };
 
     /// member variables
@@ -42,8 +42,6 @@ private:
     std::vector<strLine> read_file(const std::string &path) const;
 
     void tokenize(std::vector<strLine> lines);
-    bool balance_braces(void) const;
-
     void add(tokenMgr &tmgr);
     bool is_quote(char c) const;
     bool is_space(char c) const;
