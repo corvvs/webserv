@@ -14,10 +14,11 @@ GTEST_LIB	=	gtest_main.a
 SRCS		=	$(shell find $(SRC_DIR) -type f -name "*.cpp")
 OBJS		=	$(addprefix $(OBJ_DIR)/,  $(SRCS:.cpp=.o))
 DPS			=	$(addprefix $(DPS_DIR)/,  $(SRCS:.cpp=.d))
--include $(DPS)
 
 .PHONY: all
 all: $(NAME)
+
+-include $(DPS)
 
 $(NAME): $(GOOGLE_TEST) $(GTEST_LIB) $(OBJ_DIRS) $(DPS_DIRS) $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS) $(GTEST_LIB)
