@@ -153,32 +153,32 @@ std::string Lexer::tokenize_bare_string(std::string &s) {
 
 void Lexer::tokenize(std::string data) {
     while (!data.empty()) {
-        if (data.front() == '\n') {
+        if (data[0] == '\n') {
             data = data.substr(1);
             line_count_ += 1;
             continue;
         }
 
         // Whitespace
-        if (is_space(data.front())) {
+        if (is_space(data[0])) {
             data = skip_space(data);
             continue;
         }
 
         // Line comment
-        if (data.front() == '#') {
+        if (data[0] == '#') {
             data = skip_line(data);
             continue;
         }
 
         // Literal
-        if (is_quote(data.front())) {
-            data = tokenize_string(data, data.front());
+        if (is_quote(data[0])) {
+            data = tokenize_string(data, data[0]);
             continue;
         }
 
         // Special characters
-        if (is_special(data.front())) {
+        if (is_special(data[0])) {
             data = tokenize_special(data);
             continue;
         }
