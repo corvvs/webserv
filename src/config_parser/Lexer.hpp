@@ -7,9 +7,8 @@ class Lexer {
 public:
     struct wsToken {
         std::string value;
-        int line;
+        size_t line;
         bool is_quoted;
-        wsToken(std::string v, int l, bool is_q) : value(v), line(l), is_quoted(is_q) {}
     };
 
     Lexer(void);
@@ -19,37 +18,29 @@ public:
     wsToken *read(void);
 
 private:
-    struct strLine {
-        std::string str;
-        int line;
-
-        strLine(std::string s, int l) : str(s), line(l) {}
-    };
-
-    struct tokenMgr {
-        std::string token;
-        int line;
-        bool is_quoted;
-        tokenMgr(void) : token(""), line(0), is_quoted(false) {}
-    };
-
     /// member variables
     std::vector<wsToken> tokens_;
     size_t idx_;
+    size_t line_count_;
 
     /// member functions
-    void check_file(const std::string &path) const;
-    std::vector<strLine> read_file(const std::string &path) const;
+    void check_file_exception_ifneed(const std::string &path) const;
+    std::string read_file(const std::string &path) const;
 
-    void tokenize(std::vector<strLine> lines);
-    void add(tokenMgr &tmgr);
+    void tokenize(std::string data);
     bool is_quote(char c) const;
     bool is_space(char c) const;
     bool is_special(char c) const;
-    bool is_comment(char c) const;
 
-    const char *special_char(const char *p, tokenMgr &tmgr);
-    const char *quote(const char *p, tokenMgr &tmgr);
+    std::string skip_line(std::string &s) const;
+    std::string skip_space(std::string &s) const;
+
+    std::string tokenize_string(std::string &s, char end);
+    std::string tokenize_bare_string(std::string &s);
+    std::string tokenize_special(std::string &s);
+
+    void line_count_up(const std::string &s, const size_t &len);
+    void bad_token_exception(const std::string &s);
 };
 
 std::ostream &operator<<(std::ostream &os, const Lexer::wsToken &token);

@@ -8,7 +8,7 @@
 
 /// public functions
 
-Lexer::Lexer(void) : idx_(0) {}
+Lexer::Lexer(void) : idx_(0), line_count_(1) {}
 Lexer::~Lexer(void) {}
 
 /*＊
@@ -25,15 +25,15 @@ Lexer::wsToken *Lexer::read(void) {
 }
 
 void Lexer::lex(const std::string &filename) {
-    std::vector<strLine> lines(read_file(filename));
-    tokenize(lines);
+    std::string filedata(read_file(filename));
+    tokenize(filedata);
 }
 
 /// private functions
 
 // TODO: パーサー追加時に例外クラスを変更する
 // ファイルの形式が不正な場合は例外を投げる
-void Lexer::check_file(const std::string &path) const {
+void Lexer::check_file_exception_ifneed(const std::string &path) const {
     struct stat st;
 
     if (stat(path.c_str(), &st) != 0) {
@@ -53,127 +53,138 @@ void Lexer::check_file(const std::string &path) const {
     }
 }
 
-std::vector<Lexer::strLine> Lexer::read_file(const std::string &path) const {
-    check_file(path); // Throw an exception if it is incorrect
+std::string Lexer::read_file(const std::string &path) const {
+    check_file_exception_ifneed(path);
 
     std::ifstream input_file(path);
-    if (!input_file.is_open()) {
+    if (input_file.fail()) {
         throw std::runtime_error("webserv: [crit] \"" + path + "\" failed (Not opened)");
     }
 
-    std::string line;
-    std::vector<strLine> v;
-    int lineno = 1;
-    while (std::getline(input_file, line)) {
-        v.push_back(strLine(line, lineno));
-        lineno += 1;
-    }
-    return v;
-}
-
-void Lexer::add(tokenMgr &tmgr) {
-    tokens_.push_back(Lexer::wsToken(tmgr.token, tmgr.line, tmgr.is_quoted));
-    tmgr.token = "";
+    std::string data((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
+    return data;
 }
 
 bool Lexer::is_space(char c) const {
-    const std::string spaces = " \f\n\r\t\v";
+    const std::string spaces = " \t";
 
     return spaces.find(c) != std::string::npos;
-}
-
-bool Lexer::is_comment(char c) const {
-    return c == '#';
-}
-
-bool Lexer::is_quote(char c) const {
-    return c == '"' || c == '\'';
 }
 
 bool Lexer::is_special(char c) const {
     return c == '{' || c == '}' || c == ';';
 }
 
-const char *Lexer::quote(const char *p, tokenMgr &tmgr) {
-    const char quote_type = *p;
+bool Lexer::is_quote(char c) const {
+    return c == '\'' || c == '\"';
+}
 
-    p++;
-    while (*p && *p != quote_type) {
-        tmgr.token += *p;
-        p++;
+void Lexer::line_count_up(const std::string &s, const size_t &len) {
+    for (size_t i = 0; i < len; i++) {
+        if (s[i] == '\n') {
+            line_count_ += 1;
+        }
     }
-    if (*p == quote_type) {
-        p++;
-    }
-    tmgr.is_quoted = true;
-    add(tmgr);
-    tmgr.is_quoted = false;
-    return p;
 }
 
 // 特殊文字は単体で区切り文字として扱う
-const char *Lexer::special_char(const char *p, tokenMgr &tmgr) {
-    if (!tmgr.token.empty()) {
-        add(tmgr);
-    }
-    tmgr.token += *p;
-    add(tmgr);
-    p++;
-    return p;
+std::string Lexer::tokenize_special(std::string &s) {
+    wsToken tok = {s.substr(0, 1), line_count_, false};
+    tokens_.push_back(tok);
+    s = s.substr(1);
+    return s;
 }
 
-/**
- * strLineループ(vector<string>)
- * stringを1文字ずつ読み進めていく
- * 1. スペースのチェック
- * 2. コメントのチェック
- * 3. 引用符のチェック
- * 4. 特殊文字のチェック
- */
-void Lexer::tokenize(std::vector<strLine> lines) {
-    tokenMgr tmgr;
+std::string Lexer::skip_line(std::string &s) const {
+    size_t pos = s.find('\n');
 
-    for (std::vector<strLine>::iterator it = lines.begin(); it != lines.end(); it++) {
-        tmgr.line     = it->line;
-        const char *p = it->str.c_str();
+    if (pos == std::string::npos) {
+        s = s.substr(s.size());
+    } else {
+        s = s.substr(pos + 1);
+    }
+    return s;
+}
 
-        while (*p) {
-            // Whitespace
-            if (is_space(*p)) {
-                p++;
-                if (!tmgr.token.empty()) {
-                    add(tmgr);
-                }
-                continue;
-            }
+std::string Lexer::skip_space(std::string &s) const {
+    size_t pos = s.find_first_not_of(" \t", 1);
 
-            // Line comment
-            if (is_comment(*p) && tmgr.token.empty()) {
-                while (*p && *p != '\n') {
-                    p++;
-                }
-                continue;
-            }
+    if (pos == std::string::npos) {
+        s = s.substr(s.size());
+    } else {
+        s = s.substr(pos);
+    }
+    return s;
+}
 
-            // Literal
-            if (is_quote(*p) && tmgr.token.empty()) {
-                p = quote(p, tmgr);
-                continue;
-            }
+void Lexer::bad_token_exception(const std::string &s) {
+    line_count_up(s, s.size());
+    throw std::runtime_error("webserv: [emerg] unexpected end of file, expecting \";\" or \"}\" line:"
+                             + std::to_string(line_count_));
+}
 
-            // Special characters
-            if (is_special(*p)) {
-                p = special_char(p, tmgr);
-                continue;
-            }
+// クォートなどの前後に挟まれた文字列をトークンの配列に追加する
+std::string Lexer::tokenize_string(std::string &s, char end) {
+    std::string::size_type pos = s.find(end, 1);
 
-            tmgr.token += *p;
-            p++;
+    if (pos == std::string::npos) {
+        bad_token_exception(s);
+    }
+
+    Lexer::wsToken tok = {s.substr(1, pos - 1), line_count_, is_quote(end)};
+    tokens_.push_back(tok);
+    s = s.substr(pos + 1);
+    return s;
+}
+
+// 意味を持たない文字列をトークンの配列に追加する
+std::string Lexer::tokenize_bare_string(std::string &s) {
+    size_t pos = s.find_first_of(" \t\n{};");
+
+    if (pos == std::string::npos) {
+        bad_token_exception(s);
+    }
+
+    Lexer::wsToken tok = {s.substr(0, pos), line_count_, false};
+    tokens_.push_back(tok);
+    s = s.substr(pos);
+    return s;
+}
+
+void Lexer::tokenize(std::string data) {
+    while (!data.empty()) {
+        if (data.front() == '\n') {
+            data = data.substr(1);
+            line_count_ += 1;
+            continue;
         }
 
-        if (!tmgr.token.empty()) {
-            add(tmgr);
+        // Whitespace
+        if (is_space(data.front())) {
+            data = skip_space(data);
+            continue;
         }
+
+        // Line comment
+        if (data.front() == '#') {
+            data = skip_line(data);
+            continue;
+        }
+
+        // Literal
+        if (is_quote(data.front())) {
+            data = tokenize_string(data, data.front());
+            continue;
+        }
+
+        // Special characters
+        if (is_special(data.front())) {
+            data = tokenize_special(data);
+            continue;
+        }
+
+        // Normal characters
+        data = tokenize_bare_string(data);
     }
 }
 
@@ -188,3 +199,21 @@ std::ostream &operator<<(std::ostream &os, const Lexer::wsToken &token) {
        << "[Val]: " << token.value;
     return os;
 }
+
+/*
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        return 0;
+    }
+    const char *filename = argv[1];
+
+    Lexer lexer;
+    try {
+        lexer.lex(filename);
+    } catch (const std::runtime_error &e) {
+        std::cout << e.what() << std::endl;
+        return;
+    }
+    return 0;
+}
+*/
