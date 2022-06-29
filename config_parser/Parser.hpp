@@ -19,7 +19,7 @@ struct Directive {
 };
 
 // DEBUG用
-void print_parsed_data(std::vector<Directive> d, bool is_block = false, std::string before = "");
+void print(std::vector<Directive> d, bool is_block = false, std::string before = "");
 
 class Parser {
 public:
@@ -30,6 +30,7 @@ public:
     std::vector<Directive> parse(std::vector<std::string> ctx = std::vector<std::string>());
 
 private:
+    bool is_brace_balanced(void);
     Lexer lexer_;
 };
 

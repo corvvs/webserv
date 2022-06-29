@@ -37,7 +37,7 @@ void test_parser(const std::string &filename) {
 
 #ifdef DEBUG
     std::cout << "==============PARSE==============" << std::endl;
-    print_parsed_data(parsed);
+    print(parsed);
 #else
     std::cout << "parser: the configuration file " + filename + " syntax is ok" << std::endl;
 #endif

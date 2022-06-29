@@ -18,12 +18,40 @@ Parser::~Parser() {}
 std::vector<Directive> Parser::Parse(std::string filename) {
     // トークンごとに分割する
     lexer_.lex(filename);
+    if (!is_brace_balanced()) {
+        // 後でタイプを受け取って例外を投げるように修正する
+        std::cout << "Error " << std::endl;
+    }
 
     // TODO: はじめはmainコンテキストを渡す?
     //    std::vector<std::string> ctx;
     std::vector<Directive> parsed = parse();
 
     return parsed;
+}
+
+bool Parser::is_brace_balanced(void) {
+    int depth = 0;
+    int line  = 0;
+
+    Lexer::wsToken *tok;
+    while ((tok = lexer_.read()) != NULL) {
+        line = tok->line;
+        if (tok->value == "}" && !tok->is_quoted) {
+            depth -= 1;
+        } else if (tok->value == "{" && !tok->is_quoted) {
+            depth += 1;
+        }
+        if (depth < 0) {
+            throw std::runtime_error("webserv: [emerg] unexpected \"}\" :" + std::to_string(line));
+        }
+    }
+    if (depth > 0) {
+        throw std::runtime_error("webserv: [emerg] unexpected end of file, expecting \"}\" :" + std::to_string(line));
+    }
+
+    lexer_.reset_read_idx();
+    return true;
 }
 
 /**
@@ -93,7 +121,7 @@ std::vector<Directive> Parser::parse(std::vector<std::string> ctx) {
 
 /*************************************************************/
 // debug
-void print_parsed_data(std::vector<Directive> d, bool is_block, std::string before) {
+void print(std::vector<Directive> d, bool is_block, std::string before) {
     std::string dir;
     if (is_block) {
         dir = "block";
@@ -114,7 +142,7 @@ void print_parsed_data(std::vector<Directive> d, bool is_block, std::string befo
             std::cout << before << dir << "[" << i << "].block  : {}" << std::endl;
         } else {
             std::string b = before + dir + "[" + std::to_string(i) + "]" + ".";
-            print_parsed_data(d[i].block, true, b);
+            print(d[i].block, true, b);
         }
     }
 }
