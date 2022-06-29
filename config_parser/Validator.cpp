@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+namespace config {
+
 static std::map<std::vector<std::string>, int> setting_contexts(void);
 static std::map<std::string, int> setting_directives(void);
 static int get_directive_mask(std::string dire);
@@ -16,19 +18,20 @@ static int get_context_mask(std::vector<std::string> ctx);
 static bool is_valid_flag(std::string s);
 static bool is_must_be_on_off(Directive dire, int mask);
 
-// ディレクティブとコンテキストのルールを設定する
-static const std::map<std::string, int> directives            = setting_directives();
-static const std::map<std::vector<std::string>, int> contexts = setting_contexts();
-
-// nginx: [emerg] "root" directive is not allowed here in /usr/local/etc/nginx/nginx.conf:4
-std::string validation_error(const std::string &message, const std::string &directive, const size_t &line = 0) {
+std::string validation_error(const std::string &message, const size_t &line, const std::string directive) {
     std::ostringstream oss;
 
     oss << "config: ";
-    oss << "\"" << directive << "\" directive ";
-    oss << message << " in line: " << line;
+    if (!directive.empty()) {
+        oss << "\"" << directive << "\" directive ";
+    }
+    oss << message << " in line:" << line;
     return oss.str();
 }
+
+// ディレクティブとコンテキストのルールを設定する
+static const std::map<std::string, int> directives            = setting_directives();
+static const std::map<std::vector<std::string>, int> contexts = setting_contexts();
 
 static std::map<std::string, int> setting_directives(void) {
     std::map<std::string, int> directives;
@@ -153,37 +156,38 @@ static bool is_must_be_on_off(Directive dire, int mask) {
     return ((mask & WS_CONF::FLAG) != 0 && dire.args.size() == 1 && !is_valid_flag(dire.args[0]));
 }
 
-std::string validate(Directive dire, std::string term, std::vector<std::string> ctx) {
+error_type validate(Directive dire, std::string term, std::vector<std::string> ctx) {
     const int dire_mask = get_directive_mask(dire.directive);
     const int ctx_mask  = get_context_mask(ctx);
 
     if (dire_mask == 0) {
-        return validation_error("unknown directive", dire.directive, dire.line);
+        return validation_error("unknown directive", dire.line, dire.directive);
     }
 
     // ディレクティブがこのコンテキストで使用できない場合
     if ((dire_mask & ctx_mask) == 0) {
-        return validation_error("is not allowed here", dire.directive, dire.line);
+        return validation_error("is not allowed here", dire.line, dire.directive);
     }
 
     // ブロックディレクティブで波括弧が続いていない場合
     if ((dire_mask & WS_CONF::BLOCK) != 0 && term != "{") {
-        return validation_error(" has no opening \"{\"", dire.directive, dire.line);
+        return validation_error(" has no opening \"{\"", dire.line, dire.directive);
     }
 
     // シンプルディレクティブで ";"が続いていない場合
     if ((dire_mask & WS_CONF::BLOCK) == 0 && term != ";") {
-        return validation_error("is not terminated by \";\"", dire.directive, dire.line);
+        return validation_error("is not terminated by \";\"", dire.line, dire.directive);
     }
 
     // 引数の数が正しくない場合
     if (!is_correct_number_of_args(dire, dire_mask)) {
         if (is_must_be_on_off(dire, dire_mask)) {
-            return validation_error("it must be \"on\" or \"off\"", dire.directive, dire.line);
+            return validation_error("it must be \"on\" or \"off\"", dire.line, dire.directive);
 
         } else {
-            return validation_error("invalid number of arguments", dire.directive, dire.line);
+            return validation_error("invalid number of arguments", dire.line, dire.directive);
         }
     }
     return "";
 }
+} // namespace config

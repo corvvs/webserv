@@ -1,11 +1,12 @@
 #include "Lexer.hpp"
 #include "Parser.hpp"
+#include "Validator.hpp"
 #include "test_common.hpp"
 #include <iostream>
 #include <vector>
 
 void test_lexer(const std::string &filename) {
-    Lexer lexer;
+    config::Lexer lexer;
 
     try {
         lexer.lex(filename);
@@ -26,11 +27,11 @@ void test_lexer(const std::string &filename) {
 }
 
 void test_parser(const std::string &filename) {
-    std::vector<Directive> parsed;
-    Parser parser;
+    std::vector<config::Directive> parsed;
+    config::Parser parser;
     try {
         parsed = parser.Parse(filename);
-    } catch (const ConfigValidationException &e) {
+    } catch (const config::SyntaxError &e) {
         std::cout << e.what() << std::endl;
         return;
     }

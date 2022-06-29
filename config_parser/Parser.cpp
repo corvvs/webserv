@@ -7,26 +7,18 @@
 #include <sstream>
 #include <utility>
 
+namespace config {
+
 Parser::Parser() {}
 Parser::~Parser() {}
-
-const std::string Parser::None = "";
-
-std::string syntax_error(const std::string &message, const size_t &line = 0) {
-    std::ostringstream oss;
-
-    oss << "config: ";
-    oss << message << " in line: " << line;
-    return oss.str();
-}
 
 std::vector<Directive> Parser::Parse(std::string filename) {
     // トークンごとに分割する
     lexer_.lex(filename);
 
-    std::string err;
-    if ((err = brace_balanced()) != None) {
-        throw ConfigValidationException(err);
+    error_type err;
+    if ((err = brace_balanced()) != "") {
+        throw SyntaxError(err);
     }
     std::vector<Directive> parsed = parse();
 
@@ -46,7 +38,7 @@ std::vector<std::string> Parser::enter_block_ctx(Directive dire, std::vector<std
     return ctx;
 }
 
-std::string Parser::brace_balanced(void) {
+error_type Parser::brace_balanced(void) {
     int depth = 0;
     int line  = 0;
 
@@ -59,14 +51,14 @@ std::string Parser::brace_balanced(void) {
             depth += 1;
         }
         if (depth < 0) {
-            return syntax_error("unexpected \"}\"", line);
+            return validation_error("unexpected \"}\"", line);
         }
     }
     if (depth > 0) {
-        return syntax_error("unexpected end of file, expecting \"}\"", line);
+        return validation_error("unexpected end of file, expecting \"}\"", line);
     }
     lexer_.reset_read_idx();
-    return None;
+    return "";
 }
 
 /**
@@ -92,7 +84,7 @@ std::vector<Directive> Parser::parse(std::vector<std::string> ctx) {
             break;
         }
 
-        Directive dire(cur->value, cur->line);
+        Directive dire = {cur->value, cur->line, std::vector<std::string>(), std::vector<Directive>()};
 
         cur = lexer_.read();
         if (cur == NULL) {
@@ -100,7 +92,6 @@ std::vector<Directive> Parser::parse(std::vector<std::string> ctx) {
         }
 
         // 引数のパース(特殊文字が来るまで足し続ける)
-        // TODO: is_specialに置き換える
         while (cur->is_quoted || (cur->value != "{" && cur->value != ";" && cur->value != "}")) {
             dire.args.push_back(cur->value);
             cur = lexer_.read();
@@ -109,8 +100,8 @@ std::vector<Directive> Parser::parse(std::vector<std::string> ctx) {
             }
         }
         std::string err;
-        if ((err = validate(dire, cur->value, ctx)) != None) {
-            throw ConfigValidationException(err);
+        if ((err = validate(dire, cur->value, ctx)) != "") {
+            throw SyntaxError(err);
         }
 
         // "{" で終わってた場合はcontextを調べる
@@ -153,3 +144,4 @@ void print(std::vector<Directive> d, bool is_block, std::string before) {
     }
 }
 /*************************************************************/
+} // namespace config

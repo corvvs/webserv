@@ -5,7 +5,17 @@
 #include <string>
 #include <vector>
 
-std::string validate(Directive stmt, std::string term, std::vector<std::string> ctx);
+namespace config {
+
+typedef std::string error_type;
+error_type validate(Directive dire, std::string term, std::vector<std::string> ctx);
+std::string validation_error(const std::string &message, const size_t &line, const std::string directive = "");
+
+class SyntaxError : public std::runtime_error {
+public:
+    SyntaxError(void) : std::runtime_error("config: validation error") {}
+    SyntaxError(const std::string &what) : std::runtime_error(what) {}
+};
 
 namespace WS_CONF {
 
@@ -37,7 +47,7 @@ const int HTTP_MAIN = 0x02000000; // http
 const int HTTP_SRV  = 0x04000000; // http > server
 const int HTTP_LOC  = 0x08000000; // http > location
 const int HTTP_LMT  = 0x80000000; // http > location > limit_except
-
 } // namespace WS_CONF
 
+} // namespace config
 #endif

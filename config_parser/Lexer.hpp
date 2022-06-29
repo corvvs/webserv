@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+namespace config {
+
 class Lexer {
 public:
     struct wsToken {
@@ -25,7 +27,7 @@ private:
     size_t line_count_;
 
     /// member functions
-    void check_file_exception_ifneed(const std::string &path) const;
+    std::string is_valid_file(const std::string &path) const;
     std::string read_file(const std::string &path) const;
 
     void tokenize(std::string data);
@@ -41,9 +43,11 @@ private:
     std::string tokenize_special(std::string &s);
 
     void line_count_up(const std::string &s, const size_t &len);
-    void bad_token_exception(const std::string &s);
+    void tokenize_error_exception(const std::string &s);
 };
 
 std::ostream &operator<<(std::ostream &os, const Lexer::wsToken &token);
+
+} // namespace config
 
 #endif
