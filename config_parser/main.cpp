@@ -30,7 +30,7 @@ void test_parser(const std::string &filename) {
     Parser parser;
     try {
         parsed = parser.Parse(filename);
-    } catch (const std::runtime_error &e) {
+    } catch (const ConfigValidationException &e) {
         std::cout << e.what() << std::endl;
         return;
     }

@@ -1,40 +1,42 @@
-#include "Analyzer.hpp"
+#include "Validator.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
 #include "test_common.hpp"
 #include <iostream>
 #include <locale>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
 static std::map<std::vector<std::string>, int> setting_contexts(void);
 static std::map<std::string, int> setting_directives(void);
+static int get_directive_mask(std::string dire);
+static int get_context_mask(std::vector<std::string> ctx);
+static bool is_valid_flag(std::string s);
+static bool is_must_be_on_off(Directive dire, int mask);
 
 // ディレクティブとコンテキストのルールを設定する
 static const std::map<std::string, int> directives            = setting_directives();
 static const std::map<std::vector<std::string>, int> contexts = setting_contexts();
 
-std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx) {
-    if (ctx.size() > 0 && ctx[0] == "http" && dire.directive == "location") {
-        ctx.clear();
-        ctx.push_back("http");
-        ctx.push_back("location");
-        return ctx;
-    }
+// nginx: [emerg] "root" directive is not allowed here in /usr/local/etc/nginx/nginx.conf:4
+std::string validation_error(const std::string &message, const std::string &directive, const size_t &line = 0) {
+    std::ostringstream oss;
 
-    // location以外はネストすることができないので追加する
-    ctx.push_back(dire.directive);
-    return ctx;
+    oss << "config: ";
+    oss << "\"" << directive << "\" directive ";
+    oss << message << " in line: " << line;
+    return oss.str();
 }
 
 static std::map<std::string, int> setting_directives(void) {
     std::map<std::string, int> directives;
 
-    directives["http"]     = (WS_CONF::MAIN | WS_CONF::BLOCK | WS_CONF::NOARGS);
-    directives["server"]   = (WS_CONF::HTTP_MAIN | WS_CONF::BLOCK | WS_CONF::NOARGS);
-    directives["location"] = (WS_CONF::HTTP_SRV | WS_CONF::HTTP_LOC | WS_CONF::BLOCK | WS_CONF::TAKE12);
-
+    /// Block
+    directives["http"]         = (WS_CONF::MAIN | WS_CONF::BLOCK | WS_CONF::NOARGS);
+    directives["server"]       = (WS_CONF::HTTP_MAIN | WS_CONF::BLOCK | WS_CONF::NOARGS);
+    directives["location"]     = (WS_CONF::HTTP_SRV | WS_CONF::HTTP_LOC | WS_CONF::BLOCK | WS_CONF::TAKE12);
     directives["limit_except"] = (WS_CONF::HTTP_LOC | WS_CONF::BLOCK | WS_CONF::MORE1);
 
     /// Normal
@@ -72,7 +74,6 @@ static std::map<std::vector<std::string>, int> setting_contexts(void) {
     v.push_back("http");
     v.push_back("location");
     contexts[v] = WS_CONF::HTTP_LOC;
-
     v.push_back("limit_except");
     contexts[v] = WS_CONF::HTTP_LMT;
 
@@ -152,36 +153,37 @@ static bool is_must_be_on_off(Directive dire, int mask) {
     return ((mask & WS_CONF::FLAG) != 0 && dire.args.size() == 1 && !is_valid_flag(dire.args[0]));
 }
 
-void analyze(Directive dire, std::string term, std::vector<std::string> ctx) {
+std::string validate(Directive dire, std::string term, std::vector<std::string> ctx) {
     const int dire_mask = get_directive_mask(dire.directive);
     const int ctx_mask  = get_context_mask(ctx);
 
     if (dire_mask == 0) {
-        throw std::runtime_error("webserv: unknown directive \"" + dire.directive + "\"");
+        return validation_error("unknown directive", dire.directive, dire.line);
     }
 
     // ディレクティブがこのコンテキストで使用できない場合
     if ((dire_mask & ctx_mask) == 0) {
-        throw std::runtime_error("webserv: \"" + dire.directive + "\" is not allowed here");
+        return validation_error("is not allowed here", dire.directive, dire.line);
     }
 
     // ブロックディレクティブで波括弧が続いていない場合
     if ((dire_mask & WS_CONF::BLOCK) != 0 && term != "{") {
-        throw std::runtime_error("webserv: directive \"" + dire.directive + "\" has no opening \"{\"");
+        return validation_error(" has no opening \"{\"", dire.directive, dire.line);
     }
 
     // シンプルディレクティブで ";"が続いていない場合
     if ((dire_mask & WS_CONF::BLOCK) == 0 && term != ";") {
-        throw std::runtime_error("webserv: directive \"" + dire.directive + "\" is not terminated by \";\"");
+        return validation_error("is not terminated by \";\"", dire.directive, dire.line);
     }
 
     // 引数の数が正しくない場合
     if (!is_correct_number_of_args(dire, dire_mask)) {
         if (is_must_be_on_off(dire, dire_mask)) {
-            throw std::runtime_error("webserv: invalid value \"" + dire.args[0] + "\" in \"" + dire.directive + "\""
-                                     + " directive, it must be \"on\" or \"off\"");
+            return validation_error("it must be \"on\" or \"off\"", dire.directive, dire.line);
+
         } else {
-            throw std::runtime_error("webserv: invalid number of arguments in \"" + dire.directive + "\" directive");
+            return validation_error("invalid number of arguments", dire.directive, dire.line);
         }
     }
+    return "";
 }

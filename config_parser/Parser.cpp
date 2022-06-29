@@ -1,36 +1,52 @@
 #include "Parser.hpp"
-#include "Analyzer.hpp"
 #include "Lexer.hpp"
+#include "Validator.hpp"
 #include "test_common.hpp"
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <utility>
 
-void error_exit(std::string msg) {
-    perror(msg.c_str());
-    exit(1);
-}
-
 Parser::Parser() {}
-
 Parser::~Parser() {}
+
+const std::string Parser::None = "";
+
+std::string syntax_error(const std::string &message, const size_t &line = 0) {
+    std::ostringstream oss;
+
+    oss << "config: ";
+    oss << message << " in line: " << line;
+    return oss.str();
+}
 
 std::vector<Directive> Parser::Parse(std::string filename) {
     // トークンごとに分割する
     lexer_.lex(filename);
-    if (!is_brace_balanced()) {
-        // 後でタイプを受け取って例外を投げるように修正する
-        std::cout << "Error " << std::endl;
-    }
 
-    // TODO: はじめはmainコンテキストを渡す?
-    //    std::vector<std::string> ctx;
+    std::string err;
+    if ((err = brace_balanced()) != None) {
+        throw ConfigValidationException(err);
+    }
     std::vector<Directive> parsed = parse();
 
     return parsed;
 }
 
-bool Parser::is_brace_balanced(void) {
+std::vector<std::string> Parser::enter_block_ctx(Directive dire, std::vector<std::string> ctx) {
+    if (ctx.size() > 0 && ctx[0] == "http" && dire.directive == "location") {
+        ctx.clear();
+        ctx.push_back("http");
+        ctx.push_back("location");
+        return ctx;
+    }
+
+    // location以外はネストすることができないので追加する
+    ctx.push_back(dire.directive);
+    return ctx;
+}
+
+std::string Parser::brace_balanced(void) {
     int depth = 0;
     int line  = 0;
 
@@ -43,15 +59,14 @@ bool Parser::is_brace_balanced(void) {
             depth += 1;
         }
         if (depth < 0) {
-            throw std::runtime_error("webserv: [emerg] unexpected \"}\" :" + std::to_string(line));
+            return syntax_error("unexpected \"}\"", line);
         }
     }
     if (depth > 0) {
-        throw std::runtime_error("webserv: [emerg] unexpected end of file, expecting \"}\" :" + std::to_string(line));
+        return syntax_error("unexpected end of file, expecting \"}\"", line);
     }
-
     lexer_.reset_read_idx();
-    return true;
+    return None;
 }
 
 /**
@@ -93,25 +108,16 @@ std::vector<Directive> Parser::parse(std::vector<std::string> ctx) {
                 return parsed;
             }
         }
-
-        try {
-            analyze(dire, cur->value, ctx);
-        } catch (std::exception &e) {
-            throw std::runtime_error(e.what());
+        std::string err;
+        if ((err = validate(dire, cur->value, ctx)) != None) {
+            throw ConfigValidationException(err);
         }
 
         // "{" で終わってた場合はcontextを調べる
         std::vector<std::string> inner;
         if (cur->value == "{" && !cur->is_quoted) {
-            inner = enter_block_ctx(dire, ctx); // get context for block
-            std::vector<Directive> block;
-
-            block = parse(inner);
-            if (block.size() == 0) {
-                error_exit("block error");
-            }
-
-            dire.block = block;
+            inner      = enter_block_ctx(dire, ctx); // get context for block
+            dire.block = parse(inner);
         }
         parsed.push_back(dire);
     }

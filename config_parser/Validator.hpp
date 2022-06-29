@@ -5,8 +5,7 @@
 #include <string>
 #include <vector>
 
-std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
-void analyze(Directive stmt, std::string term, std::vector<std::string> ctx);
+std::string validate(Directive stmt, std::string term, std::vector<std::string> ctx);
 
 namespace WS_CONF {
 

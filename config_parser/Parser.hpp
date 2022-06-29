@@ -21,6 +21,12 @@ struct Directive {
 // DEBUG用
 void print(std::vector<Directive> d, bool is_block = false, std::string before = "");
 
+class ConfigValidationException : public std::runtime_error {
+public:
+    ConfigValidationException(void) : std::runtime_error("config: validation error") {}
+    ConfigValidationException(const std::string &what) : std::runtime_error(what) {}
+};
+
 class Parser {
 public:
     Parser();
@@ -30,8 +36,12 @@ public:
     std::vector<Directive> parse(std::vector<std::string> ctx = std::vector<std::string>());
 
 private:
-    bool is_brace_balanced(void);
+    // Member variables
     Lexer lexer_;
+
+    static const std::string None;
+    std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
+    std::string brace_balanced(void);
 };
 
 #endif

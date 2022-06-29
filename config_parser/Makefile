@@ -5,7 +5,7 @@ NAME := a.out
 SRCS := test_common.cpp \
 		Lexer.cpp \
 		Parser.cpp \
-		Analyzer.cpp \
+		Validator.cpp \
 		main.cpp
 
 OBJS := $(SRCS:.cpp=.o)
