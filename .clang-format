@@ -1,0 +1,18 @@
+---
+AccessModifierOffset: -4
+IndentWidth: 4
+AlignConsecutiveAssignments: true
+AlignTrailingComments: true
+AllowShortBlocksOnASingleLine: "Empty"
+AllowShortFunctionsOnASingleLine: "Empty"
+AllowShortCaseLabelsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: true
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: "All"
+BreakBeforeBraces: "Attach"
+BreakConstructorInitializersBeforeComma: true
+ColumnLimit: 120
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+IndentCaseLabels: true
