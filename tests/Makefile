@@ -1,30 +1,37 @@
-NAME		=	./tests
+NAME		=	./tester
 CXX			=	c++
 CXXFLAGS	=	-isystem ./googletest/include -I./googletest -Wall -Wextra -pthread
 
-SRC_DIR		=	./src
-OBJ_DIR		=	./obj
-DPS_DIR		=	./dps
+TEST_SRC_DIR		=	./src
+TEST_OBJ_DIR		=	./obj
+TEST_DPS_DIR		=	./dps
 
-OBJ_DIRS	=	$(shell find  $(SRC_DIR) -type d | xargs -I{} echo $(OBJ_DIR)/{})
-DPS_DIRS	=	$(shell find  $(SRC_DIR) -type d | xargs -I{} echo $(DPS_DIR)/{})
+OBJ_DIR				=	../obj
+SRC_LIB				=	./src.a
+
+OBJ_DIRS	=	$(shell find  $(TEST_SRC_DIR) -type d | xargs -I{} echo $(TEST_OBJ_DIR)/{})
+DPS_DIRS	=	$(shell find  $(TEST_SRC_DIR) -type d | xargs -I{} echo $(TEST_DPS_DIR)/{})
 
 GOOGLE_TEST	=	googletest
 GTEST_LIB	=	gtest_main.a
-SRCS		=	$(shell find $(SRC_DIR) -type f -name "*.cpp")
-OBJS		=	$(addprefix $(OBJ_DIR)/,  $(SRCS:.cpp=.o))
-DPS			=	$(addprefix $(DPS_DIR)/,  $(SRCS:.cpp=.d))
+SRCS		=	$(shell find $(TEST_SRC_DIR) -type f -name "*.cpp")
+OBJS		=	$(addprefix $(TEST_OBJ_DIR)/,  $(SRCS:.cpp=.o))
+DPS			=	$(addprefix $(TEST_DPS_DIR)/,  $(SRCS:.cpp=.d))
 
 .PHONY: all
 all: $(NAME)
 
 -include $(DPS)
 
-$(NAME): $(GOOGLE_TEST) $(GTEST_LIB) $(OBJ_DIRS) $(DPS_DIRS) $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS) $(GTEST_LIB)
+$(NAME): $(GOOGLE_TEST) $(GTEST_LIB) $(SRC_LIB) $(OBJ_DIRS) $(DPS_DIRS) $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS) $(GTEST_LIB) $(SRC_LIB)
 
-$(OBJ_DIR)/%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(DPS_DIR)/$(*).d -c $< -o $@
+$(TEST_OBJ_DIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(TEST_DPS_DIR)/$(*).d -c $< -o $@
+
+$(SRC_LIB):
+	make -C ..
+	find $(OBJ_DIR) -type f -name '*.o' -not -name 'main.o' | xargs -I{} $(AR) $(ARFLAGS) $(SRC_LIB) {}
 
 
 $(OBJ_DIRS):
@@ -43,7 +50,7 @@ $(GOOGLE_TEST):
 
 .PHONY: clean
 clean:
-	rm -rf $(OBJ_DIR) $(DPS_DIR) $(GTEST_LIB)  gtest-all.o  gtest_main.o
+	rm -rf $(TEST_OBJ_DIR) $(TEST_DPS_DIR) $(GTEST_LIB)  $(SRC_LIB) gtest-all.o  gtest_main.o
 
 .PHONY: fclean
 fclean: clean

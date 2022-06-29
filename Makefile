@@ -51,5 +51,5 @@ test:
 
 .PHONY: run_test
 run_test: test
-	./tests/tests
+	./tests/tester
 
