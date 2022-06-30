@@ -27,9 +27,9 @@ enum t_socket_operation { SHMT_NONE, SHMT_READ, SHMT_WRITE, SHMT_EXCEPTION };
 class ISocketLike;
 
 struct t_socket_reservation {
-  ISocketLike *sock;
-  t_socket_operation from;
-  t_socket_operation to;
+    ISocketLike *sock;
+    t_socket_operation from;
+    t_socket_operation to;
 };
 
 int sockdomain(t_socket_domain d);

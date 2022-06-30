@@ -7,38 +7,36 @@
 // listenするか通信するかで2種類に分かれる.
 class ASocket {
 protected:
-  t_fd fd;
-  t_socket_domain domain;
-  t_socket_type type;
-  t_port port;
-  bool dying;
+    t_fd fd;
+    t_socket_domain domain;
+    t_socket_type type;
+    t_port port;
 
 private:
-  // コンストラクタの直接呼び出しは禁止
-  // Socketはfactoryメソッドbind,
-  // connectおよびインスタンスメソッドacceptによってのみ生成される
+    // コンストラクタの直接呼び出しは禁止
+    // Socketはfactoryメソッドbind,
+    // connectおよびインスタンスメソッドacceptによってのみ生成される
 
-  // デフォルトコンストラクタは使用禁止(呼び出すと例外を投げる)
-  ASocket();
+    // デフォルトコンストラクタは使用禁止(呼び出すと例外を投げる)
+    ASocket();
 
 protected:
-  ASocket(t_socket_domain sdomain, t_socket_type stype);
+    ASocket(t_socket_domain sdomain, t_socket_type stype);
 
-  ASocket(int fd, t_socket_domain sdomain, t_socket_type stype);
+    ASocket(int fd, t_socket_domain sdomain, t_socket_type stype);
 
-  ASocket(const ASocket &other);
-  void destroy();
+    ASocket(const ASocket &other);
+    void destroy();
 
 public:
-  virtual ~ASocket();
-  ASocket &operator=(const ASocket &rhs);
+    virtual ~ASocket();
+    ASocket &operator=(const ASocket &rhs);
 
-  void set_nonblock();
-  int get_fd() const;
-  t_socket_domain get_domain() const;
-  t_socket_type get_type() const;
-  t_port get_port() const;
-  bool get_dying() const;
+    void set_nonblock();
+    int get_fd() const;
+    t_socket_domain get_domain() const;
+    t_socket_type get_type() const;
+    t_port get_port() const;
 };
 
 #endif
