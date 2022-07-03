@@ -28,7 +28,7 @@ fclean: clean
 re: fclean all
 
 d: debug
-debug: CXXFLAGS += -DDEBUG=1
+debug: CXXFLAGS += -DNDEBUG=1
 debug: re test
 
 t: test

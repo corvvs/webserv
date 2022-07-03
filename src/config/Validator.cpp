@@ -22,7 +22,7 @@ bool is_integer(const std::string &s) {
     if (s.empty()) {
         return false;
     }
-    for (std::string::const_iterator it = s.begin(); it != s.end();) {
+    for (std::string::const_iterator it = s.begin(); it != s.end(); it++) {
         if (!std::isdigit(*it)) {
             return false;
         }
@@ -32,10 +32,6 @@ bool is_integer(const std::string &s) {
 
 std::vector<std::string> split_str(const std::string &s, const std::string &sep) {
     size_t len = sep.length();
-
-    std::cout << "Split :" << s << std::endl;
-    std::cout << "Sep   :" << sep << std::endl;
-
     std::vector<std::string> vec;
     if (len == 0) {
         vec.push_back(s);
@@ -52,8 +48,6 @@ std::vector<std::string> split_str(const std::string &s, const std::string &sep)
         vec.push_back(s.substr(offset, pos - offset));
         offset = pos + len;
     }
-
-    std::cout << "DONE" << std::endl;
     return vec;
 }
 
@@ -106,10 +100,8 @@ bool is_valid_error_page(const std::string &arg) {
 }
 
 bool is_valid_listen(const std::string &arg) {
-    std::cout << "is_valid_listen: " << arg << std::endl;
-
     std::vector<std::string> v(split_str(arg, ":"));
-
+    for (std::vector<std::string>::iterator it = v.begin(); it != v.end(); it++) {}
     if (v.size() != 1 && v.size() != 2) {
         return false;
     }
@@ -135,6 +127,7 @@ bool is_valid_listen(const std::string &arg) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -234,7 +227,7 @@ static bool is_valid_flag(std::string s) {
     return s == "on" || s == "off";
 }
 
-bool is_correct_detail(Directive dire) {
+bool is_correct_details(Directive dire) {
     if (dire.directive == "allow" || dire.directive == "deny") {
         return is_valid_allow_deny(dire.args[0]);
     }
@@ -322,7 +315,7 @@ error_type validate(Directive dire, std::string term, std::vector<std::string> c
         }
     }
 
-    if (!is_correct_detail(dire)) {
+    if (!is_correct_details(dire)) {
         return validation_error("invalid arguments", dire.line, dire.directive);
     }
     return "";

@@ -23,7 +23,7 @@ void test_lexer(const std::string &path) {
         return;
     }
 
-#ifdef DEBUG
+#ifdef NDEBUG
     std::cout << "===============LEX===============" << std::endl;
     config::wsToken *token;
     while ((token = lexer.read()) != NULL) {
@@ -51,7 +51,7 @@ void test_parser(const std::string &path) {
         return;
     }
 
-#ifdef DEBUG
+#ifdef NDEBUG
     std::cout << "==============PARSE==============" << std::endl;
     config::print(parsed);
 #else
@@ -66,6 +66,6 @@ int main(int argc, char **argv) {
     const char *path = argv[1];
 
     test_lexer(path);
-    //    test_parser(path);k
+    test_parser(path);
     return 0;
 }
