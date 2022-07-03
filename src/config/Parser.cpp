@@ -9,12 +9,12 @@
 
 namespace config {
 
-Parser::Parser() {}
-Parser::~Parser() {}
+Parser::Parser(void) {}
+Parser::~Parser(void) {}
 
-std::vector<Directive> Parser::Parse(std::string filename) {
+std::vector<Directive> Parser::Parse(const std::string& file_data) {
     // トークンごとに分割する
-    lexer_.lex(filename);
+    lexer_.tokenize(file_data);
 
     error_type err;
     if ((err = brace_balanced()) != "") {
@@ -42,7 +42,7 @@ error_type Parser::brace_balanced(void) {
     int depth = 0;
     int line  = 0;
 
-    Lexer::wsToken *tok;
+    wsToken *tok;
     while ((tok = lexer_.read()) != NULL) {
         line = tok->line;
         if (tok->value == "}" && !tok->is_quoted) {
@@ -73,7 +73,7 @@ error_type Parser::brace_balanced(void) {
 std::vector<Directive> Parser::parse(std::vector<std::string> ctx) {
     std::vector<Directive> parsed;
 
-    Lexer::wsToken *cur;
+    wsToken *cur;
     while (1) {
         cur = lexer_.read();
         if (cur == NULL) {

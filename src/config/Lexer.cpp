@@ -1,13 +1,17 @@
 #include "Lexer.hpp"
+#include "Parser.hpp"
+#include "Validator.hpp"
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <vector>
 
-/// public functions
+namespace config {
 
+/// public functions
 Lexer::Lexer(void) : idx_(0), line_count_(1) {}
 Lexer::~Lexer(void) {}
 
@@ -15,7 +19,7 @@ Lexer::~Lexer(void) {}
  * パーサーが使う用の関数
  * トークンを1つ返す
  */
-Lexer::wsToken *Lexer::read(void) {
+wsToken *Lexer::read(void) {
     if (tokens_.size() <= idx_) {
         return NULL;
     } else {
@@ -24,45 +28,9 @@ Lexer::wsToken *Lexer::read(void) {
     }
 }
 
-void Lexer::lex(const std::string &filename) {
-    std::string filedata(read_file(filename));
-    tokenize(filedata);
-}
-
 /// private functions
-
-// TODO: パーサー追加時に例外クラスを変更する
-// ファイルの形式が不正な場合は例外を投げる
-void Lexer::check_file_exception_ifneed(const std::string &path) const {
-    struct stat st;
-
-    if (stat(path.c_str(), &st) != 0) {
-        throw std::runtime_error("webserv: [emerg] open() \"" + path + "\" failed (2: No such file or directory)");
-    }
-
-    switch (st.st_mode & S_IFMT) {
-        case S_IFDIR:
-            throw std::runtime_error("webserv: [crit] stat() \"" + path + "\" failed (21: Is a directory)");
-        case S_IFREG:
-            if ((st.st_mode & S_IRUSR) == 0) {
-                throw std::runtime_error("webserv: [emerg] stat() \"" + path + "\"" + "failed (13: Permission denied)");
-            }
-            break;
-        default:
-            throw std::runtime_error("webserv: [crit] stat() \"" + path + "\" failed (Invalid file type)");
-    }
-}
-
-std::string Lexer::read_file(const std::string &path) const {
-    check_file_exception_ifneed(path);
-
-    std::ifstream input_file(path);
-    if (input_file.fail()) {
-        throw std::runtime_error("webserv: [crit] \"" + path + "\" failed (Not opened)");
-    }
-
-    std::string data((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
-    return data;
+void Lexer::reset_read_idx(void) {
+    idx_ = 0;
 }
 
 bool Lexer::is_space(char c) const {
@@ -117,10 +85,10 @@ std::string Lexer::skip_space(std::string &s) const {
     return s;
 }
 
-void Lexer::bad_token_exception(const std::string &s) {
+void Lexer::tokenize_error_exception(const std::string &s) {
     line_count_up(s, s.size());
-    throw std::runtime_error("webserv: [emerg] unexpected end of file, expecting \";\" or \"}\" line:"
-                             + std::to_string(line_count_));
+    std::string err = validation_error("unexpected end of file, expecting \";\" or \"}\"", line_count_);
+    throw SyntaxError(err);
 }
 
 // クォートなどの前後に挟まれた文字列をトークンの配列に追加する
@@ -128,10 +96,10 @@ std::string Lexer::tokenize_string(std::string &s, char end) {
     std::string::size_type pos = s.find(end, 1);
 
     if (pos == std::string::npos) {
-        bad_token_exception(s);
+        tokenize_error_exception(s);
     }
 
-    Lexer::wsToken tok = {s.substr(1, pos - 1), line_count_, is_quote(end)};
+    wsToken tok = {s.substr(1, pos - 1), line_count_, is_quote(end)};
     tokens_.push_back(tok);
     s = s.substr(pos + 1);
     return s;
@@ -142,10 +110,10 @@ std::string Lexer::tokenize_bare_string(std::string &s) {
     size_t pos = s.find_first_of(" \t\n{};");
 
     if (pos == std::string::npos) {
-        bad_token_exception(s);
+        tokenize_error_exception(s);
     }
 
-    Lexer::wsToken tok = {s.substr(0, pos), line_count_, false};
+    wsToken tok = {s.substr(0, pos), line_count_, false};
     tokens_.push_back(tok);
     s = s.substr(pos);
     return s;
@@ -188,7 +156,7 @@ void Lexer::tokenize(std::string data) {
     }
 }
 
-std::ostream &operator<<(std::ostream &os, const Lexer::wsToken &token) {
+std::ostream &operator<<(std::ostream &os, const wsToken &token) {
     std::string line = std::to_string(token.line);
     if (token.line < 10) {
         line = "0" + line;
@@ -200,20 +168,4 @@ std::ostream &operator<<(std::ostream &os, const Lexer::wsToken &token) {
     return os;
 }
 
-/*
-int main(int argc, char **argv) {
-    if (argc < 2) {
-        return 0;
-    }
-    const char *filename = argv[1];
-
-    Lexer lexer;
-    try {
-        lexer.lex(filename);
-    } catch (const std::runtime_error &e) {
-        std::cout << e.what() << std::endl;
-        return;
-    }
-    return 0;
-}
-*/
+} // namespace config

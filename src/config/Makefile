@@ -2,14 +2,16 @@ NAME := a.out
 # SRCS := test.cpp \
 # 		ConfigParser.cpp
 
-SRCS := test_common.cpp \
+SRCS := ../utils/test_common.cpp \
 		Lexer.cpp \
 		Parser.cpp \
 		Validator.cpp \
+		File.cpp \
 		main.cpp
 
 OBJS := $(SRCS:.cpp=.o)
-CXXFLAGS := -Wall -Wextra -Werror -g3 -fsanitize=address -std=c++98
+INC := ../utils
+CXXFLAGS := -Wall -Wextra -Werror -g3 -I $(INC) -fsanitize=address -std=c++98
 
 all: $(NAME)
 

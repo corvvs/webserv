@@ -7,8 +7,6 @@
 
 namespace config {
 
-
-
 struct Directive {
     std::string directive;
     int line;
@@ -21,9 +19,9 @@ void print(std::vector<Directive> d, bool is_block = false, std::string before =
 
 class Parser {
 public:
-    Parser();
-    ~Parser();
-    std::vector<Directive> Parse(std::string filename);
+    Parser(void);
+    ~Parser(void);
+    std::vector<Directive> Parse(const std::string& file_data);
 
 private:
     // Member variables

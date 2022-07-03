@@ -17,8 +17,6 @@ public:
     SyntaxError(const std::string &what) : std::runtime_error(what) {}
 };
 
-namespace WS_CONF {
-
 // bit masks for different directive argument styles
 const int NOARGS = 0x00000001; // 0 args
 const int TAKE1  = 0x00000002; // 1 args
@@ -47,7 +45,6 @@ const int HTTP_MAIN = 0x02000000; // http
 const int HTTP_SRV  = 0x04000000; // http > server
 const int HTTP_LOC  = 0x08000000; // http > location
 const int HTTP_LMT  = 0x80000000; // http > location > limit_except
-} // namespace WS_CONF
 
 } // namespace config
 #endif
