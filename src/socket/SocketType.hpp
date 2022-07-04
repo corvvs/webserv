@@ -24,8 +24,13 @@ typedef unsigned t_addressv4;
 
 class ISocketLike;
 
-int sockdomain(t_socket_domain d);
+struct t_socket_reservation {
+    ISocketLike *sock;
+    t_socket_operation from;
+    t_socket_operation to;
+};
 
+int sockdomain(t_socket_domain d);
 int socktype(t_socket_type t);
 
 #endif
