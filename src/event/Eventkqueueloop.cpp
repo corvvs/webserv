@@ -1,5 +1,5 @@
 #include "Eventkqueueloop.hpp"
-#include "../debug/debug.hpp"
+#include "../utils/test_common.hpp"
 
 const int EventKqueueLoop::nev = 10;
 
@@ -106,10 +106,9 @@ void    EventKqueueLoop::update() {
         errno = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
-            DOUT()
-                << "errno: " << errno  << ", "
+            DXOUT("errno: " << errno  << ", "
                 << changelist.size() << ", "
-                << n << ", " << count << std::endl;
+                << n << ", " << count);
         }
     }
     upqueue.clear();

@@ -1,5 +1,5 @@
 #include "Eventpollloop.hpp"
-#include "../debug/debug.hpp"
+#include "../utils/test_common.hpp"
 
 EventPollLoop::EventPollLoop(): nfds(0) {
 }
@@ -31,7 +31,7 @@ void    EventPollLoop::loop() {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
                 size_t i = indexmap[it->first];
                 if (fds[i].fd >= 0 && fds[i].revents) {
-                    DOUT() << "[S]FD-" << it->first << ": revents: " << fds[i].revents << std::endl;
+                    DXOUT("[S]FD-" << it->first << ": revents: " << fds[i].revents);
                     it->second->notify(*this);
                 }
             }
