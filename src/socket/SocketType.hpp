@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "../utils/types.hpp"
 
 enum t_socket_domain { SD_IP4, SD_IP6, SD_UNIX };
 
