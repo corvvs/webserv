@@ -36,7 +36,7 @@ void SocketListening::listen(int backlog) {
     if (::listen(fd, backlog) == -1) {
         throw std::runtime_error("failed to listen");
     }
-    DXOUT("now listening..." << std::endl);
+    DXOUT("now listening...");
 }
 
 SocketConnected *SocketListening::accept() {
