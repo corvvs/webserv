@@ -1,8 +1,8 @@
 #ifndef EVENT_KQUEUE_LOOP_HPP
 #define EVENT_KQUEUE_LOOP_HPP
 
-#include "Iobserver.hpp"
-#include "Isocketlike.hpp"
+#include "../interface/IObserver.hpp"
+#include "../interface/ISocketlike.hpp"
 #include <cerrno>
 #include <ctime>
 #include <map>
