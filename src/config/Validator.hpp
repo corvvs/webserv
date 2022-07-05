@@ -5,9 +5,17 @@
 #include <string>
 #include <vector>
 
+namespace utility {
+std::vector<std::string> split_str(const std::string &s, const std::string &sep);
+}
+
 namespace config {
 
 typedef std::string ErrorType;
+
+bool is_host(const std::string &s);
+bool is_port(const std::string &arg);
+
 ErrorType validate(Directive dire, std::string term, std::vector<std::string> ctx);
 std::string validation_error(const std::string &message, const size_t &line, const std::string directive = "");
 

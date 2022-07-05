@@ -33,9 +33,10 @@ private:
  * client_max_body_size int
  * host                 string
  * port                 int
- * return               pair<int, string> -> (status, path)
+ * redirect             pair<int, string> -> (status, path)
  * server_name          vector<string>
  * upload_store         string
+ * default_server       bool
  */
 
 class IContext {
@@ -76,6 +77,8 @@ public:
     std::vector<std::string> server_names;
     std::string upload_store;
     std::pair<int, std::string> redirect;
+
+    bool default_server;
 
     // 内部にlocationを持つ可能性がある
     std::vector<class ContextLocation> locations;
@@ -118,4 +121,3 @@ private:
 
 } // namespace config
 #endif
-

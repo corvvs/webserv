@@ -3,6 +3,7 @@
 #include "Config.hpp"
 #include "Lexer.hpp"
 #include <iostream>
+#include <map>
 #include <string>
 #include <utility>
 
@@ -36,37 +37,50 @@ private:
     Lexer lexer_;
     std::vector<ContextServer> ctx_servers_;
     ContextMain ctx_main_;
+    ContextType ctx_;
 
+    // DirectiveFunctionsMap directives;
+
+    /// PreParser
     std::vector<ContextServer> parse(std::vector<Directive> vdir);
     std::vector<Directive> pre_parse(std::vector<std::string> ctx = std::vector<std::string>());
     std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
     std::string brace_balanced(void);
 
+    typedef void (Parser::*add_directive_functions)(const std::vector<std::string> &args);
+    typedef std::map<std::string, add_directive_functions> DirectiveFunctionsMap;
+
+    // 関数ポインタ
+    DirectiveFunctionsMap setting_directive_functions(void);
+    // const std::map<std::string, Parser::add_directive_functions> directives;
+
     /// Add functions
-    void add_http(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_server(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_location(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_limit_except(const enum ContextType &ctx, const std::vector<std::string> &args);
+    // Block
+    void add_http(const std::vector<std::string> &args);
+    void add_server(const std::vector<std::string> &args);
+    void add_location(const std::vector<std::string> &args);
+    void add_limit_except(const std::vector<std::string> &args);
 
-    /// Normal
-    void add_allow(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_deny(const enum ContextType &ctx, const std::vector<std::string> &args);
+    // Simple
+    void add_allow(const std::vector<std::string> &args);
+    void add_deny(const std::vector<std::string> &args);
 
-    void add_autoindex(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_error_page(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_index(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_listen(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_return(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_root(const enum ContextType &ctx, const std::vector<std::string> &args);
-    void add_server_name(const enum ContextType &ctx, const std::vector<std::string> &args);
+    void add_autoindex(const std::vector<std::string> &args);
+    void add_error_page(const std::vector<std::string> &args);
+    void add_index(const std::vector<std::string> &args);
+    void add_listen(const std::vector<std::string> &args);
+    void add_return(const std::vector<std::string> &args);
+    void add_root(const std::vector<std::string> &args);
+    void add_server_name(const std::vector<std::string> &args);
 
-    void add_client_max_body_size(const enum ContextType &ctx, const std::vector<std::string> &args);
+    void add_client_max_body_size(const std::vector<std::string> &args);
 
     /// Original
-    void add_upload_store(const enum ContextType &ctx, const std::vector<std::string> &args);
+    void add_upload_store(const std::vector<std::string> &args);
 
     void print(const std::vector<ContextLocation> &loc);
     void print(const ContextServer &serv);
 };
 } // namespace config
+
 #endif

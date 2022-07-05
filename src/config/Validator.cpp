@@ -9,28 +9,11 @@
 #include <string>
 #include <vector>
 
-namespace config {
-
-static std::map<std::vector<std::string>, int> setting_contexts(void);
-static std::map<std::string, int> setting_directives(void);
-static int get_directive_mask(std::string dire);
-static int get_context_mask(std::vector<std::string> ctx);
-static bool is_valid_flag(std::string s);
-static bool is_must_be_on_off(Directive dire, int mask);
-
-static bool is_integer(const std::string &s) {
-    if (s.empty()) {
-        return false;
-    }
-    for (std::string::const_iterator it = s.begin(); it != s.end(); it++) {
-        if (!std::isdigit(*it)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static std::vector<std::string> split_str(const std::string &s, const std::string &sep) {
+/**
+ * root の重複
+ */
+namespace utility {
+std::vector<std::string> split_str(const std::string &s, const std::string &sep) {
     size_t len = sep.length();
     std::vector<std::string> vec;
     if (len == 0) {
@@ -50,15 +33,38 @@ static std::vector<std::string> split_str(const std::string &s, const std::strin
     }
     return vec;
 }
+} // namespace utility
+
+namespace config {
+
+/// static functions
+static std::map<std::vector<std::string>, int> setting_contexts(void);
+static std::map<std::string, int> setting_directives(void);
+static int get_directive_mask(std::string dire);
+static int get_context_mask(std::vector<std::string> ctx);
+static bool is_valid_flag(std::string s);
+static bool is_must_be_on_off(Directive dire, int mask);
+
+static bool is_integer(const std::string &s) {
+    if (s.empty()) {
+        return false;
+    }
+    for (std::string::const_iterator it = s.begin(); it != s.end(); it++) {
+        if (!std::isdigit(*it)) {
+            return false;
+        }
+    }
+    return true;
+}
 
 static bool is_ipaddr(const std::string &s) {
-    std::vector<std::string> v(split_str(s, "."));
+    std::vector<std::string> splitted(utility::split_str(s, "."));
     // 要素が4つじゃなかったらout
-    if (v.size() != 4) {
+    if (splitted.size() != 4) {
         return false;
     }
     // 範囲が0~255じゃなかったらOUT
-    for (std::vector<std::string>::iterator it = v.begin(); it != v.end(); ++it) {
+    for (std::vector<std::string>::iterator it = splitted.begin(); it != splitted.end(); ++it) {
         if (!is_integer(*it)) {
             return false;
         }
@@ -70,20 +76,11 @@ static bool is_ipaddr(const std::string &s) {
     return true;
 }
 
-static bool is_status_code(const std::string &arg) {
+bool is_port(const std::string &arg) {
     if (!is_integer(arg)) {
         return false;
     }
-    const int n = std::stoi(arg);
-
-    return 300 <= n && n <= 599;
-}
-
-static bool is_port(const std::string &arg) {
-    if (!is_integer(arg)) {
-        return false;
-    }
-    const int n = std::stoi(arg);
+    const int n = std::atoi(arg.c_str());
     return 0 <= n && n <= 65535;
 }
 
@@ -96,38 +93,50 @@ static bool is_valid_allow_deny(const std::string &arg) {
 
 // returnも
 static bool is_valid_error_page(const std::string &arg) {
-    return is_status_code(arg);
+    if (!is_integer(arg)) {
+        return false;
+    }
+    const int &n = std::atoi(arg.c_str());
+
+    return 300 <= n && n <= 599;
+}
+
+static bool is_valid_return(const std::vector<std::string> &args) {
+    if (!is_integer(args.front())) {
+        return false;
+    }
+    const int &n = std::atoi(args.front().c_str());
+    return 0 <= n && n <= 999;
+}
+
+bool is_host(const std::string &s) {
+    if (s == "localhost" || s == "*") {
+        return true;
+    }
+    return is_ipaddr(s);
 }
 
 static bool is_valid_listen(const std::string &arg) {
-    std::vector<std::string> v(split_str(arg, ":"));
-    for (std::vector<std::string>::iterator it = v.begin(); it != v.end(); it++) {}
-    if (v.size() != 1 && v.size() != 2) {
+    std::vector<std::string> splitted(utility::split_str(arg, ":"));
+    for (std::vector<std::string>::iterator it = splitted.begin(); it != splitted.end(); it++) {}
+    if (splitted.size() != 1 && splitted.size() != 2) {
         return false;
     }
 
-    if (v.size() == 1) {
-        if (v.front() == "localhost" || v.front() == "*") {
+    if (splitted.size() == 1) {
+        if (is_host(splitted.front())) {
             return true;
         }
-        if (is_port(v.front())) {
-            return true;
-        }
-    }
-
-    if (v.size() == 2) {
-        if (v.front() == "localhost" || v.front() == "*") {
-            return true;
-        }
-        if (is_ipaddr(v.front())) {
-            return true;
-        }
-
-        if (is_port(v.back())) {
+        if (is_port(splitted.front())) {
             return true;
         }
     }
 
+    if (splitted.size() == 2) {
+        if (is_host(splitted.front()) && is_port(splitted.back())) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -229,13 +238,16 @@ static bool is_valid_flag(std::string s) {
 
 bool is_correct_details(Directive dire) {
     if (dire.name == "allow" || dire.name == "deny") {
-        return is_valid_allow_deny(dire.args[0]);
+        return is_valid_allow_deny(dire.args.front());
     }
-    if (dire.name == "error_page" || dire.name == "return") {
-        return is_valid_error_page(dire.args[0]);
+    if (dire.name == "error_page") {
+        return is_valid_error_page(dire.args.front());
+    }
+    if (dire.name == "return") {
+        return is_valid_return(dire.args);
     }
     if (dire.name == "listen") {
-        return is_valid_listen(dire.args[0]);
+        return is_valid_listen(dire.args.front());
     }
     return true;
 }
