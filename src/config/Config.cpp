@@ -1,6 +1,14 @@
 #include "Config.hpp"
 
 namespace config {
+
+Config::Config(){};
+Config::~Config(){};
+
+std::vector<ContextServer> Config::get_config(void) {
+    return server_ctx_;
+}
+
 ContextMain::ContextMain(void) {
     client_max_body_size = 1024;
     autoindex            = false;
@@ -34,4 +42,5 @@ ContextLimitExpect::ContextLimitExpect(void) {
     allow = "";
     deny  = "";
 }
+
 } // namespace config

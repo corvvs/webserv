@@ -8,7 +8,7 @@
 #include <vector>
 
 void test_lexer(const std::string &path) {
-    file::error_type err;
+    file::ErrorType err;
     if ((err = file::check(path)) != file::NONE) {
         std::cerr << file::error_message(err) << std::endl;
         return;
@@ -35,7 +35,7 @@ void test_lexer(const std::string &path) {
 }
 
 void test_parser(const std::string &path) {
-    file::error_type err;
+    file::ErrorType err;
     if ((err = file::check(path)) != file::NONE) {
         std::cerr << file::error_message(err) << std::endl;
         return;
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     }
     const char *path = argv[1];
 
-    test_lexer(path);
+    //    test_lexer(path);
     test_parser(path);
     return 0;
 }

@@ -18,7 +18,7 @@ static int get_context_mask(std::vector<std::string> ctx);
 static bool is_valid_flag(std::string s);
 static bool is_must_be_on_off(Directive dire, int mask);
 
-bool is_integer(const std::string &s) {
+static bool is_integer(const std::string &s) {
     if (s.empty()) {
         return false;
     }
@@ -30,7 +30,7 @@ bool is_integer(const std::string &s) {
     return true;
 }
 
-std::vector<std::string> split_str(const std::string &s, const std::string &sep) {
+static std::vector<std::string> split_str(const std::string &s, const std::string &sep) {
     size_t len = sep.length();
     std::vector<std::string> vec;
     if (len == 0) {
@@ -51,7 +51,7 @@ std::vector<std::string> split_str(const std::string &s, const std::string &sep)
     return vec;
 }
 
-bool is_ipaddr(const std::string &s) {
+static bool is_ipaddr(const std::string &s) {
     std::vector<std::string> v(split_str(s, "."));
     // 要素が4つじゃなかったらout
     if (v.size() != 4) {
@@ -70,7 +70,7 @@ bool is_ipaddr(const std::string &s) {
     return true;
 }
 
-bool is_status_code(const std::string &arg) {
+static bool is_status_code(const std::string &arg) {
     if (!is_integer(arg)) {
         return false;
     }
@@ -79,7 +79,7 @@ bool is_status_code(const std::string &arg) {
     return 300 <= n && n <= 599;
 }
 
-bool is_port(const std::string &arg) {
+static bool is_port(const std::string &arg) {
     if (!is_integer(arg)) {
         return false;
     }
@@ -87,7 +87,7 @@ bool is_port(const std::string &arg) {
     return 0 <= n && n <= 65535;
 }
 
-bool is_valid_allow_deny(const std::string &arg) {
+static bool is_valid_allow_deny(const std::string &arg) {
     if (arg == "all") {
         return true;
     }
@@ -95,11 +95,11 @@ bool is_valid_allow_deny(const std::string &arg) {
 }
 
 // returnも
-bool is_valid_error_page(const std::string &arg) {
+static bool is_valid_error_page(const std::string &arg) {
     return is_status_code(arg);
 }
 
-bool is_valid_listen(const std::string &arg) {
+static bool is_valid_listen(const std::string &arg) {
     std::vector<std::string> v(split_str(arg, ":"));
     for (std::vector<std::string>::iterator it = v.begin(); it != v.end(); it++) {}
     if (v.size() != 1 && v.size() != 2) {
@@ -131,12 +131,12 @@ bool is_valid_listen(const std::string &arg) {
     return false;
 }
 
-std::string validation_error(const std::string &message, const size_t &line, const std::string directive) {
+std::string validation_error(const std::string &message, const size_t &line, const std::string name) {
     std::ostringstream oss;
 
     oss << "config: ";
-    if (!directive.empty()) {
-        oss << "\"" << directive << "\" directive ";
+    if (!name.empty()) {
+        oss << "\"" << name << "\" directive ";
     }
     oss << message << " in line:" << line;
     return oss.str();
@@ -228,13 +228,13 @@ static bool is_valid_flag(std::string s) {
 }
 
 bool is_correct_details(Directive dire) {
-    if (dire.directive == "allow" || dire.directive == "deny") {
+    if (dire.name == "allow" || dire.name == "deny") {
         return is_valid_allow_deny(dire.args[0]);
     }
-    if (dire.directive == "error_page" || dire.directive == "return") {
+    if (dire.name == "error_page" || dire.name == "return") {
         return is_valid_error_page(dire.args[0]);
     }
-    if (dire.directive == "listen") {
+    if (dire.name == "listen") {
         return is_valid_listen(dire.args[0]);
     }
     return true;
@@ -282,41 +282,41 @@ static bool is_must_be_on_off(Directive dire, int mask) {
     return ((mask & FLAG) != 0 && dire.args.size() == 1 && !is_valid_flag(dire.args[0]));
 }
 
-error_type validate(Directive dire, std::string term, std::vector<std::string> ctx) {
-    const int dire_mask = get_directive_mask(dire.directive);
+ErrorType validate(Directive dire, std::string term, std::vector<std::string> ctx) {
+    const int dire_mask = get_directive_mask(dire.name);
     const int ctx_mask  = get_context_mask(ctx);
 
     if (dire_mask == 0) {
-        return validation_error("unknown directive", dire.line, dire.directive);
+        return validation_error("unknown name", dire.line, dire.name);
     }
 
     // ディレクティブがこのコンテキストで使用できない場合
     if ((dire_mask & ctx_mask) == 0) {
-        return validation_error("is not allowed here", dire.line, dire.directive);
+        return validation_error("is not allowed here", dire.line, dire.name);
     }
 
     // ブロックディレクティブで波括弧が続いていない場合
     if ((dire_mask & BLOCK) != 0 && term != "{") {
-        return validation_error(" has no opening \"{\"", dire.line, dire.directive);
+        return validation_error(" has no opening \"{\"", dire.line, dire.name);
     }
 
     // シンプルディレクティブで ";"が続いていない場合
     if ((dire_mask & BLOCK) == 0 && term != ";") {
-        return validation_error("is not terminated by \";\"", dire.line, dire.directive);
+        return validation_error("is not terminated by \";\"", dire.line, dire.name);
     }
 
     // 引数の数が正しくない場合
     if (!is_correct_number_of_args(dire, dire_mask)) {
         if (is_must_be_on_off(dire, dire_mask)) {
-            return validation_error("it must be \"on\" or \"off\"", dire.line, dire.directive);
+            return validation_error("it must be \"on\" or \"off\"", dire.line, dire.name);
 
         } else {
-            return validation_error("invalid number of arguments", dire.line, dire.directive);
+            return validation_error("invalid number of arguments", dire.line, dire.name);
         }
     }
 
     if (!is_correct_details(dire)) {
-        return validation_error("invalid arguments", dire.line, dire.directive);
+        return validation_error("invalid arguments", dire.line, dire.name);
     }
     return "";
 }

@@ -6,7 +6,7 @@
 
 namespace file {
 
-error_type check(const std::string &path) {
+ErrorType check(const std::string &path) {
     struct stat st;
 
     if (stat(path.c_str(), &st) != 0) {
@@ -25,7 +25,7 @@ error_type check(const std::string &path) {
     }
 }
 
-std::string error_message(const error_type &type) {
+std::string error_message(const ErrorType &type) {
     switch (type) {
         case NONE:
             return "";

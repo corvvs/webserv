@@ -7,17 +7,19 @@
 #include <vector>
 
 // 最終的に返すconfigクラスを定義する
-
 namespace config {
+
+class ContextServer;
+
 class Config {
 public:
     Config();
     ~Config();
 
-    // ディレクティブごとにGetterを定義する
+    std::vector<ContextServer> get_config(void);
 
 private:
-    ContextServer server_ctx_;
+    std::vector<ContextServer> server_ctx_;
 };
 
 /**
@@ -81,6 +83,16 @@ public:
 private:
 };
 
+enum Methods { GET, POST, DELETE };
+class ContextLimitExpect : public IContext {
+public:
+    ContextLimitExpect(void);
+
+    std::string allow;
+    std::string deny;
+    std::set<enum Methods> allowed_methods;
+};
+
 class ContextLocation : public IContext {
 public:
     ContextLocation(const ContextServer &server);
@@ -98,19 +110,12 @@ public:
     // locationのパス
     std::string path;
     // locationを内包する可能性もある
-    std::vector<class Location> locations;
-    ContextLimitExpect limit_expect;
+    std::vector<class ContextLocation> locations;
+    ContextLimitExpect *limit_expect; // 持たない可能性もあるのでポインタにする(デストラクタでデリートする)
 
 private:
 };
 
-class ContextLimitExpect : public IContext {
-    std::string allow;
-    std::string deny;
-    std::set<enum Methods> allowed_methods;
-};
-
-enum Methods { GET, POST, DELETE };
-
 } // namespace config
 #endif
+

@@ -5,6 +5,7 @@ NAME := a.out
 SRCS := ../utils/test_common.cpp \
 		Lexer.cpp \
 		Parser.cpp \
+		Config.cpp \
 		Validator.cpp \
 		File.cpp \
 		main.cpp
@@ -33,7 +34,8 @@ debug: re test
 
 t: test
 test: $(NAME)
-	./$(NAME)
+	./$(NAME) test.conf
+# ./test.sh
 
 .PHONY: all clean fclean re
 .PHONY: test debug

@@ -7,8 +7,8 @@
 
 namespace config {
 
-typedef std::string error_type;
-error_type validate(Directive dire, std::string term, std::vector<std::string> ctx);
+typedef std::string ErrorType;
+ErrorType validate(Directive dire, std::string term, std::vector<std::string> ctx);
 std::string validation_error(const std::string &message, const size_t &line, const std::string directive = "");
 
 class SyntaxError : public std::runtime_error {
