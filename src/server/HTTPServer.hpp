@@ -1,10 +1,8 @@
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
-#include "../interface/IOriginator.hpp"
-#include "../interface/IRouter.hpp"
+#include "../Interfaces.hpp"
 #include "../communication/Channel.hpp"
-#include "../interface/IObserver.hpp"
-#include "../interface/ISocketlike.hpp"
+#include "../Originators.hpp"
 #include <map>
 
 // [サーバクラス]
