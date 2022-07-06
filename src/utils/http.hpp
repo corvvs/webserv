@@ -73,6 +73,7 @@ typedef std::map<header_key_type, header_val_type> header_dict_type;
 
 // サーバのデフォルトのHTTPバージョン
 extern const t_version DEFAULT_HTTP_VERSION;
+extern const size_t MAX_REQLINE_END;
 const byte_string version_str(t_version version);
 const byte_string reason(t_status status);
 

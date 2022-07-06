@@ -1,6 +1,7 @@
 #include "http.hpp"
 
 const HTTP::t_version HTTP::DEFAULT_HTTP_VERSION = V_1_1;
+const size_t HTTP::MAX_REQLINE_END = 8192;
 
 const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
     switch (version) {

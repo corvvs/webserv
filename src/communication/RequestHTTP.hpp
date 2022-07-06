@@ -47,10 +47,9 @@ public:
         PP_ERROR
     };
 
-    static const size_t MAX_REQLINE_END = 8192;
     typedef HTTP::byte_string byte_string;
     // 他の byte_string の一部分を参照する軽量 string
-    typedef LightString<HTTP::char_type> light_string;
+    typedef HTTP::light_string light_string;
     typedef std::map<byte_string, light_string> header_dict_type;
     typedef HeaderHTTPItem::header_val_type header_val_type;
 
@@ -77,7 +76,7 @@ public:
     };
 
     // リクエストの制御, ルーティングにかかわるパラメータ
-    struct ControlParams {
+    struct RoutingParameters {
         light_string request_path;
         HTTP::t_method http_method;
         HTTP::t_version http_version;
@@ -128,10 +127,8 @@ private:
 
     // 解析中の情報
     ParserStatus ps;
-
-    // 確定した情報
-    // 制御パラメータ
-    ControlParams cp;
+    // ルーティングパラメータ
+    RoutingParameters cp;
 
     // chunked本文
     ChunkedBody chunked_body;
@@ -190,7 +187,7 @@ public:
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
     bool is_ready_to_navigate() const;
     // predicate: レスポンスを作成できる状態になったかどうか
-    bool is_ready_to_respond() const;
+    bool is_ready_to_originate() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
 };

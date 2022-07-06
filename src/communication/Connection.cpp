@@ -44,7 +44,7 @@ void Connection::notify(IObserver &observer) {
         return;
     }
 
-    const size_t read_buffer_size = RequestHTTP::MAX_REQLINE_END;
+    const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
     char buf[read_buffer_size];
 
     switch (phase) {
@@ -66,7 +66,7 @@ void Connection::notify(IObserver &observer) {
                     current_req = new RequestHTTP();
                 }
                 current_req->feed_bytestring(buf, receipt);
-                if (!current_req->is_ready_to_respond()) {
+                if (!current_req->is_ready_to_originate()) {
                     return;
                 }
 
