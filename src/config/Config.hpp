@@ -44,6 +44,10 @@ public:
     virtual ~IContext() {}
 };
 
+typedef std::string host_type;
+typedef int port_type;
+typedef std::pair<host_type, port_type> host_port_pair;
+
 class ContextMain : public IContext {
 public:
     ContextMain(void);
@@ -53,7 +57,7 @@ public:
     std::string allow;
     std::string deny;
     std::string root;
-    std::vector<std::string> indexes;
+    std::set<std::string> indexes;
     std::map<int, std::string> error_pages;
     // private:
 };
@@ -68,15 +72,16 @@ public:
     std::string allow;
     std::string deny;
     std::string root;
-    std::vector<std::string> indexes;
+    std::set<std::string> indexes;
     std::map<int, std::string> error_pages;
 
     // 新たに追加する
-    int port;
-    std::string host;
     std::vector<std::string> server_names;
     std::string upload_store;
     std::pair<int, std::string> redirect;
+
+    // std::vector<std::pair<std::string, int>> host_ports;
+    std::vector<host_port_pair> host_ports;
 
     bool default_server;
 
@@ -106,7 +111,7 @@ public:
     std::string allow;
     std::string deny;
     std::string root;
-    std::vector<std::string> indexes;
+    std::set<std::string> indexes;
     std::map<int, std::string> error_pages;
     std::pair<int, std::string> redirect;
 

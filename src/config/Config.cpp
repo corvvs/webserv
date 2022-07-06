@@ -12,6 +12,7 @@ std::vector<ContextServer> Config::get_config(void) {
 ContextMain::ContextMain(void) {
     client_max_body_size = 1024;
     autoindex            = false;
+    indexes.insert("index.html");
 }
 
 ContextServer::ContextServer(const ContextMain &main) {
@@ -22,9 +23,7 @@ ContextServer::ContextServer(const ContextMain &main) {
     root                 = main.root;
     indexes              = main.indexes;
     error_pages          = main.error_pages;
-
-    port = 80;
-    host = "0.0.0.0";
+    redirect             = std::make_pair(-1, "");
 }
 
 ContextLocation::ContextLocation(const ContextServer &server) {

@@ -173,9 +173,9 @@ void Parser::add_server(const std::vector<std::string> &args) {
 }
 
 void Parser::add_location(const std::vector<std::string> &args) {
-    (void)args;
     ctx_ = LOCATION;
     ContextLocation l(ctx_servers_.back());
+    l.path = args.front();
     ctx_servers_.back().locations.push_back(l);
 }
 
@@ -187,15 +187,51 @@ void Parser::add_limit_except(const std::vector<std::string> &args) {
 
 /// Normal
 void Parser::add_allow(const std::vector<std::string> &args) {
-    (void)args;
+    std::string ip_addr = args.front();
+    if (args.front() == "all") {
+        ip_addr = "0.0.0.0";
+    }
+    switch (ctx_) {
+        case MAIN:
+            ctx_main_.allow = ip_addr;
+            break;
+        case SERVER:
+            ctx_servers_.back().allow = ip_addr;
+            break;
+        case LOCATION:
+            ctx_servers_.back().locations.back().allow = ip_addr;
+            break;
+        case LIMIT_EXCEPT:
+            ctx_servers_.back().locations.back().limit_expect->allow = ip_addr;
+            break;
+        default:;
+    }
 }
 
 void Parser::add_deny(const std::vector<std::string> &args) {
-    (void)args;
+    std::string ip_addr = args.front();
+    if (args.front() == "all") {
+        ip_addr = "0.0.0.0";
+    }
+    switch (ctx_) {
+        case MAIN:
+            ctx_main_.deny = ip_addr;
+            break;
+        case SERVER:
+            ctx_servers_.back().deny = ip_addr;
+            break;
+        case LOCATION:
+            ctx_servers_.back().locations.back().deny = ip_addr;
+            break;
+        case LIMIT_EXCEPT:
+            ctx_servers_.back().locations.back().limit_expect->deny = ip_addr;
+            break;
+        default:;
+    }
 }
 
 void Parser::add_autoindex(const std::vector<std::string> &args) {
-    bool flag = (args.front() == "on");
+    const bool &flag = (args.front() == "on");
 
     if (ctx_ == SERVER) {
         ctx_servers_.back().autoindex = flag;
@@ -206,49 +242,67 @@ void Parser::add_autoindex(const std::vector<std::string> &args) {
 }
 
 void Parser::add_error_page(const std::vector<std::string> &args) {
-    (void)args;
+    const int &error_code   = std::atoi(args.front().c_str());
+    const std::string &path = args.back();
+
+    switch (ctx_) {
+        case MAIN:
+            ctx_main_.error_pages[error_code] = path;
+            break;
+        case SERVER:
+            ctx_servers_.back().error_pages[error_code] = path;
+            break;
+        case LOCATION:
+            ctx_servers_.back().locations.back().error_pages[error_code] = path;
+            break;
+        default:;
+    }
 }
 
 void Parser::add_index(const std::vector<std::string> &args) {
-    const std::vector<std::string> &indexes = args;
-
     if (ctx_ == SERVER) {
-        ctx_servers_.back().indexes = indexes;
+        for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
+            ctx_servers_.back().indexes.insert(*it);
+        }
     }
     if (ctx_ == LOCATION) {
-        ctx_servers_.back().locations.back().indexes = indexes;
+        for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
+            ctx_servers_.back().locations.back().indexes.insert(*it);
+        }
     }
 }
 
 void Parser::add_listen(const std::vector<std::string> &args) {
     const std::vector<std::string> &splitted = utility::split_str(args.front(), ":");
+
+    std::string host;
+    int port;
     if (splitted.size() == 1) {
         if (is_host(splitted.front())) {
-            std::string host = splitted.front();
+            host = splitted.front();
             if (host == "localhost") {
-                ctx_servers_.back().host = "127.0.0.1";
+                host = "127.0.0.1";
             } else if (host == "*") {
-                ctx_servers_.back().host = "0.0.0.0";
-            } else {
-                ctx_servers_.back().host = host;
+                host = "0.0.0.0";
             }
+            port = 80;
         } else {
-            ctx_servers_.back().port = std::atoi(splitted.front().c_str());
+            port = std::atoi(splitted.front().c_str());
+            host = "0.0.0.0";
         }
     }
 
     if (splitted.size() == 2) {
-        const std::string &host = splitted.front();
+        host = splitted.front();
         if (host == "localhost") {
-            ctx_servers_.back().host = "127.0.0.1";
+            host = "127.0.0.1";
         } else if (host == "*") {
-            ctx_servers_.back().host = "0.0.0.0";
-        } else {
-            ctx_servers_.back().host = host;
+            host = "0.0.0.0";
         }
-        ctx_servers_.back().port = std::atoi(splitted.back().c_str());
+        port = std::atoi(splitted.back().c_str());
     }
 
+    ctx_servers_.back().host_ports.push_back(std::make_pair(host, port));
     if (args.size() == 2) {
         ctx_servers_.back().default_server = (args.back() == "default_server");
     }
@@ -265,10 +319,10 @@ void Parser::add_return(const std::vector<std::string> &args) {
         ctx_servers_.back().locations.back().redirect = std::make_pair(status_code, path);
     }
 }
+
 void Parser::add_root(const std::vector<std::string> &args) {
     const std::string &path = args.front();
 
-    DXOUT(path);
     if (ctx_ == SERVER) {
         ctx_servers_.back().root = path;
     }
@@ -276,6 +330,7 @@ void Parser::add_root(const std::vector<std::string> &args) {
         ctx_servers_.back().locations.back().root = path;
     }
 }
+
 void Parser::add_server_name(const std::vector<std::string> &args) {
     const std::vector<std::string> &server_names = args;
     ctx_servers_.back().server_names             = server_names;
@@ -315,7 +370,6 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
     std::queue<Directive> que;
 
     for (std::vector<Directive>::iterator it = vdir.begin(); it != vdir.end(); ++it) {
-        DXOUT(it->name);
         if (is_block(*it)) {
             que.push(*it);
         } else {
@@ -327,8 +381,7 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
     // ブロックディレクティブの処理
     while (!que.empty()) {
 
-        Directive d = que.front();
-        DXOUT(d.name);
+        Directive d               = que.front();
         add_directive_functions f = add_directives_func_map[d.name];
         (this->*f)(d.args);
         parse(d.block);
@@ -365,7 +418,14 @@ void print_directives(std::vector<Directive> d, bool is_block, std::string befor
     }
 }
 
-// 後でtemplate関数に切り替える
+template <class First, class Second>
+std::string pair_to_string(std::pair<First, Second> p) {
+    std::ostringstream oss;
+    oss << "< ";
+    oss << p.first << ", " << p.second << " >";
+    return oss.str();
+}
+
 template <class T>
 std::string vector_to_string(std::vector<T> v) {
     std::ostringstream oss;
@@ -379,12 +439,17 @@ std::string vector_to_string(std::vector<T> v) {
     oss << " }";
     return oss.str();
 }
-
 template <class First, class Second>
-std::string pair_to_string(std::pair<First, Second> p) {
+std::string vector_pair_to_string(std::vector<std::pair<First, Second> > vp) {
     std::ostringstream oss;
-    oss << "< ";
-    oss << p.first << ", " << p.second << " >";
+    oss << "{ ";
+    for (typename std::vector<std::pair<First, Second> >::iterator it = vp.begin(); it != vp.end(); ++it) {
+        if (it != vp.begin()) {
+            oss << ", ";
+        }
+        oss << pair_to_string(*it);
+    }
+    oss << " }";
     return oss.str();
 }
 
@@ -393,7 +458,21 @@ std::string map_to_string(std::map<Key, Value> mp) {
     std::ostringstream oss;
     oss << "{ ";
     for (typename std::map<Key, Value>::iterator it = mp.begin(); it != mp.end(); ++it) {
-        oss << "< " << it->first << " " << it->second << " >";
+        oss << "< " << it->first << ", " << it->second << " >";
+    }
+    oss << " }";
+    return oss.str();
+}
+
+template <class T>
+std::string set_to_string(std::set<T> st) {
+    std::ostringstream oss;
+    oss << "{ ";
+    for (typename std::set<T>::iterator it = st.begin(); it != st.end(); ++it) {
+        if (it != st.begin()) {
+            oss << ", ";
+        }
+        oss << *it;
     }
     oss << " }";
     return oss.str();
@@ -419,19 +498,18 @@ void Parser::print_location(const std::vector<ContextLocation> &loc) {
     size_t i = 0;
     for (std::vector<ContextLocation>::const_iterator it = loc.begin(); it != loc.end(); ++it) {
         std::cout << "locations[" << i++ << "]  {" << std::endl;
+        print_key_value("location_path", it->path, true);
         print_key_value("client_max_body_size", it->client_max_body_size, true);
         print_key_value("autoindex", it->autoindex, true);
         print_key_value("allow", it->allow, true);
         print_key_value("deny", it->deny, true);
         print_key_value("root", it->root, true);
-        print_key_value("indexes", vector_to_string(it->indexes), true);
+        print_key_value("indexes", set_to_string(it->indexes), true);
         print_key_value("error_pages", map_to_string(it->error_pages), true);
         print_key_value("redirect", pair_to_string(it->redirect), true);
-        print_key_value("path", it->path, true);
         std::cout << "}" << std::endl;
     }
 
-    // print_key_value("locations" << ":" << std::vector<class ContextLocation> locations);,
     // print_key_value("limit_except" << ":" << loc.limit_except);,
 }
 
@@ -441,11 +519,9 @@ void Parser::print_server(const ContextServer &serv) {
     print_key_value("allow", serv.allow);
     print_key_value("deny", serv.deny);
     print_key_value("root", serv.root);
-    print_key_value("indexes", vector_to_string(serv.indexes));
+    print_key_value("indexes", set_to_string(serv.indexes));
     print_key_value("error_pages", map_to_string(serv.error_pages));
-
-    print_key_value("port", serv.port);
-    print_key_value("host", serv.host);
+    print_key_value("host, port", vector_pair_to_string(serv.host_ports));
     print_key_value("upload_store", serv.upload_store);
     print_key_value("server_names", vector_to_string(serv.server_names));
     print_key_value("redirect", pair_to_string(serv.redirect));
