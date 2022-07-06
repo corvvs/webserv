@@ -16,3 +16,4 @@ ColumnLimit: 120
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 4
 IndentCaseLabels: true
+Standard: "Cpp03"
