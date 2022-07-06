@@ -15,18 +15,12 @@ namespace config {
 Parser::Parser(void) {}
 Parser::~Parser(void) {}
 
-// Parser::DirectiveFunctionsMap directives = setting_directive_functions();
-
 // ディレクティブとコンテキストを追加する関数を設定する
 // Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
 Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
-    // std::map<std::string, void (Parser::*add_directive_functions)(const std::vector<std::string> &args)> directives;
     DirectiveFunctionsMap directives;
 
-    // map<string, void(*)(const std::vector<string>)>
-
     /// Block
-
     directives["http"]         = &Parser::add_http;
     directives["server"]       = &Parser::add_server;
     directives["location"]     = &Parser::add_location;
@@ -65,9 +59,10 @@ std::vector<Directive> Parser::Parse(const std::string &file_data) {
     ctx_                                      = GLOBAL;
     std::vector<ContextServer> server_configs = parse(pre_parsed);
 
+    // debug
     std::vector<ContextServer>::iterator it = server_configs.begin();
     for (; it != server_configs.end(); ++it) {
-        print(*it);
+        print_server(*it);
     }
 
     return pre_parsed;
@@ -167,22 +162,26 @@ std::vector<Directive> Parser::pre_parse(std::vector<std::string> ctx) {
 // static std::map<std::string, void *f()()> add_directive_funcs;
 void Parser::add_http(const std::vector<std::string> &args) {
     (void)args;
+    ctx_ = MAIN;
 }
 
 void Parser::add_server(const std::vector<std::string> &args) {
     (void)args;
+    ctx_ = SERVER;
     ContextServer s(ctx_main_);
     ctx_servers_.push_back(s);
 }
 
 void Parser::add_location(const std::vector<std::string> &args) {
     (void)args;
+    ctx_ = LOCATION;
     ContextLocation l(ctx_servers_.back());
     ctx_servers_.back().locations.push_back(l);
 }
 
 void Parser::add_limit_except(const std::vector<std::string> &args) {
     (void)args;
+    ctx_                                              = LIMIT_EXCEPT;
     ctx_servers_.back().locations.back().limit_expect = new ContextLimitExpect;
 }
 
@@ -269,6 +268,7 @@ void Parser::add_return(const std::vector<std::string> &args) {
 void Parser::add_root(const std::vector<std::string> &args) {
     const std::string &path = args.front();
 
+    DXOUT(path);
     if (ctx_ == SERVER) {
         ctx_servers_.back().root = path;
     }
@@ -304,35 +304,6 @@ void Parser::add_upload_store(const std::vector<std::string> &args) {
     ctx_servers_.back().upload_store = path;
 }
 
-// static std::map<std::string, int> setting_directives(void) {
-//     std::map<std::string, int> directives;
-
-//     /// Block
-//     directives["http"]         = (MAIN | BLOCK | NOARGS);
-//     directives["server"]       = (HTTP_MAIN | BLOCK | NOARGS);
-//     directives["location"]     = (HTTP_SRV | HTTP_LOC | BLOCK | TAKE12);
-//     directives["limit_except"] = (HTTP_LOC | BLOCK | MORE1);
-
-//     /// Normal
-//     directives["allow"] = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | HTTP_LMT | TAKE1);
-//     directives["deny"]  = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | HTTP_LMT | TAKE1);
-
-//     directives["autoindex"]   = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | FLAG);
-//     directives["error_page"]  = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE2);
-//     directives["index"]       = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE1);
-//     directives["listen"]      = (HTTP_SRV | MORE1);
-//     directives["return"]      = (HTTP_SRV | HTTP_LOC | TAKE12);
-//     directives["root"]        = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | TAKE1);
-//     directives["server_name"] = (HTTP_SRV | MORE1);
-
-//     directives["client_max_body_size"] = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | TAKE1);
-
-//     /// Original
-//     directives["upload_store"] = (HTTP_SRV | HTTP_LOC | TAKE1);
-
-//     return directives;
-// }
-
 // ブロックを内包するかどうかで判断しても良さそう
 bool is_block(Directive dir) {
     return dir.block.size() != 0;
@@ -340,27 +311,35 @@ bool is_block(Directive dir) {
 
 // blockディレクティブの場合はstackに積んでおいてあとから処理する
 std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
+    add_directives_func_map = setting_directive_functions();
     std::queue<Directive> que;
 
-    // (void)vdir;
     for (std::vector<Directive>::iterator it = vdir.begin(); it != vdir.end(); ++it) {
-        if (!is_block(*it)) {
+        DXOUT(it->name);
+        if (is_block(*it)) {
             que.push(*it);
         } else {
             // ディレクティブの処理
+            add_directive_functions f = add_directives_func_map[it->name];
+            (this->*f)(it->args);
         }
     }
     // ブロックディレクティブの処理
     while (!que.empty()) {
-        // do_directive(que.front());
+
+        Directive d = que.front();
+        DXOUT(d.name);
+        add_directive_functions f = add_directives_func_map[d.name];
+        (this->*f)(d.args);
+        parse(d.block);
         que.pop();
     }
-    return std::vector<ContextServer>();
+    return ctx_servers_;
 }
 
 /*************************************************************/
 // debug
-void print(std::vector<Directive> d, bool is_block, std::string before) {
+void print_directives(std::vector<Directive> d, bool is_block, std::string before) {
     std::string dir;
     if (is_block) {
         dir = "block";
@@ -381,16 +360,17 @@ void print(std::vector<Directive> d, bool is_block, std::string before) {
             std::cout << before << dir << "[" << i << "].block  : {}" << std::endl;
         } else {
             std::string b = before + dir + "[" + std::to_string(i) + "]" + ".";
-            print(d[i].block, true, b);
+            print_directives(d[i].block, true, b);
         }
     }
 }
 
 // 後でtemplate関数に切り替える
-std::string to_string(std::vector<std::string> v) {
+template <class T>
+std::string vector_to_string(std::vector<T> v) {
     std::ostringstream oss;
     oss << "{ ";
-    for (std::vector<std::string>::iterator it = v.begin(); it != v.end(); ++it) {
+    for (typename std::vector<T>::iterator it = v.begin(); it != v.end(); ++it) {
         if (it != v.begin()) {
             oss << ", ";
         }
@@ -400,73 +380,76 @@ std::string to_string(std::vector<std::string> v) {
     return oss.str();
 }
 
-std::string to_string(std::pair<int, std::string> p) {
+template <class First, class Second>
+std::string pair_to_string(std::pair<First, Second> p) {
     std::ostringstream oss;
     oss << "< ";
     oss << p.first << ", " << p.second << " >";
     return oss.str();
 }
 
-std::string to_string(std::map<int, std::string> mp) {
+template <class Key, class Value>
+std::string map_to_string(std::map<Key, Value> mp) {
     std::ostringstream oss;
     oss << "{ ";
-    for (std::map<int, std::string>::iterator it = mp.begin(); it != mp.end(); ++it) {
+    for (typename std::map<Key, Value>::iterator it = mp.begin(); it != mp.end(); ++it) {
         oss << "< " << it->first << " " << it->second << " >";
     }
     oss << " }";
     return oss.str();
 }
 
-template <typename T>
-void print_key_value(const std::string &key, const T &value) {
-    std::cout << std::setw(22) << std::left << key << ": " << value << std::endl;
+template <class Key, class Value>
+void print_key_value(const Key &key, const Value &value, bool indent = false) {
+    int size = 24;
+    if (indent) {
+        std::cout << "  ";
+        size = 22;
+    }
+    std::cout << std::setw(size) << std::left << key << ": " << value << std::endl;
 }
 
-void Parser::print(const std::vector<ContextLocation> &loc) {
+void Parser::print_location(const std::vector<ContextLocation> &loc) {
+    if (loc.size() == 0) {
+        std::cout << std::setw(22) << std::left << "location"
+                  << ": "
+                  << "{  }" << std::endl;
+    }
+
+    size_t i = 0;
     for (std::vector<ContextLocation>::const_iterator it = loc.begin(); it != loc.end(); ++it) {
-        print_key_value("client_max_body_size", it->client_max_body_size);
-        print_key_value("autoindex", it->autoindex);
-        print_key_value("allow", it->allow);
-        print_key_value("deny", it->deny);
-        print_key_value("root", it->root);
-        print_key_value("indexes", to_string(it->indexes));
-        print_key_value("error_pages", to_string(it->error_pages));
-        print_key_value("redirect", to_string(it->redirect));
-        print_key_value("path", it->path);
+        std::cout << "locations[" << i++ << "]  {" << std::endl;
+        print_key_value("client_max_body_size", it->client_max_body_size, true);
+        print_key_value("autoindex", it->autoindex, true);
+        print_key_value("allow", it->allow, true);
+        print_key_value("deny", it->deny, true);
+        print_key_value("root", it->root, true);
+        print_key_value("indexes", vector_to_string(it->indexes), true);
+        print_key_value("error_pages", map_to_string(it->error_pages), true);
+        print_key_value("redirect", pair_to_string(it->redirect), true);
+        print_key_value("path", it->path, true);
+        std::cout << "}" << std::endl;
     }
 
     // print_key_value("locations" << ":" << std::vector<class ContextLocation> locations);,
     // print_key_value("limit_except" << ":" << loc.limit_except);,
 }
 
-void Parser::print(const ContextServer &serv) {
+void Parser::print_server(const ContextServer &serv) {
     print_key_value("client_max_body_size", serv.client_max_body_size);
     print_key_value("autoindex", serv.autoindex);
     print_key_value("allow", serv.allow);
     print_key_value("deny", serv.deny);
     print_key_value("root", serv.root);
-    print_key_value("indexes", to_string(serv.indexes));
-    print_key_value("error_pages", to_string(serv.error_pages));
+    print_key_value("indexes", vector_to_string(serv.indexes));
+    print_key_value("error_pages", map_to_string(serv.error_pages));
 
     print_key_value("port", serv.port);
     print_key_value("host", serv.host);
     print_key_value("upload_store", serv.upload_store);
-    print_key_value("server_names", to_string(serv.server_names));
-    print_key_value("redirect", to_string(serv.redirect));
-
-    std::cout << "locations :";
-    if (serv.locations.size() == 0) {
-        std::cout << "{}";
-    } else {
-        print(serv.locations);
-    }
+    print_key_value("server_names", vector_to_string(serv.server_names));
+    print_key_value("redirect", pair_to_string(serv.redirect));
+    print_location(serv.locations);
 }
 /*************************************************************/
 } // namespace config
-
-/*
-//
-前人未到という会社にいた
-ニューン
-
-*/

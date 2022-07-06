@@ -17,7 +17,7 @@ struct Directive {
 };
 
 // DEBUG用
-void print(std::vector<Directive> d, bool is_block = false, std::string before = "");
+void print_directives(std::vector<Directive> d, bool is_block = false, std::string before = "");
 
 class Parser {
 public:
@@ -33,6 +33,10 @@ private:
         LOCATION,
         LIMIT_EXCEPT,
     };
+
+    typedef void (Parser::*add_directive_functions)(const std::vector<std::string> &args);
+    typedef std::map<std::string, add_directive_functions> DirectiveFunctionsMap;
+
     // Member variables
     Lexer lexer_;
     std::vector<ContextServer> ctx_servers_;
@@ -40,6 +44,8 @@ private:
     ContextType ctx_;
 
     // DirectiveFunctionsMap directives;
+    std::map<std::string, Parser::add_directive_functions> add_directives_func_map;
+    DirectiveFunctionsMap setting_directive_functions(void);
 
     /// PreParser
     std::vector<ContextServer> parse(std::vector<Directive> vdir);
@@ -47,12 +53,7 @@ private:
     std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
     std::string brace_balanced(void);
 
-    typedef void (Parser::*add_directive_functions)(const std::vector<std::string> &args);
-    typedef std::map<std::string, add_directive_functions> DirectiveFunctionsMap;
-
     // 関数ポインタ
-    DirectiveFunctionsMap setting_directive_functions(void);
-    // const std::map<std::string, Parser::add_directive_functions> directives;
 
     /// Add functions
     // Block
@@ -78,8 +79,8 @@ private:
     /// Original
     void add_upload_store(const std::vector<std::string> &args);
 
-    void print(const std::vector<ContextLocation> &loc);
-    void print(const ContextServer &serv);
+    void print_location(const std::vector<ContextLocation> &loc);
+    void print_server(const ContextServer &serv);
 };
 } // namespace config
 

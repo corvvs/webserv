@@ -52,7 +52,7 @@ void test_parser(const std::string &path) {
 
 #ifdef NDEBUG
     std::cout << "==============PARSE==============" << std::endl;
-    config::print(parsed);
+    config::print_directives(parsed);
 #else
     std::cout << "parser: the configuration file " + path + " syntax is ok" << std::endl;
 #endif
