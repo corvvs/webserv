@@ -1,5 +1,6 @@
 #ifndef SOCKET_TYPE_HPP
 #define SOCKET_TYPE_HPP
+#include "../utils/types.hpp"
 #include <arpa/inet.h>
 #include <cstdlib>
 #include <exception>
@@ -12,7 +13,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "../utils/types.hpp"
 
 enum t_socket_domain { SD_IP4, SD_IP6, SD_UNIX };
 
