@@ -103,7 +103,7 @@ void EventKqueueLoop::update() {
         errno     = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
-            DXOUT("errno: " << errno << ", " << changelist.size() << ", " << n << ", " << count << std::endl);
+            DXOUT("errno: " << errno << ", " << changelist.size() << ", " << n << ", " << count);
         }
     }
     upqueue.clear();

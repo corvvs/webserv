@@ -1,5 +1,5 @@
 #include "Eventselectloop.hpp"
-#include "../debug/debug.hpp"
+#include "../utils/test_common.hpp"
 
 void EventSelectLoop::destroy_all(EventSelectLoop::socket_map &m) {
     for (EventSelectLoop::socket_map::iterator it = m.begin(); it != m.end(); it++) {
@@ -95,11 +95,11 @@ void EventSelectLoop::loop() {
         timeval tv = {10, 0};
         int count  = select(max_fd + 1, &read_set, &write_set, &exception_set, &tv);
         if (count < 0) {
-            DSOUT() << strerror(errno) << std::endl;
+            VOUT(strerror(errno));
             throw std::runtime_error("select error");
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
-            DSOUT() << "timeout?: " << now << std::endl;
+            DXOUT("timeout?: " << now);
             scan_fd_set(read_map, &read_set, now);
             scan_fd_set(write_map, &write_set, now);
             scan_fd_set(exception_map, &exception_set, now);
