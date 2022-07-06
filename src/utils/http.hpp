@@ -76,33 +76,6 @@ extern const t_version DEFAULT_HTTP_VERSION;
 const byte_string version_str(t_version version);
 const byte_string reason(t_status status);
 
-// 文字集合
-namespace Charset {
-
-// アルファベット・小文字
-extern const byte_string alpha_low;
-// アルファベット・大文字
-extern const byte_string alpha_up;
-// アルファベット
-extern const byte_string alpha;
-// 数字
-extern const byte_string digit;
-// 16進数における数字
-extern const byte_string hexdig;
-// HTTPにおける非予約文字
-extern const byte_string unreserved;
-extern const byte_string gen_delims;
-extern const byte_string sub_delims;
-// token 構成文字
-// 空白, ":", ";", "/", "@", "?" を含まない.
-// ".", "&" は含む.
-extern const byte_string tchar;
-extern const byte_string sp;
-extern const byte_string ws;
-extern const byte_string crlf;
-extern const byte_string lf;
-} // namespace Charset
-
 // 文字列をbyte_stringに変換する
 byte_string strfy(const char_string &str);
 // byte_stringを文字列に変換する

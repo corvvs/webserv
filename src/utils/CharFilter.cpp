@@ -163,24 +163,24 @@ std::ostream &operator<<(std::ostream &ost, const HTTP::CharFilter &f) {
     return ost << "(" << f.size() << "):[" << f.str() << "]";
 }
 
-const HTTP::CharFilter HTTP::CharFilter::alpha_low  = HTTP::Charset::alpha_low;
-const HTTP::CharFilter HTTP::CharFilter::alpha_up   = HTTP::Charset::alpha_up;
-const HTTP::CharFilter HTTP::CharFilter::alpha      = HTTP::Charset::alpha;
-const HTTP::CharFilter HTTP::CharFilter::digit      = HTTP::Charset::digit;
-const HTTP::CharFilter HTTP::CharFilter::hexdig     = HTTP::Charset::hexdig;
-const HTTP::CharFilter HTTP::CharFilter::unreserved = HTTP::Charset::unreserved;
-const HTTP::CharFilter HTTP::CharFilter::gen_delims = HTTP::Charset::gen_delims;
-const HTTP::CharFilter HTTP::CharFilter::sub_delims = HTTP::Charset::sub_delims;
-const HTTP::CharFilter HTTP::CharFilter::tchar      = HTTP::Charset::tchar;
-const HTTP::CharFilter HTTP::CharFilter::sp         = HTTP::Charset::sp;
+const HTTP::CharFilter HTTP::CharFilter::alpha_low  = HTTP::strfy("abcdefghijklmnopqrstuvwxyz");
+const HTTP::CharFilter HTTP::CharFilter::alpha_up   = HTTP::strfy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+const HTTP::CharFilter HTTP::CharFilter::alpha      = alpha_low | alpha_up;
+const HTTP::CharFilter HTTP::CharFilter::digit      = HTTP::strfy("0123456789");
+const HTTP::CharFilter HTTP::CharFilter::hexdig     = digit | "abcdef" | "ABCDEF";
+const HTTP::CharFilter HTTP::CharFilter::unreserved = alpha | digit | "-._~";
+const HTTP::CharFilter HTTP::CharFilter::gen_delims = HTTP::strfy(":/?#[]@");
+const HTTP::CharFilter HTTP::CharFilter::sub_delims = HTTP::strfy("!$&'()*+.;=");
+const HTTP::CharFilter HTTP::CharFilter::tchar      = alpha | digit | "!#$%&'*+-.^_`|~";
+const HTTP::CharFilter HTTP::CharFilter::sp         = HTTP::strfy(" ");
 const HTTP::CharFilter HTTP::CharFilter::bad_sp     = HTTP::CharFilter::sp;
-const HTTP::CharFilter HTTP::CharFilter::ws         = HTTP::Charset::ws;
-const HTTP::CharFilter HTTP::CharFilter::crlf       = HTTP::Charset::crlf;
-const HTTP::CharFilter HTTP::CharFilter::cr         = "\r";
-const HTTP::CharFilter HTTP::CharFilter::lf         = HTTP::Charset::lf;
-const HTTP::CharFilter HTTP::CharFilter::htab       = "\t";
-const HTTP::CharFilter HTTP::CharFilter::dquote     = "\"";
-const HTTP::CharFilter HTTP::CharFilter::bslash     = "\\";
+const HTTP::CharFilter HTTP::CharFilter::ws         = HTTP::strfy(" \t");
+const HTTP::CharFilter HTTP::CharFilter::crlf       = HTTP::strfy("\r\n");
+const HTTP::CharFilter HTTP::CharFilter::cr         = HTTP::strfy("\r");
+const HTTP::CharFilter HTTP::CharFilter::lf         = HTTP::strfy("\n");
+const HTTP::CharFilter HTTP::CharFilter::htab       = HTTP::strfy("\t");
+const HTTP::CharFilter HTTP::CharFilter::dquote     = HTTP::strfy("\"");
+const HTTP::CharFilter HTTP::CharFilter::bslash     = HTTP::strfy("\\");
 const HTTP::CharFilter HTTP::CharFilter::obs_text   = HTTP::CharFilter(0x80, 0xff);
 const HTTP::CharFilter HTTP::CharFilter::vchar      = HTTP::CharFilter(0x21, 0x7e);
 const HTTP::CharFilter HTTP::CharFilter::qdtext

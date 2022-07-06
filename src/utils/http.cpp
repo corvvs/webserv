@@ -2,37 +2,6 @@
 
 const HTTP::t_version HTTP::DEFAULT_HTTP_VERSION = V_1_1;
 
-// アルファベット・小文字
-const HTTP::byte_string HTTP::Charset::alpha_low = HTTP::strfy("abcdefghijklmnopqrstuvwxyz");
-// アルファベット・大文字
-const HTTP::byte_string HTTP::Charset::alpha_up = HTTP::strfy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-// アルファベット
-const HTTP::byte_string HTTP::Charset::alpha = alpha_low + alpha_up;
-// 数字
-const HTTP::byte_string HTTP::Charset::digit = HTTP::strfy("0123456789");
-// 16進数における数字
-const HTTP::byte_string HTTP::Charset::hexdig = digit + "abcdef" + "ABCDEF";
-// HTTPにおける非予約文字
-const HTTP::byte_string HTTP::Charset::unreserved = alpha + digit + "-._~";
-const HTTP::byte_string HTTP::Charset::gen_delims = HTTP::strfy(":/?#[]@");
-const HTTP::byte_string HTTP::Charset::sub_delims = HTTP::strfy("!$&'()*+.;=");
-// token 構成文字
-// 空白, ":", ";", "/", "@", "?" を含まない.
-// ".", "&" は含む.
-const HTTP::byte_string HTTP::Charset::tchar = alpha + digit + "!#$%&'*+-.^_`|~";
-const HTTP::byte_string HTTP::Charset::sp    = HTTP::strfy(" ");
-const HTTP::byte_string HTTP::Charset::ws    = HTTP::strfy(" \t");
-const HTTP::byte_string HTTP::Charset::crlf  = HTTP::strfy("\r\n");
-const HTTP::byte_string HTTP::Charset::lf    = HTTP::strfy("\n");
-
-// parameter      = token "=" ( token / quoted-string )
-// quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
-// qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
-//                ;               !     #-[        ]-~
-//                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
-// obs-text       = %x80-FF ; extended ASCII
-// quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
-
 const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
     switch (version) {
         case V_0_9:
