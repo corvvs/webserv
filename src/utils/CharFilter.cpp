@@ -1,12 +1,14 @@
 #include "CharFilter.hpp"
-#define ELEMS 32
+#define BITS_IN_ELEM (sizeof(u64t) * 8) // 64
+#define ELEMS (256 / BITS_IN_ELEM)      // 4
+#define OCTETS (sizeof(u64t) * ELEMS)   // 32
 
 HTTP::CharFilter::CharFilter(const byte_string &chars) {
     fill(chars);
 }
 
 HTTP::CharFilter::CharFilter(const char *chars) {
-    fill(byte_string(chars));
+    fill(byte_string(chars, chars + strlen(chars)));
 }
 
 HTTP::CharFilter::CharFilter(byte_type from, byte_type to) {
@@ -19,7 +21,7 @@ HTTP::CharFilter::CharFilter(const CharFilter &other) {
 
 HTTP::CharFilter &HTTP::CharFilter::operator=(const CharFilter &rhs) {
     if (this != &rhs) {
-        memcpy(filter, rhs.filter, ELEMS);
+        memcpy(filter, rhs.filter, OCTETS);
     }
     return *this;
 }
@@ -31,7 +33,7 @@ HTTP::CharFilter &HTTP::CharFilter::operator=(const byte_string &rhs) {
 
 HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter &rhs) const {
     CharFilter n(*this);
-    for (int i = 0; i < ELEMS; ++i) {
+    for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] |= rhs.filter[i];
     }
     return n;
@@ -39,7 +41,7 @@ HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter &rhs) const {
 
 HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter &rhs) const {
     CharFilter n(*this);
-    for (int i = 0; i < ELEMS; ++i) {
+    for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] &= rhs.filter[i];
     }
     return n;
@@ -47,7 +49,7 @@ HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter &rhs) const {
 
 HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter &rhs) const {
     CharFilter n(*this);
-    for (int i = 0; i < ELEMS; ++i) {
+    for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] ^= rhs.filter[i];
     }
     return n;
@@ -55,7 +57,7 @@ HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter &rhs) const {
 
 HTTP::CharFilter HTTP::CharFilter::operator~() const {
     CharFilter n(*this);
-    for (int i = 0; i < ELEMS; ++i) {
+    for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] = ~n.filter[i];
     }
     return n;
@@ -66,23 +68,22 @@ HTTP::CharFilter HTTP::CharFilter::operator-(const CharFilter &rhs) const {
 }
 
 void HTTP::CharFilter::fill(const byte_string &chars) {
-    memset(filter, 0, ELEMS);
-    // 3 の出どころは 2^3 = 8.
+    memset(filter, 0, OCTETS);
     for (byte_string::size_type i = 0; i < chars.size(); ++i) {
         byte_type c                = chars[i];
-        unsigned int element_index = c >> 3;
-        unsigned int bit_index     = c & (((unsigned int)1 << 3) - 1);
-        filter[element_index] |= (unsigned int)1 << bit_index;
+        unsigned int element_index = c / BITS_IN_ELEM;
+        unsigned int bit_index     = c & (BITS_IN_ELEM - 1);
+        filter[element_index] |= (u64t)1 << bit_index;
     }
 }
 
 void HTTP::CharFilter::fill(byte_type from, byte_type to) {
-    memset(filter, 0, ELEMS);
+    memset(filter, 0, OCTETS);
     for (; from <= to; ++from) {
         byte_type c                = from;
-        unsigned int element_index = c >> 3;
-        unsigned int bit_index     = c & (((unsigned int)1 << 3) - 1);
-        filter[element_index] |= (unsigned int)1 << bit_index;
+        unsigned int element_index = c / BITS_IN_ELEM;
+        unsigned int bit_index     = c & (BITS_IN_ELEM - 1);
+        filter[element_index] |= (u64t)1 << bit_index;
         if (from == to) {
             break;
         }
@@ -90,9 +91,9 @@ void HTTP::CharFilter::fill(byte_type from, byte_type to) {
 }
 
 bool HTTP::CharFilter::includes(byte_type c) const {
-    unsigned int element_index = c >> 3;
-    unsigned int bit_index     = c & (((unsigned int)1 << 3) - 1);
-    int x                      = (filter[element_index] & ((unsigned int)1 << bit_index));
+    unsigned int element_index = c / BITS_IN_ELEM;
+    unsigned int bit_index     = c & (BITS_IN_ELEM - 1);
+    int x                      = !!(filter[element_index] & ((u64t)1 << bit_index));
     return x;
 }
 
@@ -133,11 +134,14 @@ bool HTTP::CharFilter::includes(byte_type c) const {
 
 HTTP::byte_string::size_type HTTP::CharFilter::size() const {
     byte_string::size_type n = 0;
-    for (int i = 0; i < ELEMS; ++i) {
-        unsigned int x = filter[i];
-        x              = (x & 0x55U) + ((x & 0xaaU) >> 1);
-        x              = (x & 0x33U) + ((x & 0xccU) >> 2);
-        x              = (x & 0x0fU) + ((x & 0xf0U) >> 4);
+    for (unsigned int i = 0; i < ELEMS; ++i) {
+        u64t x = filter[i];
+        x      = (x & 0x5555555555555555U) + ((x & 0xaaaaaaaaaaaaaaaaU) >> 1);
+        x      = (x & 0x3333333333333333U) + ((x & 0xccccccccccccccccU) >> 2);
+        x      = (x & 0x0f0f0f0f0f0f0f0fU) + ((x & 0xf0f0f0f0f0f0f0f0U) >> 4);
+        x      = (x & 0x00ff00ff00ff00ffU) + ((x & 0xff00ff00ff00ff00U) >> 8);
+        x      = (x & 0x0000ffff0000ffffU) + ((x & 0xffff0000ffff0000U) >> 16);
+        x      = (x & 0x00000000ffffffffU) + ((x & 0xffffffff00000000U) >> 32);
         n += x;
     }
     return n;
@@ -169,6 +173,7 @@ const HTTP::CharFilter HTTP::CharFilter::gen_delims = HTTP::Charset::gen_delims;
 const HTTP::CharFilter HTTP::CharFilter::sub_delims = HTTP::Charset::sub_delims;
 const HTTP::CharFilter HTTP::CharFilter::tchar      = HTTP::Charset::tchar;
 const HTTP::CharFilter HTTP::CharFilter::sp         = HTTP::Charset::sp;
+const HTTP::CharFilter HTTP::CharFilter::bad_sp     = HTTP::CharFilter::sp;
 const HTTP::CharFilter HTTP::CharFilter::ws         = HTTP::Charset::ws;
 const HTTP::CharFilter HTTP::CharFilter::crlf       = HTTP::Charset::crlf;
 const HTTP::CharFilter HTTP::CharFilter::cr         = "\r";
@@ -179,13 +184,20 @@ const HTTP::CharFilter HTTP::CharFilter::bslash     = "\\";
 const HTTP::CharFilter HTTP::CharFilter::obs_text   = HTTP::CharFilter(0x80, 0xff);
 const HTTP::CharFilter HTTP::CharFilter::vchar      = HTTP::CharFilter(0x21, 0x7e);
 const HTTP::CharFilter HTTP::CharFilter::qdtext
-    = HTTP::CharFilter::vchar | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text - "\"\\";
-const HTTP::CharFilter HTTP::CharFilter::quoted_right = HTTP::CharFilter::vchar | " \t" | HTTP::CharFilter::obs_text;
+    = HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text - "\"\\";
+const HTTP::CharFilter HTTP::CharFilter::qdright
+    = HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text;
+const HTTP::CharFilter HTTP::CharFilter::ctext
+    = HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text - "()\\";
 
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
 // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
 //                ;               !     #-[        ]-~
-//                ; HTAB + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
+//                ; HTAB + SP + 表示可能文字, ただし "(ダブルクオート) と \(バッスラ) を除く
 // obs-text       = %x80-FF ; extended ASCII
 // quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+
+// comment        = "(" *( ctext / quoted-pair / comment ) ")"
+// ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
+//                ; HTAB + SP + 表示可能文字, ただしカッコとバッスラを除く
