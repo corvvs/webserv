@@ -22,10 +22,6 @@ private:
     SocketListening *sock;
     IRouter *router_;
 
-    // 呼び出し禁止
-    // Channelは必ず有効なソケットと紐づく必要があるため.
-    Channel();
-
 public:
     // TODO: confのlistenパラメータを与えて、そこからsocket生成用パラメータを作るようにする
     Channel(IRouter *router, t_socket_domain sdomain, t_socket_type stype, t_port port);

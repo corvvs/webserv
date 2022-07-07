@@ -129,9 +129,9 @@ void RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
 RequestHTTP::t_parse_progress RequestHTTP::reach_reqline_start(size_t len, bool is_disconnected) {
     (void)is_disconnected;
     DXOUT("* determining start_of_reqline... *");
-    size_t s_o_s = ParserHelper::ignore_crlf(bytebuffer, this->mid, len);
-    this->mid += s_o_s;
-    if (s_o_s == len) {
+    size_t non_crlf_heading = ParserHelper::ignore_crlf(bytebuffer, this->mid, len);
+    this->mid += non_crlf_heading;
+    if (non_crlf_heading == len) {
         return PP_UNREACHED;
     }
     // 開始行の開始位置が定まった

@@ -77,8 +77,7 @@ bool HTTP::Validator::is_ipv6address(const light_string &str) {
     }
     // 3. 最後以外の要素が空文字列かh16であることを確認
     int octets     = 0;
-    unsigned int i = 0;
-    for (; i < splitted.size() - 1; ++i) {
+    for (unsigned int i = 0; i < splitted.size() - 1; ++i) {
         if (splitted[i].size() > 0) {
             if (!is_h16(splitted[i])) {
                 // DXOUT("it's not a h16: " << splitted[i]);
@@ -104,9 +103,9 @@ bool HTTP::Validator::is_ipv6address(const light_string &str) {
     //       - h16の数が1個以上5個以下であることを確認
     //     - "::"がない
     //       - h16の数が6個であることを確認
-    if (is_ls32(splitted[i])) {
+    if (is_ls32(splitted.back())) {
         octets += 4;
-    } else if (is_h16(splitted[i])) {
+    } else if (is_h16(splitted.back())) {
         octets += 2;
     } else {
         // DXOUT("it's not a ls32 or h16: " << splitted[i]);

@@ -10,10 +10,6 @@ ConnectionAttribute::ConnectionAttribute() {
     timeout       = 60 * 1000;
 }
 
-Connection::Connection() {
-    throw std::runtime_error("forbidden");
-}
-
 Connection::Connection(IRouter *router, SocketConnected *sock_given)
     : router_(router)
     , attr(ConnectionAttribute())
@@ -115,7 +111,7 @@ void Connection::notify(IObserver &observer) {
                     return;
                 }
 
-            } catch (http_error err) {
+            } catch (const http_error& err) {
 
                 // 送信中のHTTPエラー -> もうだめ
                 DXOUT(err.get_status() << ":" << err.what());
@@ -135,7 +131,7 @@ void Connection::notify(IObserver &observer) {
                 }
                 die(observer);
 
-            } catch (http_error err) {
+            } catch (const http_error& err) {
 
                 DXOUT(err.get_status() << ":" << err.what());
                 die(observer);
