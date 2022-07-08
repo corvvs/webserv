@@ -1,8 +1,8 @@
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
+#include "../communication/Channel.hpp"
 #include "../communication/IOriginator.hpp"
 #include "../communication/IRouter.hpp"
-#include "../communication/Channel.hpp"
 #include "../event/Iobserver.hpp"
 #include "../event/Isocketlike.hpp"
 #include <map>
