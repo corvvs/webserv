@@ -11,4 +11,4 @@ jobs:
         with:
           source: '.'
           extensions: 'cpp,hpp'
-          clangFormatVersion: 12
+          clangFormatVersion: 14
