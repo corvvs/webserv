@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"httpclient/valid"
+	"httpclient/client"
 	"log"
 )
 
@@ -13,7 +13,7 @@ func initFlag() (string, []string) {
 }
 
 func main() {
-	_, args := initFlag()
+	port, args := initFlag()
 	for _, filePath := range args {
 
 		c, err := client.NewClient(filePath, port)
