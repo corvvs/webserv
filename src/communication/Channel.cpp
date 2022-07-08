@@ -18,12 +18,13 @@ t_fd Channel::get_fd() const {
     return sock->get_fd();
 }
 
-void Channel::notify(IObserver &observer) {
+void Channel::notify(IObserver &observer, IObserver::observation_category cat) {
     // Channelがnotifyを受ける
     // -> accept ready
     // -> Connectionを生成してread監視させる
+    if (cat != IObserver::OT_READ) { return; }
     try {
-        for (; true;) {
+        for (;;) {
             SocketConnected *connected = sock->accept();
             if (connected == NULL) {
                 // acceptするものが残っていない場合 NULL が返ってくる
