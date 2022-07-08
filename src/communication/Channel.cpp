@@ -1,10 +1,6 @@
 #include "Channel.hpp"
 #include "Connection.hpp"
 
-Channel::Channel() {
-    throw std::runtime_error("forbidden");
-}
-
 Channel::Channel(IRouter *router, t_socket_domain sdomain, t_socket_type stype, t_port port)
     : sock(SocketListening::bind(sdomain, stype, port)), router_(router) {
     sock->listen(1024);
@@ -23,7 +19,7 @@ void Channel::notify(IObserver &observer) {
     // -> accept ready
     // -> Connectionを生成してread監視させる
     try {
-        for (; true;) {
+        for (;;) {
             SocketConnected *connected = sock->accept();
             if (connected == NULL) {
                 // acceptするものが残っていない場合 NULL が返ってくる

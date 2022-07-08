@@ -57,10 +57,6 @@ private:
 
     int started_;
 
-    // 直接呼び出し禁止
-    // ConnectionオブジェクトはChannelオブジェクトによってのみ作成されて欲しいため
-    Connection();
-
     // 最終操作時刻を更新する
     void touch();
 
