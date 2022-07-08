@@ -39,7 +39,8 @@ t_fd Connection::get_fd() const {
     return sock->get_fd();
 }
 
-void Connection::notify(IObserver &observer) {
+void Connection::notify(IObserver &observer, IObserver::observation_category cat) {
+    (void)cat;
     if (dying) {
         return;
     }

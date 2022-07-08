@@ -31,43 +31,51 @@ void EventPollLoop::loop() {
                 size_t i = indexmap[it->first];
                 if (fds[i].fd >= 0 && fds[i].revents) {
                     DXOUT("[S]FD-" << it->first << ": revents: " << fds[i].revents);
-                    it->second->notify(*this);
+                    if (mask(IObserver::OT_READ) & fds[i].revents) {
+                        it->second->notify(*this, OT_READ);
+                    }
+                    if (mask(IObserver::OT_WRITE) & fds[i].revents) {
+                        it->second->notify(*this, OT_WRITE);
+                    }
+                    if (mask(IObserver::OT_EXCEPTION) & fds[i].revents) {
+                        it->second->notify(*this, OT_EXCEPTION);
+                    }
                 }
             }
         }
     }
 }
 
-void EventPollLoop::reserve(ISocketLike *socket, t_observation_target from, t_observation_target to) {
-    t_socket_reservation pre = {socket, from, to};
-    if (from != OT_NONE && to == OT_NONE) {
-        clearqueue.push_back(pre);
-    }
-    if (from != OT_NONE && to != OT_NONE) {
+void EventPollLoop::reserve(ISocketLike *socket, observation_category cat, bool in) {
+    t_socket_reservation pre = {socket->get_fd(), socket, cat, in};
+    if (cat == OT_NONE && in) {
+        holdqueue.push_back(pre);
+    } else if (cat == OT_NONE && !in) {
+        unholdqueue.push_back(pre);
+    } else {
         movequeue.push_back(pre);
     }
-    if (from == OT_NONE && to != OT_NONE) {
-        setqueue.push_back(pre);
-    }
 }
 
-// このソケットを監視対象から除外する
-// (その際ソケットはdeleteされる)
-void EventPollLoop::reserve_clear(ISocketLike *socket, t_observation_target from) {
-    reserve(socket, from, OT_NONE);
+void EventPollLoop::reserve_hold(ISocketLike *socket) {
+    reserve(socket, OT_NONE, true);
 }
 
-// このソケットを監視対象に追加する
-void EventPollLoop::reserve_set(ISocketLike *socket, t_observation_target to) {
-    reserve(socket, OT_NONE, to);
+void EventPollLoop::reserve_unhold(ISocketLike *socket) {
+    reserve(socket, OT_NONE, false);
 }
 
-// このソケットの監視方法を変更する
-void EventPollLoop::reserve_transit(ISocketLike *socket, t_observation_target from, t_observation_target to) {
-    reserve(socket, from, to);
+// 次の kevent の前に, このソケットを監視対象から除外する
+void EventPollLoop::reserve_unset(ISocketLike *socket, observation_category from) {
+    reserve(socket, from, false);
 }
 
-t_poll_eventmask EventPollLoop::mask(t_observation_target t) {
+// 次の kevent の前に, このソケットを監視対象に追加する
+void EventPollLoop::reserve_set(ISocketLike *socket, observation_category to) {
+    reserve(socket, to, true);
+}
+
+t_poll_eventmask EventPollLoop::mask(observation_category t) {
     switch (t) {
         case OT_READ:
             return POLLIN;
@@ -84,8 +92,10 @@ t_poll_eventmask EventPollLoop::mask(t_observation_target t) {
 
 // ソケットの監視状態変更予約を実施する
 void EventPollLoop::update() {
+    // exec unhold
+
     EventPollLoop::update_queue::iterator it;
-    for (it = clearqueue.begin(); it != clearqueue.end(); it++) {
+    for (it = unholdqueue.begin(); it != unholdqueue.end(); it++) {
         ISocketLike *sock = it->sock;
         size_t i          = indexmap[sock->get_fd()];
         fds[i].fd         = -1;
@@ -95,12 +105,8 @@ void EventPollLoop::update() {
         delete sock;
         nfds--;
     }
-    for (it = movequeue.begin(); it != movequeue.end(); it++) {
-        ISocketLike *sock = it->sock;
-        size_t i          = indexmap[sock->get_fd()];
-        fds[i].events     = mask(it->to);
-    }
-    for (it = setqueue.begin(); it != setqueue.end(); it++) {
+    // exec hold
+    for (it = holdqueue.begin(); it != holdqueue.end(); it++) {
         ISocketLike *sock = it->sock;
         size_t i;
         if (gapset.empty()) {
@@ -113,12 +119,24 @@ void EventPollLoop::update() {
             fds[i].fd = sock->get_fd();
             gapset.erase(gapset.begin());
         }
-        fds[i].events            = mask(it->to);
+        fds[i].events            = 0;
         sockmap[sock->get_fd()]  = sock;
         indexmap[sock->get_fd()] = i;
         nfds++;
     }
-    clearqueue.clear();
+    // exec set / unset
+    for (it = movequeue.begin(); it != movequeue.end(); it++) {
+        ISocketLike *sock = it->sock;
+        size_t i          = indexmap[sock->get_fd()];
+        fds[i].events     = fds[i].events | mask(it->cat);
+        if (!it->in) {
+            fds[i].events     = fds[i].events ^ mask(it->cat);
+        }
+    }
+    unholdqueue.clear();
     movequeue.clear();
-    setqueue.clear();
+    holdqueue.clear();
+
+    // exec unhold
+
 }

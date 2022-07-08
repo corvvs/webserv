@@ -1,32 +1,37 @@
 #ifndef IOSERVER_HPP
 #define IOSERVER_HPP
-
-#include "ISocketlike.hpp"
+#include "../socket/SocketType.hpp"
 
 // [ソケット監視者インターフェース]
 // [責務]
 // - ソケットライクオブジェクト(ISocketLike)を保持すること
 // - ソケットライクオブジェクトの状態変化を監視し, 変化があったら通知を出すこと
+
+class ISocketLike;
+
 class IObserver {
 public:
-    enum t_observation_target { OT_NONE, OT_READ, OT_WRITE, OT_EXCEPTION };
+    enum observation_category { OT_NONE, OT_READ, OT_WRITE, OT_EXCEPTION, OT_TIMEOUT };
 
     struct t_socket_reservation {
+        t_fd    fd;
         ISocketLike *sock;
-        t_observation_target from;
-        t_observation_target to;
+        observation_category cat;
+        bool in;
     };
     virtual ~IObserver(){};
 
     // ソケット監視ループ
     virtual void loop() = 0;
-    // 指定されたソケットライクを, 次回のループ実行前に監視対象から除外し,
-    // 破棄する
-    virtual void reserve_clear(ISocketLike *socket, t_observation_target from) = 0;
+    // 指定されたソケットライクを, 次回のループ実行前に保持する
+    virtual void reserve_hold(ISocketLike *socket) = 0;
+    // 指定されたソケットライクを, 次回のループ実行前に破棄する
+    virtual void reserve_unhold(ISocketLike *socket) = 0;
     // 指定されたソケットライクを, 次回のループ実行前に監視対象へ追加する
-    virtual void reserve_set(ISocketLike *socket, t_observation_target to) = 0;
-    // 指定されたソケットライクについて, 次回のループ実行前に監視方法を変更する
-    virtual void reserve_transit(ISocketLike *socket, t_observation_target from, t_observation_target to) = 0;
+    // 保持していなければ自動的に保持する
+    virtual void reserve_set(ISocketLike *socket, observation_category cat) = 0;
+    // 指定されたソケットライクを, 次回のループ実行前に監視停止する
+    virtual void reserve_unset(ISocketLike *socket, observation_category cat) = 0;
 };
 
 #endif

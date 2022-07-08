@@ -13,12 +13,12 @@ EventKqueueLoop::EventKqueueLoop() {
 }
 
 EventKqueueLoop::~EventKqueueLoop() {
-    for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
+    for (socket_map::iterator it = holding_map.begin(); it != holding_map.end(); it++) {
         delete it->second;
     }
 }
 
-EventKqueueLoop::t_kfilter EventKqueueLoop::filter(t_observation_target t) {
+EventKqueueLoop::t_kfilter EventKqueueLoop::filter(observation_category t) {
     switch (t) {
         case OT_READ:
             return EVFILT_READ;
@@ -33,49 +33,66 @@ EventKqueueLoop::t_kfilter EventKqueueLoop::filter(t_observation_target t) {
     }
 }
 
+IObserver::observation_category EventKqueueLoop::filter_to_cat(t_kfilter f) {
+    switch (f) {
+        case EVFILT_READ:
+            return IObserver::OT_READ;
+        case EVFILT_WRITE:
+            return IObserver::OT_WRITE;
+        case EVFILT_EXCEPT:
+            return IObserver::OT_EXCEPTION;
+        default:
+            throw std::runtime_error("unexpected map_type");
+    }
+}
+
 void EventKqueueLoop::loop() {
     while (true) {
         update();
 
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
+        VOUT(count);
         if (count < 0) {
             throw std::runtime_error("kevent error");
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (int i = 0; i < count; i++) {
                 int fd            = static_cast<int>(evlist[i].ident);
-                ISocketLike *sock = sockmap[fd];
+                ISocketLike *sock = holding_map[fd];
                 sock->timeout(*this, now);
             }
         } else {
             for (int i = 0; i < count; i++) {
                 int fd            = static_cast<int>(evlist[i].ident);
-                ISocketLike *sock = sockmap[fd];
-                sock->notify(*this);
+                ISocketLike *sock = holding_map[fd];
+                observation_category cat = filter_to_cat(evlist[i].filter);
+                sock->notify(*this, cat);
             }
         }
     }
 }
 
-void EventKqueueLoop::reserve(ISocketLike *socket, t_observation_target from, t_observation_target to) {
-    t_socket_reservation pre = {socket, from, to};
+void EventKqueueLoop::reserve(ISocketLike *socket, observation_category cat, bool in) {
+    t_socket_reservation pre = {socket->get_fd(), socket, cat, in};
     upqueue.push_back(pre);
 }
 
+void EventKqueueLoop::reserve_hold(ISocketLike *socket) {
+    reserve(socket, OT_NONE, true);
+}
+
+void EventKqueueLoop::reserve_unhold(ISocketLike *socket) {
+    reserve(socket, OT_NONE, false);
+}
+
 // 次の kevent の前に, このソケットを監視対象から除外する
-// (その際ソケットはdeleteされる)
-void EventKqueueLoop::reserve_clear(ISocketLike *socket, t_observation_target from) {
-    reserve(socket, from, OT_NONE);
+void EventKqueueLoop::reserve_unset(ISocketLike *socket, observation_category from) {
+    reserve(socket, from, false);
 }
 
 // 次の kevent の前に, このソケットを監視対象に追加する
-void EventKqueueLoop::reserve_set(ISocketLike *socket, t_observation_target to) {
-    reserve(socket, OT_NONE, to);
-}
-
-// 次の kevent の前に, このソケットの監視方法を変更する
-void EventKqueueLoop::reserve_transit(ISocketLike *socket, t_observation_target from, t_observation_target to) {
-    reserve(socket, from, to);
+void EventKqueueLoop::reserve_set(ISocketLike *socket, observation_category to) {
+    reserve(socket, to, true);
 }
 
 void EventKqueueLoop::update() {
@@ -84,26 +101,75 @@ void EventKqueueLoop::update() {
     if (upqueue.empty()) {
         return;
     }
-    int n = 0;
+    // exec hold
     for (update_queue::iterator it = upqueue.begin(); it != upqueue.end(); it++) {
-        t_kevent ke;
         ISocketLike *sock = it->sock;
         t_fd fd           = sock->get_fd();
-        if (it->to == OT_NONE) {
-            sockmap.erase(fd);
-            delete sock;
-        } else {
-            changelist.push_back(ke);
-            EV_SET(&*changelist.rbegin(), sock->get_fd(), filter(it->to), EV_ADD, 0, 0, NULL);
-            sockmap[fd] = sock;
-            n++;
+        if (it->cat == OT_NONE && it->in) {
+            holding_map.insert(socket_map::value_type(fd, sock));
         }
+    }
+
+    // exec set or unset
+    int n = 0;
+    for (update_queue::iterator it = upqueue.begin(); it != upqueue.end(); it++) {
+        if (it->cat == OT_NONE) { continue; }
+        t_fd fd           = it->fd;
+        t_kevent ke;
+        ISocketLike *sock = it->sock;
+        switch (it->cat) {
+            case OT_READ: {
+                if (it->in) {
+                    read_map.insert(socket_map::value_type(fd, sock));
+                } else {
+                    read_map.erase(fd);
+                }
+                break;
+            }
+            case OT_WRITE: {
+                if (it->in) {
+                    write_map.insert(socket_map::value_type(fd, sock));
+                } else {
+                    write_map.erase(fd);
+                }
+                break;
+            }
+            case OT_EXCEPTION: {
+                if (it->in) {
+                    exception_map.insert(socket_map::value_type(fd, sock));
+                } else {
+                    exception_map.erase(fd);
+                }
+                break;
+            }
+            default:
+                throw std::runtime_error("unexpected cat");
+        }
+        changelist.push_back(ke);
+        if (it->in) {
+            EV_SET(&*changelist.rbegin(), fd, filter(it->cat), EV_ADD, 0, 0, NULL);
+        } else if (!it->in) {
+            EV_SET(&*changelist.rbegin(), fd, filter(it->cat), EV_DELETE, 0, 0, NULL);
+        }
+        n++;
     }
     if (n > 0) {
         errno     = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
-            DXOUT("errno: " << errno << ", " << changelist.size() << ", " << n << ", " << count);
+            VOUT(errno);
+            QVOUT(strerror(errno));
+            DXOUT(changelist.size() << ", " << n << ", " << count);
+        }
+    }
+
+    // exec unhold
+    for (update_queue::iterator it = upqueue.begin(); it != upqueue.end(); it++) {
+        ISocketLike *sock = it->sock;
+        t_fd fd           = sock->get_fd();
+        if (it->cat == OT_NONE && !it->in) {
+            holding_map.erase(fd);
+            delete sock;
         }
     }
     upqueue.clear();

@@ -81,7 +81,7 @@ public:
     ~Connection();
 
     t_fd get_fd() const;
-    void notify(IObserver &observer);
+    void notify(IObserver &observer, IObserver::observation_category cat);
     void timeout(IObserver &observer, t_time_epoch_ms epoch);
 };
 
