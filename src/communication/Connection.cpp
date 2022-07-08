@@ -70,7 +70,7 @@ void Connection::notify(IObserver &observer) {
                 current_res = router_->route(current_req);
                 ready_sending(observer);
 
-            } catch (const http_error& err) {
+            } catch (const http_error &err) {
 
                 // 受信中のHTTPエラー
                 DXOUT(err.get_status() << ":" << err.what());
@@ -111,7 +111,7 @@ void Connection::notify(IObserver &observer) {
                     return;
                 }
 
-            } catch (const http_error& err) {
+            } catch (const http_error &err) {
 
                 // 送信中のHTTPエラー -> もうだめ
                 DXOUT(err.get_status() << ":" << err.what());
@@ -131,7 +131,7 @@ void Connection::notify(IObserver &observer) {
                 }
                 die(observer);
 
-            } catch (const http_error& err) {
+            } catch (const http_error &err) {
 
                 DXOUT(err.get_status() << ":" << err.what());
                 die(observer);

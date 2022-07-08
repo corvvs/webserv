@@ -76,7 +76,7 @@ bool HTTP::Validator::is_ipv6address(const light_string &str) {
         return false;
     }
     // 3. 最後以外の要素が空文字列かh16であることを確認
-    int octets     = 0;
+    int octets = 0;
     for (unsigned int i = 0; i < splitted.size() - 1; ++i) {
         if (splitted[i].size() > 0) {
             if (!is_h16(splitted[i])) {
