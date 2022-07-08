@@ -2,32 +2,28 @@ package main
 
 import (
 	"flag"
-	"httpclient/client"
+	"httpclient/valid"
 	"log"
 )
 
-func main() {
-	address := flag.String("address", "8080", "default address is 8080")
+func initFlag() (string, []string) {
+	port := *flag.String("port", "8080", "default port is 8080")
 	flag.Parse()
-	for _, filePath := range flag.Args() {
-		err := Run(filePath, ":"+*address)
+	return port, flag.Args()
+}
+
+func main() {
+	_, args := initFlag()
+	for _, filePath := range args {
+
+		c, err := client.NewClient(filePath, port)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		err = c.Run()
 		if err != nil {
 			log.Fatalln(err)
 		}
 	}
-}
-
-func Run(filePath string, address string) (err error) {
-	c, err := client.NewClient(filePath, address)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = c.Close()
-	}()
-	err = c.Run()
-	if err != nil {
-		return err
-	}
-	return err
 }

@@ -12,18 +12,18 @@ type Client struct {
 	conn   net.Conn
 }
 
-func NewClient(filePath string, address string) (*Client, error) {
+func NewClient(filePath string, port string) (*Client, error) {
 	reader, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	writer, err := os.Create(address + "_" + filePath)
+	writer, err := os.Create(filePath + "_" + port)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := net.Dial("tcp", address)
+	conn, err := net.Dial("tcp", ":"+port)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +84,7 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) Run() error {
+    defer c.Close()
 	readBuffer, err := c.Read()
 	if err != nil {
 		return err
@@ -97,6 +98,10 @@ func (c *Client) Run() error {
 		return err
 	}
 	err = c.Write(receiptBuffer)
+	if err != nil {
+		return err
+	}
+	err = c.Close()
 	if err != nil {
 		return err
 	}
