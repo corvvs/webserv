@@ -136,6 +136,7 @@ void Lexer::tokenize(std::string data) {
         // Line comment
         if (data[0] == '#') {
             data = skip_line(data);
+            line_count_ += 1;
             continue;
         }
 

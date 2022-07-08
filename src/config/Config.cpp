@@ -12,7 +12,7 @@ std::vector<ContextServer> Config::get_config(void) {
 ContextMain::ContextMain(void) {
     client_max_body_size = 1024;
     autoindex            = false;
-    indexes.insert("index.html");
+    //    indexes.push_back("index.html"); TODO: 最後にindex.htmlがなかったら追加する(優先度の関係上)
 }
 
 ContextServer::ContextServer(const ContextMain &main) {
@@ -35,9 +35,10 @@ ContextLocation::ContextLocation(const ContextServer &server) {
     indexes              = server.indexes;
     error_pages          = server.error_pages;
     redirect             = server.redirect;
+    limit_except         = NULL;
 }
 
-ContextLimitExpect::ContextLimitExpect(void) {
+ContextLimitExcept::ContextLimitExcept(void) {
     allow = "";
     deny  = "";
 }

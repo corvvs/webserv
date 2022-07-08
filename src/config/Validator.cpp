@@ -33,6 +33,14 @@ std::vector<std::string> split_str(const std::string &s, const std::string &sep)
     }
     return vec;
 }
+
+std::string str_tolower(const std::string &s) {
+    std::string low;
+    for (std::string::const_iterator it = s.begin(); it != s.end(); ++it) {
+        low += std::tolower(*it);
+    }
+    return low;
+}
 } // namespace utility
 
 namespace config {
@@ -84,19 +92,19 @@ bool is_port(const std::string &arg) {
     return 0 <= n && n <= 65535;
 }
 
-static bool is_valid_allow_deny(const std::string &arg) {
-    if (arg == "all") {
+static bool is_valid_allow_deny(const std::vector<std::string> &args) {
+    if (args.front() == "all") {
         return true;
     }
-    return is_ipaddr(arg);
+    return is_ipaddr(args.front());
 }
 
 // returnも
-static bool is_valid_error_page(const std::string &arg) {
-    if (!is_integer(arg)) {
+static bool is_valid_error_page(const std::vector<std::string> &args) {
+    if (!is_integer(args.front())) {
         return false;
     }
-    const int &n = std::atoi(arg.c_str());
+    const int &n = std::atoi(args.front().c_str());
 
     return 300 <= n && n <= 599;
 }
@@ -116,13 +124,14 @@ bool is_host(const std::string &s) {
     return is_ipaddr(s);
 }
 
-static bool is_valid_listen(const std::string &arg) {
-    std::vector<std::string> splitted(utility::split_str(arg, ":"));
-    for (std::vector<std::string>::iterator it = splitted.begin(); it != splitted.end(); it++) {}
+static bool is_valid_listen(const std::vector<std::string> &args) {
+    if (args.size() == 2 && args.back() != "default_server") {
+        return false;
+    }
+    std::vector<std::string> splitted(utility::split_str(args.front(), ":"));
     if (splitted.size() != 1 && splitted.size() != 2) {
         return false;
     }
-
     if (splitted.size() == 1) {
         if (is_host(splitted.front())) {
             return true;
@@ -238,16 +247,16 @@ static bool is_valid_flag(std::string s) {
 
 bool is_correct_details(Directive dire) {
     if (dire.name == "allow" || dire.name == "deny") {
-        return is_valid_allow_deny(dire.args.front());
+        return is_valid_allow_deny(dire.args);
     }
     if (dire.name == "error_page") {
-        return is_valid_error_page(dire.args.front());
+        return is_valid_error_page(dire.args);
     }
     if (dire.name == "return") {
         return is_valid_return(dire.args);
     }
     if (dire.name == "listen") {
-        return is_valid_listen(dire.args.front());
+        return is_valid_listen(dire.args);
     }
     return true;
 }

@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
     }
     const char *path = argv[1];
 
-    //    test_lexer(path);
+    // test_lexer(path);
     test_parser(path);
     return 0;
 }

@@ -57,7 +57,7 @@ public:
     std::string allow;
     std::string deny;
     std::string root;
-    std::set<std::string> indexes;
+    std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
     // private:
 };
@@ -72,7 +72,7 @@ public:
     std::string allow;
     std::string deny;
     std::string root;
-    std::set<std::string> indexes;
+    std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
 
     // 新たに追加する
@@ -92,9 +92,9 @@ private:
 };
 
 enum Methods { GET, POST, DELETE };
-class ContextLimitExpect : public IContext {
+class ContextLimitExcept : public IContext {
 public:
-    ContextLimitExpect(void);
+    ContextLimitExcept(void);
 
     std::string allow;
     std::string deny;
@@ -111,7 +111,7 @@ public:
     std::string allow;
     std::string deny;
     std::string root;
-    std::set<std::string> indexes;
+    std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
     std::pair<int, std::string> redirect;
 
@@ -119,7 +119,7 @@ public:
     std::string path;
     // locationを内包する可能性もある
     std::vector<class ContextLocation> locations;
-    ContextLimitExpect *limit_expect; // 持たない可能性もあるのでポインタにする(デストラクタでデリートする)
+    ContextLimitExcept *limit_except; // 持たない可能性もあるのでポインタにする(デストラクタでデリートする)
 
 private:
 };

@@ -133,11 +133,11 @@ std::vector<Directive> Parser::pre_parse(std::vector<std::string> ctx) {
         if (cur == NULL) {
             return parsed;
         }
-
         // 引数のパース(特殊文字が来るまで足し続ける)
         while (cur->is_quoted || (cur->value != "{" && cur->value != ";" && cur->value != "}")) {
             dire.args.push_back(cur->value);
-            cur = lexer_.read();
+            dire.line = cur->line;
+            cur       = lexer_.read();
             if (cur == NULL) {
                 return parsed;
             }
@@ -173,16 +173,34 @@ void Parser::add_server(const std::vector<std::string> &args) {
 }
 
 void Parser::add_location(const std::vector<std::string> &args) {
-    ctx_ = LOCATION;
     ContextLocation l(ctx_servers_.back());
     l.path = args.front();
-    ctx_servers_.back().locations.push_back(l);
+
+    if (ctx_ == SERVER) {
+        ctx_servers_.back().locations.push_back(l);
+    }
+    if (ctx_ == LOCATION) {
+        ctx_servers_.back().locations.back().locations.push_back(l);
+    }
+    ctx_ = LOCATION;
 }
 
 void Parser::add_limit_except(const std::vector<std::string> &args) {
-    (void)args;
-    ctx_                                              = LIMIT_EXCEPT;
-    ctx_servers_.back().locations.back().limit_expect = new ContextLimitExpect;
+    ctx_ = LIMIT_EXCEPT;
+
+    ContextLimitExcept *lmt = new ContextLimitExcept;
+    for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
+        if (utility::str_tolower(*it) == "get") {
+            lmt->allowed_methods.insert(GET);
+        }
+        if (utility::str_tolower(*it) == "post") {
+            lmt->allowed_methods.insert(POST);
+        }
+        if (utility::str_tolower(*it) == "delete") {
+            lmt->allowed_methods.insert(DELETE);
+        }
+    }
+    ctx_servers_.back().locations.back().limit_except = lmt;
 }
 
 /// Normal
@@ -202,7 +220,7 @@ void Parser::add_allow(const std::vector<std::string> &args) {
             ctx_servers_.back().locations.back().allow = ip_addr;
             break;
         case LIMIT_EXCEPT:
-            ctx_servers_.back().locations.back().limit_expect->allow = ip_addr;
+            ctx_servers_.back().locations.back().limit_except->allow = ip_addr;
             break;
         default:;
     }
@@ -224,14 +242,14 @@ void Parser::add_deny(const std::vector<std::string> &args) {
             ctx_servers_.back().locations.back().deny = ip_addr;
             break;
         case LIMIT_EXCEPT:
-            ctx_servers_.back().locations.back().limit_expect->deny = ip_addr;
+            ctx_servers_.back().locations.back().limit_except->deny = ip_addr;
             break;
         default:;
     }
 }
 
 void Parser::add_autoindex(const std::vector<std::string> &args) {
-    const bool &flag = (args.front() == "on");
+    const bool &flag = (utility::str_tolower(args.front()) == "on");
 
     if (ctx_ == SERVER) {
         ctx_servers_.back().autoindex = flag;
@@ -261,13 +279,19 @@ void Parser::add_error_page(const std::vector<std::string> &args) {
 
 void Parser::add_index(const std::vector<std::string> &args) {
     if (ctx_ == SERVER) {
+        ContextServer &srv = ctx_servers_.back();
         for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
-            ctx_servers_.back().indexes.insert(*it);
+            if (std::find(srv.indexes.begin(), srv.indexes.end(), *it) == srv.indexes.end()) {
+                srv.indexes.push_back(*it);
+            }
         }
     }
     if (ctx_ == LOCATION) {
+        ContextLocation &loc = ctx_servers_.back().locations.back();
         for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
-            ctx_servers_.back().locations.back().indexes.insert(*it);
+            if (std::find(loc.indexes.begin(), loc.indexes.end(), *it) == loc.indexes.end()) {
+                loc.indexes.push_back(*it);
+            }
         }
     }
 }
@@ -380,11 +404,13 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
     }
     // ブロックディレクティブの処理
     while (!que.empty()) {
-
+        ContextType before        = ctx_;
         Directive d               = que.front();
         add_directive_functions f = add_directives_func_map[d.name];
         (this->*f)(d.args);
         parse(d.block);
+
+        ctx_ = before;
         que.pop();
     }
     return ctx_servers_;
@@ -439,6 +465,7 @@ std::string vector_to_string(std::vector<T> v) {
     oss << " }";
     return oss.str();
 }
+
 template <class First, class Second>
 std::string vector_pair_to_string(std::vector<std::pair<First, Second> > vp) {
     std::ostringstream oss;
@@ -478,39 +505,77 @@ std::string set_to_string(std::set<T> st) {
     return oss.str();
 }
 
+void Parser::indent(size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        std::cout << " ";
+    }
+}
+
 template <class Key, class Value>
-void print_key_value(const Key &key, const Value &value, bool indent = false) {
+void Parser::print_key_value(const Key &key, const Value &value, bool has_indent) {
     int size = 24;
-    if (indent) {
-        std::cout << "  ";
+    if (has_indent) {
+        indent(2);
         size = 22;
     }
     std::cout << std::setw(size) << std::left << key << ": " << value << std::endl;
 }
 
+void Parser::print_limit_except(const ContextLimitExcept *lmt) {
+    if (lmt == NULL) {
+        std::cout << std::setw(24) << std::left << "  LimitExcept"
+                  << ": { }" << std::endl;
+        return;
+    }
+    std::cout << std::setw(24) << std::left << "  LimitExcept {" << std::endl;
+    std::cout << std::setw(24) << std::left << "  allowed_methods"
+              << ": { ";
+    for (std::set<enum Methods>::iterator it = lmt->allowed_methods.begin(); it != lmt->allowed_methods.end(); ++it) {
+        if (it != lmt->allowed_methods.begin()) {
+            std::cout << ", ";
+        }
+        switch (*it) {
+            case GET:
+                std::cout << "GET";
+                break;
+            case POST:
+                std::cout << "POST";
+                break;
+            case DELETE:
+                std::cout << "DELETE";
+                break;
+            default:;
+        }
+    }
+    std::cout << " }" << std::endl;
+    print_key_value("allow", lmt->allow, true);
+    print_key_value("deny", lmt->deny, true);
+    std::cout << "  }" << std::endl;
+}
+
 void Parser::print_location(const std::vector<ContextLocation> &loc) {
     if (loc.size() == 0) {
-        std::cout << std::setw(22) << std::left << "location"
-                  << ": "
-                  << "{  }" << std::endl;
+        std::cout << std::setw(24) << std::left << "Locations"
+                  << ": { }" << std::endl;
+        return;
     }
 
     size_t i = 0;
     for (std::vector<ContextLocation>::const_iterator it = loc.begin(); it != loc.end(); ++it) {
-        std::cout << "locations[" << i++ << "]  {" << std::endl;
+        std::cout << "Locations[" << i++ << "]  {" << std::endl;
         print_key_value("location_path", it->path, true);
         print_key_value("client_max_body_size", it->client_max_body_size, true);
         print_key_value("autoindex", it->autoindex, true);
         print_key_value("allow", it->allow, true);
         print_key_value("deny", it->deny, true);
         print_key_value("root", it->root, true);
-        print_key_value("indexes", set_to_string(it->indexes), true);
+        print_key_value("indexes", vector_to_string(it->indexes), true);
         print_key_value("error_pages", map_to_string(it->error_pages), true);
         print_key_value("redirect", pair_to_string(it->redirect), true);
+        print_limit_except(it->limit_except);
+        print_location(it->locations);
         std::cout << "}" << std::endl;
     }
-
-    // print_key_value("limit_except" << ":" << loc.limit_except);,
 }
 
 void Parser::print_server(const ContextServer &serv) {
@@ -519,7 +584,7 @@ void Parser::print_server(const ContextServer &serv) {
     print_key_value("allow", serv.allow);
     print_key_value("deny", serv.deny);
     print_key_value("root", serv.root);
-    print_key_value("indexes", set_to_string(serv.indexes));
+    print_key_value("indexes", vector_to_string(serv.indexes));
     print_key_value("error_pages", map_to_string(serv.error_pages));
     print_key_value("host, port", vector_pair_to_string(serv.host_ports));
     print_key_value("upload_store", serv.upload_store);
