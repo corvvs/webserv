@@ -27,6 +27,10 @@ public:
 
     ContextLocation longest_prefix_match_location(const ContextServer &ctx_server, const std::string &path);
 
+
+    void print_location(const std::vector<ContextLocation> &loc);
+    void print_server(const ContextServer &serv);
+    void print_limit_except(const ContextLimitExcept *lmt);
 private:
     enum ContextType {
         GLOBAL,
@@ -81,13 +85,13 @@ private:
     /// Original
     void add_upload_store(const std::vector<std::string> &args);
 
-    template <class Key, class Value>
-    void print_key_value(const Key &key, const Value &value, bool has_indent = false);
+    // template <class Key, class Value>
+    // void print_key_value(const Key &key, const Value &value, bool has_indent = false);
 
-    void print_location(const std::vector<ContextLocation> &loc);
-    void print_server(const ContextServer &serv);
-    void print_limit_except(const ContextLimitExcept *lmt);
-    void indent(size_t i);
+    // void print_location(const std::vector<ContextLocation> &loc);
+    // void print_server(const ContextServer &serv);
+    // void print_limit_except(const ContextLimitExcept *lmt);
+    // void indent(size_t i);
 };
 } // namespace config
 

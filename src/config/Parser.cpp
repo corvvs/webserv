@@ -1,5 +1,6 @@
 #include "Parser.hpp"
 #include "Config.hpp"
+#include "ConfigUtility.hpp"
 #include "Lexer.hpp"
 #include "Validator.hpp"
 #include "test_common.hpp"
@@ -7,7 +8,6 @@
 #include <iostream>
 #include <map>
 #include <queue>
-#include <sstream>
 #include <stack>
 #include <utility>
 
@@ -223,13 +223,13 @@ void Parser::add_limit_except(const std::vector<std::string> &args) {
 
     ContextLimitExcept *lmt = new ContextLimitExcept();
     for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
-        if (utility::str_tolower(*it) == "get") {
+        if (str_tolower(*it) == "get") {
             lmt->allowed_methods.insert(GET);
         }
-        if (utility::str_tolower(*it) == "post") {
+        if (str_tolower(*it) == "post") {
             lmt->allowed_methods.insert(POST);
         }
-        if (utility::str_tolower(*it) == "delete") {
+        if (str_tolower(*it) == "delete") {
             lmt->allowed_methods.insert(DELETE);
         }
     }
@@ -282,7 +282,7 @@ void Parser::add_deny(const std::vector<std::string> &args) {
 }
 
 void Parser::add_autoindex(const std::vector<std::string> &args) {
-    const bool &flag = (utility::str_tolower(args.front()) == "on");
+    const bool &flag = (str_tolower(args.front()) == "on");
 
     if (ctx_ == SERVER) {
         ctx_servers_.back().autoindex = flag;
@@ -330,7 +330,7 @@ void Parser::add_index(const std::vector<std::string> &args) {
 }
 
 void Parser::add_listen(const std::vector<std::string> &args) {
-    const std::vector<std::string> &splitted = utility::split_str(args.front(), ":");
+    const std::vector<std::string> &splitted = split_str(args.front(), ":");
 
     std::string host;
     int port;
@@ -449,8 +449,7 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
     return ctx_servers_;
 }
 
-/*************************************************************/
-// debug
+/// Debug functions
 void print_directives(std::vector<Directive> d, bool is_block, std::string before) {
     std::string dir;
     if (is_block) {
@@ -477,91 +476,14 @@ void print_directives(std::vector<Directive> d, bool is_block, std::string befor
     }
 }
 
-template <class First, class Second>
-std::string pair_to_string(std::pair<First, Second> p) {
-    std::ostringstream oss;
-    oss << "< ";
-    oss << p.first << ", " << p.second << " >";
-    return oss.str();
-}
-
-template <class T>
-std::string vector_to_string(std::vector<T> v) {
-    std::ostringstream oss;
-    oss << "{ ";
-    for (typename std::vector<T>::iterator it = v.begin(); it != v.end(); ++it) {
-        if (it != v.begin()) {
-            oss << ", ";
-        }
-        oss << *it;
-    }
-    oss << " }";
-    return oss.str();
-}
-
-template <class First, class Second>
-std::string vector_pair_to_string(std::vector<std::pair<First, Second> > vp) {
-    std::ostringstream oss;
-    oss << "{ ";
-    for (typename std::vector<std::pair<First, Second> >::iterator it = vp.begin(); it != vp.end(); ++it) {
-        if (it != vp.begin()) {
-            oss << ", ";
-        }
-        oss << pair_to_string(*it);
-    }
-    oss << " }";
-    return oss.str();
-}
-
-template <class Key, class Value>
-std::string map_to_string(std::map<Key, Value> mp) {
-    std::ostringstream oss;
-    oss << "{ ";
-    for (typename std::map<Key, Value>::iterator it = mp.begin(); it != mp.end(); ++it) {
-        oss << "< " << it->first << ", " << it->second << " >";
-    }
-    oss << " }";
-    return oss.str();
-}
-
-template <class T>
-std::string set_to_string(std::set<T> st) {
-    std::ostringstream oss;
-    oss << "{ ";
-    for (typename std::set<T>::iterator it = st.begin(); it != st.end(); ++it) {
-        if (it != st.begin()) {
-            oss << ", ";
-        }
-        oss << *it;
-    }
-    oss << " }";
-    return oss.str();
-}
-
-void Parser::indent(size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        std::cout << " ";
-    }
-}
-
-template <class Key, class Value>
-void Parser::print_key_value(const Key &key, const Value &value, bool has_indent) {
-    int size = 24;
-    if (has_indent) {
-        indent(2);
-        size = 22;
-    }
-    std::cout << std::setw(size) << std::left << key << ": " << value << std::endl;
-}
-
 void Parser::print_limit_except(const ContextLimitExcept *lmt) {
     if (lmt == NULL) {
-        std::cout << std::setw(24) << std::left << "  LimitExcept"
+        std::cout << std::setw(INDENT_SIZE) << std::left << "  LimitExcept"
                   << ": { }" << std::endl;
         return;
     }
-    std::cout << std::setw(24) << std::left << "  LimitExcept {" << std::endl;
-    std::cout << std::setw(24) << std::left << "  allowed_methods"
+    std::cout << std::setw(INDENT_SIZE) << std::left << "  LimitExcept {" << std::endl;
+    std::cout << std::setw(INDENT_SIZE) << std::left << "  allowed_methods"
               << ": { ";
     for (std::set<enum Methods>::iterator it = lmt->allowed_methods.begin(); it != lmt->allowed_methods.end(); ++it) {
         if (it != lmt->allowed_methods.begin()) {
@@ -588,7 +510,7 @@ void Parser::print_limit_except(const ContextLimitExcept *lmt) {
 
 void Parser::print_location(const std::vector<ContextLocation> &loc) {
     if (loc.size() == 0) {
-        std::cout << std::setw(24) << std::left << "Locations"
+        std::cout << std::setw(INDENT_SIZE) << std::left << "Locations"
                   << ": { }" << std::endl;
         return;
     }
@@ -625,5 +547,4 @@ void Parser::print_server(const ContextServer &serv) {
     print_key_value("redirect", pair_to_string(serv.redirect));
     print_location(serv.locations);
 }
-/*************************************************************/
 } // namespace config

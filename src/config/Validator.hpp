@@ -5,11 +5,6 @@
 #include <string>
 #include <vector>
 
-namespace utility {
-std::vector<std::string> split_str(const std::string &s, const std::string &sep);
-std::string str_tolower(const std::string &s);
-} // namespace utility
-
 namespace config {
 
 typedef std::string ErrorType;

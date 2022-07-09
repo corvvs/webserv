@@ -1,4 +1,5 @@
 #include "Validator.hpp"
+#include "ConfigUtility.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
 #include "test_common.hpp"
@@ -12,37 +13,6 @@
 /**
  * root の重複
  */
-namespace utility {
-std::vector<std::string> split_str(const std::string &s, const std::string &sep) {
-    size_t len = sep.length();
-    std::vector<std::string> vec;
-    if (len == 0) {
-        vec.push_back(s);
-        return vec;
-    }
-
-    size_t offset = 0;
-    while (1) {
-        size_t pos = s.find(sep, offset);
-        if (pos == std::string::npos) {
-            vec.push_back(s.substr(offset));
-            break;
-        }
-        vec.push_back(s.substr(offset, pos - offset));
-        offset = pos + len;
-    }
-    return vec;
-}
-
-std::string str_tolower(const std::string &s) {
-    std::string low;
-    for (std::string::const_iterator it = s.begin(); it != s.end(); ++it) {
-        low += std::tolower(*it);
-    }
-    return low;
-}
-} // namespace utility
-
 namespace config {
 
 /// static functions
@@ -66,7 +36,7 @@ static bool is_integer(const std::string &s) {
 }
 
 static bool is_ipaddr(const std::string &s) {
-    std::vector<std::string> splitted(utility::split_str(s, "."));
+    std::vector<std::string> splitted(split_str(s, "."));
     // 要素が4つじゃなかったらout
     if (splitted.size() != 4) {
         return false;
@@ -99,7 +69,6 @@ static bool is_valid_allow_deny(const std::vector<std::string> &args) {
     return is_ipaddr(args.front());
 }
 
-// returnも
 static bool is_valid_error_page(const std::vector<std::string> &args) {
     if (!is_integer(args.front())) {
         return false;
@@ -128,7 +97,7 @@ static bool is_valid_listen(const std::vector<std::string> &args) {
     if (args.size() == 2 && args.back() != "default_server") {
         return false;
     }
-    std::vector<std::string> splitted(utility::split_str(args.front(), ":"));
+    std::vector<std::string> splitted(split_str(args.front(), ":"));
     if (splitted.size() != 1 && splitted.size() != 2) {
         return false;
     }
@@ -173,7 +142,7 @@ static std::map<std::string, int> setting_directives(void) {
     directives["location"]     = (HTTP_SRV | HTTP_LOC | BLOCK | TAKE12);
     directives["limit_except"] = (HTTP_LOC | BLOCK | MORE1);
 
-    /// Normal
+    /// Simple
     directives["allow"] = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | HTTP_LMT | TAKE1);
     directives["deny"]  = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | HTTP_LMT | TAKE1);
 

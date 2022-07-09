@@ -6,6 +6,7 @@ SRCS := ../utils/test_common.cpp \
 		Lexer.cpp \
 		Parser.cpp \
 		Config.cpp \
+		ConfigUtility.cpp \
 		Validator.cpp \
 		File.cpp \
 		main.cpp
