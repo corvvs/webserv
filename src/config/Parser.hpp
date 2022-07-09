@@ -25,6 +25,8 @@ public:
     ~Parser(void);
     std::vector<Directive> Parse(const std::string &file_data);
 
+    ContextLocation longest_prefix_match_location(const ContextServer &ctx_server, const std::string &path);
+
 private:
     enum ContextType {
         GLOBAL,

@@ -8,6 +8,7 @@
 #include <map>
 #include <queue>
 #include <sstream>
+#include <stack>
 #include <utility>
 
 namespace config {
@@ -16,7 +17,6 @@ Parser::Parser(void) {}
 Parser::~Parser(void) {}
 
 // ディレクティブとコンテキストを追加する関数を設定する
-// Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
 Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     DirectiveFunctionsMap directives;
 
@@ -62,7 +62,12 @@ std::vector<Directive> Parser::Parse(const std::string &file_data) {
     // debug
     std::vector<ContextServer>::iterator it = server_configs.begin();
     for (; it != server_configs.end(); ++it) {
-        print_server(*it);
+        //        print_server(*it);
+        std::vector<ContextLocation> vec;
+        // WIP: 確認用
+        ContextLocation loc = longest_prefix_match_location(*it, "/config");
+        vec.push_back(loc);
+        print_location(vec);
     }
 
     return pre_parsed;
@@ -159,7 +164,36 @@ std::vector<Directive> Parser::pre_parse(std::vector<std::string> ctx) {
     return parsed;
 }
 
-// static std::map<std::string, void *f()()> add_directive_funcs;
+/**
+ * サーバーコンテキストの中で最長前方一致するロケーションを返す
+ * 一致しない場合はサーバーコンテキストの情報をそのまま継承したロケーションを返す
+ */
+ContextLocation Parser::longest_prefix_match_location(const ContextServer &srv, const std::string &path) {
+    ContextLocation longest(srv);
+
+    std::stack<ContextLocation> sta;
+    for (std::vector<ContextLocation>::const_iterator it = srv.locations.begin(); it != srv.locations.end(); ++it) {
+        sta.push(*it);
+    }
+
+    while (!sta.empty()) {
+        ContextLocation cur = sta.top();
+        sta.pop();
+        // 一致していたら子要素をstackに積む
+        if (path.find(cur.path) == 0) {
+            for (std::vector<ContextLocation>::const_iterator it = cur.locations.begin(); it != cur.locations.end();
+                 ++it) {
+                sta.push(*it);
+            }
+            // マッチしてる部分が長い場合は更新する
+            if (longest.path.size() < cur.path.size()) {
+                longest = cur;
+            }
+        }
+    }
+    return longest;
+}
+
 void Parser::add_http(const std::vector<std::string> &args) {
     (void)args;
     ctx_ = MAIN;
@@ -175,7 +209,6 @@ void Parser::add_server(const std::vector<std::string> &args) {
 void Parser::add_location(const std::vector<std::string> &args) {
     ContextLocation l(ctx_servers_.back());
     l.path = args.front();
-
     if (ctx_ == SERVER) {
         ctx_servers_.back().locations.push_back(l);
     }
@@ -188,7 +221,7 @@ void Parser::add_location(const std::vector<std::string> &args) {
 void Parser::add_limit_except(const std::vector<std::string> &args) {
     ctx_ = LIMIT_EXCEPT;
 
-    ContextLimitExcept *lmt = new ContextLimitExcept;
+    ContextLimitExcept *lmt = new ContextLimitExcept();
     for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
         if (utility::str_tolower(*it) == "get") {
             lmt->allowed_methods.insert(GET);
