@@ -1,8 +1,8 @@
 #ifndef IROUTER_HPP
 #define IROUTER_HPP
-#include "IOriginator.hpp"
 #include "../communication/RequestHTTP.hpp"
 #include "../communication/ResponseHTTP.hpp"
+#include "IOriginator.hpp"
 
 // [ルータインターフェース]
 // [責務]

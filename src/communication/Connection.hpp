@@ -1,11 +1,11 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
-#include "../interface/IRouter.hpp"
 #include "../interface/IObserver.hpp"
+#include "../interface/IRouter.hpp"
 #include "../interface/ISocketlike.hpp"
+#include "../socket/SocketConnected.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
-#include "../socket/SocketConnected.hpp"
 #include <iostream>
 #include <string>
 
