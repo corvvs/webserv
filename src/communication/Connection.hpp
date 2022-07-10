@@ -1,9 +1,9 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
-#include "../event/Iobserver.hpp"
-#include "../event/Isocketlike.hpp"
+#include "../interface/IObserver.hpp"
+#include "../interface/IRouter.hpp"
+#include "../interface/ISocketlike.hpp"
 #include "../socket/SocketConnected.hpp"
-#include "IRouter.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
 #include <iostream>
