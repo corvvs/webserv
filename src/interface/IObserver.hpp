@@ -1,8 +1,7 @@
 #ifndef IOSERVER_HPP
 #define IOSERVER_HPP
 
-#include "Isocketlike.hpp"
-#include "time.hpp"
+#include "ISocketlike.hpp"
 
 // [ソケット監視者インターフェース]
 // [責務]

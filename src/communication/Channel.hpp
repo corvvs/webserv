@@ -1,9 +1,9 @@
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
-#include "../event/Iobserver.hpp"
-#include "../event/Isocketlike.hpp"
+#include "../interface/IObserver.hpp"
+#include "../interface/IRouter.hpp"
+#include "../interface/ISocketlike.hpp"
 #include "../socket/SocketListening.hpp"
-#include "IRouter.hpp"
 #include <map>
 #include <utility>
 

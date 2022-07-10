@@ -1,9 +1,9 @@
 #ifndef ISOCKET_LIKE_HPP
 #define ISOCKET_LIKE_HPP
 
+#include "../event/time.hpp"
 #include "../socket/SocketType.hpp"
-#include "Iobserver.hpp"
-#include "time.hpp"
+#include "IObserver.hpp"
 
 class IObserver;
 
