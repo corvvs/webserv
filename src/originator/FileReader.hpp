@@ -1,12 +1,12 @@
 #ifndef FILEREADER_HPP
 #define FILEREADER_HPP
+#include "../communication/RequestHTTP.hpp"
+#include "../interface/IObserver.hpp"
 #include "../interface/IOriginator.hpp"
 #include "../interface/IRouter.hpp"
+#include "../interface/ISocketlike.hpp"
 #include "../socket/SocketUNIX.hpp"
 #include "../utils/http.hpp"
-#include "../interface/IObserver.hpp"
-#include "../interface/ISocketlike.hpp"
-#include "../communication/RequestHTTP.hpp"
 #include <fstream>
 #include <map>
 

@@ -1,15 +1,15 @@
 #ifndef CGI_HPP
 #define CGI_HPP
+#include "../communication/RequestHTTP.hpp"
+#include "../interface/IObserver.hpp"
 #include "../interface/IOriginator.hpp"
 #include "../interface/IRouter.hpp"
+#include "../interface/ISocketlike.hpp"
 #include "../socket/SocketUNIX.hpp"
 #include "../utils/http.hpp"
-#include "../interface/IObserver.hpp"
-#include "../interface/ISocketlike.hpp"
-#include "../communication/RequestHTTP.hpp"
 #include <map>
 
-class CGI : public ISocketLike/*, public IOriginator*/ {
+class CGI : public ISocketLike /*, public IOriginator*/ {
 public:
     typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
