@@ -1,9 +1,9 @@
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
-#include "../interface/IOriginator.hpp"
-#include "../interface/IRouter.hpp"
 #include "../communication/Channel.hpp"
 #include "../interface/IObserver.hpp"
+#include "../interface/IOriginator.hpp"
+#include "../interface/IRouter.hpp"
 #include "../interface/ISocketlike.hpp"
 #include <map>
 
