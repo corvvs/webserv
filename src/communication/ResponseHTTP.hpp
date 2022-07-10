@@ -1,8 +1,8 @@
 #ifndef RESPONSEHTTP_HPP
 #define RESPONSEHTTP_HPP
-#include "HeaderHTTP.hpp"
-#include "../utils/http.hpp"
 #include "../utils/HTTPError.hpp"
+#include "../utils/http.hpp"
+#include "HeaderHTTP.hpp"
 #include "ParserHelper.hpp"
 #include <string>
 #include <vector>

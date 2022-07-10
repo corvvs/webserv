@@ -53,3 +53,10 @@ test:
 run_test: test
 	./tests/tests
 
+.PHONY: up
+up:	down all
+	./$(NAME) &
+
+.PHONY: down
+down:
+	pkill $(NAME) || :
