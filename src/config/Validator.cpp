@@ -11,7 +11,10 @@
 #include <vector>
 
 /**
- * root の重複
+ * TODO:
+ * バリデーション強化
+ *  - root の重複
+ *  - locationの入れ子のパスが正しいか
  */
 namespace config {
 
@@ -60,13 +63,6 @@ bool is_port(const std::string &arg) {
     }
     const int n = std::atoi(arg.c_str());
     return 0 <= n && n <= 65535;
-}
-
-static bool is_valid_allow_deny(const std::vector<std::string> &args) {
-    if (args.front() == "all") {
-        return true;
-    }
-    return is_ipaddr(args.front());
 }
 
 static bool is_valid_error_page(const std::vector<std::string> &args) {
@@ -215,9 +211,6 @@ static bool is_valid_flag(std::string s) {
 }
 
 bool is_correct_details(Directive dire) {
-    if (dire.name == "allow" || dire.name == "deny") {
-        return is_valid_allow_deny(dire.args);
-    }
     if (dire.name == "error_page") {
         return is_valid_error_page(dire.args);
     }

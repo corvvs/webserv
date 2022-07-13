@@ -1,6 +1,7 @@
 #include "Parser.hpp"
 #include "Config.hpp"
 #include "ConfigUtility.hpp"
+#include "Context.hpp"
 #include "Lexer.hpp"
 #include "Validator.hpp"
 #include "test_common.hpp"
@@ -8,7 +9,6 @@
 #include <iostream>
 #include <map>
 #include <queue>
-#include <stack>
 #include <utility>
 
 namespace config {
@@ -27,9 +27,6 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     directives["limit_except"] = &Parser::add_limit_except;
 
     /// Normal
-    directives["allow"] = &Parser::add_allow;
-    directives["deny"]  = &Parser::add_deny;
-
     directives["autoindex"]   = &Parser::add_autoindex;
     directives["error_page"]  = &Parser::add_error_page;
     directives["index"]       = &Parser::add_index;
@@ -46,7 +43,8 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     return directives;
 }
 
-std::vector<Directive> Parser::Parse(const std::string &file_data) {
+// vector<ContextServer>を返す
+std::vector<Config> Parser::Parse(const std::string &file_data) {
     // トークンごとに分割する
     lexer_.tokenize(file_data);
 
@@ -59,18 +57,24 @@ std::vector<Directive> Parser::Parse(const std::string &file_data) {
     ctx_                                      = GLOBAL;
     std::vector<ContextServer> server_configs = parse(pre_parsed);
 
-    // debug
+    std::vector<Config> configs;
+
     std::vector<ContextServer>::iterator it = server_configs.begin();
     for (; it != server_configs.end(); ++it) {
         //        print_server(*it);
-        std::vector<ContextLocation> vec;
-        // WIP: 確認用
-        ContextLocation loc = longest_prefix_match_location(*it, "/config");
-        vec.push_back(loc);
-        print_location(vec);
-    }
 
-    return pre_parsed;
+        // TODO: listenの数だけConfigを作成する(圧縮する必要あり)
+        std::vector<host_port_pair>::const_iterator hp_it = it->host_ports.begin();
+        for (; hp_it != it->host_ports.end(); ++hp_it) {
+            // サーバーコンテキストからconfigを作成
+            Config conf(*it);
+
+            // configに対応するhostとportのペアを与える
+            conf.set_host_port(*hp_it);
+            configs.push_back(conf);
+        }
+    }
+    return configs;
 }
 
 std::vector<std::string> Parser::enter_block_ctx(Directive dire, std::vector<std::string> ctx) {
@@ -164,36 +168,6 @@ std::vector<Directive> Parser::pre_parse(std::vector<std::string> ctx) {
     return parsed;
 }
 
-/**
- * サーバーコンテキストの中で最長前方一致するロケーションを返す
- * 一致しない場合はサーバーコンテキストの情報をそのまま継承したロケーションを返す
- */
-ContextLocation Parser::longest_prefix_match_location(const ContextServer &srv, const std::string &path) {
-    ContextLocation longest(srv);
-
-    std::stack<ContextLocation> sta;
-    for (std::vector<ContextLocation>::const_iterator it = srv.locations.begin(); it != srv.locations.end(); ++it) {
-        sta.push(*it);
-    }
-
-    while (!sta.empty()) {
-        ContextLocation cur = sta.top();
-        sta.pop();
-        // 一致していたら子要素をstackに積む
-        if (path.find(cur.path) == 0) {
-            for (std::vector<ContextLocation>::const_iterator it = cur.locations.begin(); it != cur.locations.end();
-                 ++it) {
-                sta.push(*it);
-            }
-            // マッチしてる部分が長い場合は更新する
-            if (longest.path.size() < cur.path.size()) {
-                longest = cur;
-            }
-        }
-    }
-    return longest;
-}
-
 void Parser::add_http(const std::vector<std::string> &args) {
     (void)args;
     ctx_ = MAIN;
@@ -219,6 +193,9 @@ void Parser::add_location(const std::vector<std::string> &args) {
 }
 
 void Parser::add_limit_except(const std::vector<std::string> &args) {
+    for (size_t i = 0; i < args.size(); ++i) {
+        DXOUT(args[i]);
+    }
     ctx_ = LIMIT_EXCEPT;
 
     ContextLimitExcept *lmt = new ContextLimitExcept();
@@ -237,50 +214,6 @@ void Parser::add_limit_except(const std::vector<std::string> &args) {
 }
 
 /// Normal
-void Parser::add_allow(const std::vector<std::string> &args) {
-    std::string ip_addr = args.front();
-    if (args.front() == "all") {
-        ip_addr = "0.0.0.0";
-    }
-    switch (ctx_) {
-        case MAIN:
-            ctx_main_.allow = ip_addr;
-            break;
-        case SERVER:
-            ctx_servers_.back().allow = ip_addr;
-            break;
-        case LOCATION:
-            ctx_servers_.back().locations.back().allow = ip_addr;
-            break;
-        case LIMIT_EXCEPT:
-            ctx_servers_.back().locations.back().limit_except->allow = ip_addr;
-            break;
-        default:;
-    }
-}
-
-void Parser::add_deny(const std::vector<std::string> &args) {
-    std::string ip_addr = args.front();
-    if (args.front() == "all") {
-        ip_addr = "0.0.0.0";
-    }
-    switch (ctx_) {
-        case MAIN:
-            ctx_main_.deny = ip_addr;
-            break;
-        case SERVER:
-            ctx_servers_.back().deny = ip_addr;
-            break;
-        case LOCATION:
-            ctx_servers_.back().locations.back().deny = ip_addr;
-            break;
-        case LIMIT_EXCEPT:
-            ctx_servers_.back().locations.back().limit_except->deny = ip_addr;
-            break;
-        default:;
-    }
-}
-
 void Parser::add_autoindex(const std::vector<std::string> &args) {
     const bool &flag = (str_tolower(args.front()) == "on");
 
@@ -418,7 +351,7 @@ void Parser::add_upload_store(const std::vector<std::string> &args) {
 
 // ブロックを内包するかどうかで判断しても良さそう
 bool is_block(Directive dir) {
-    return dir.block.size() != 0;
+    return dir.block.size() != 0 && dir.name != "limit_except";
 }
 
 // blockディレクティブの場合はstackに積んでおいてあとから処理する
@@ -427,6 +360,8 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
     std::queue<Directive> que;
 
     for (std::vector<Directive>::iterator it = vdir.begin(); it != vdir.end(); ++it) {
+        DXOUT(it->name);
+
         if (is_block(*it)) {
             que.push(*it);
         } else {
@@ -437,8 +372,9 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
     }
     // ブロックディレクティブの処理
     while (!que.empty()) {
-        ContextType before        = ctx_;
-        Directive d               = que.front();
+        ContextType before = ctx_;
+        Directive d        = que.front();
+        DXOUT(d.name);
         add_directive_functions f = add_directives_func_map[d.name];
         (this->*f)(d.args);
         parse(d.block);
@@ -450,13 +386,9 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
 }
 
 /// Debug functions
-void print_directives(std::vector<Directive> d, bool is_block, std::string before) {
-    std::string dir;
-    if (is_block) {
-        dir = "block";
-    } else {
-        dir = "Dire";
-    }
+void Parser::print_directives(const std::vector<Directive> &d, const bool &is_block, const std::string &before) {
+    std::string dir = is_block ? "Dire" : "Block";
+
     for (size_t i = 0; i < d.size(); i++) {
         std::cout << before << dir << "[" << i << "].dire   : " << d[i].name << std::endl;
 
@@ -502,9 +434,6 @@ void Parser::print_limit_except(const ContextLimitExcept *lmt) {
             default:;
         }
     }
-    std::cout << " }" << std::endl;
-    print_key_value("allow", lmt->allow, true);
-    print_key_value("deny", lmt->deny, true);
     std::cout << "  }" << std::endl;
 }
 
@@ -521,8 +450,6 @@ void Parser::print_location(const std::vector<ContextLocation> &loc) {
         print_key_value("location_path", it->path, true);
         print_key_value("client_max_body_size", it->client_max_body_size, true);
         print_key_value("autoindex", it->autoindex, true);
-        print_key_value("allow", it->allow, true);
-        print_key_value("deny", it->deny, true);
         print_key_value("root", it->root, true);
         print_key_value("indexes", vector_to_string(it->indexes), true);
         print_key_value("error_pages", map_to_string(it->error_pages), true);
@@ -536,8 +463,6 @@ void Parser::print_location(const std::vector<ContextLocation> &loc) {
 void Parser::print_server(const ContextServer &serv) {
     print_key_value("client_max_body_size", serv.client_max_body_size);
     print_key_value("autoindex", serv.autoindex);
-    print_key_value("allow", serv.allow);
-    print_key_value("deny", serv.deny);
     print_key_value("root", serv.root);
     print_key_value("indexes", vector_to_string(serv.indexes));
     print_key_value("error_pages", map_to_string(serv.error_pages));
