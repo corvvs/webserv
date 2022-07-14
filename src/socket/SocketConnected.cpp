@@ -2,8 +2,6 @@
 #include "SocketListening.hpp"
 #include "strings.h"
 
-SocketConnected::SocketConnected(const SocketConnected &other) : ASocket(other) {}
-
 SocketConnected::SocketConnected(t_socket_domain sdomain, t_socket_type stype) : ASocket(sdomain, stype) {}
 
 SocketConnected::SocketConnected(t_fd accepted_fd, SocketListening &listening_socket)
