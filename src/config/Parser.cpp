@@ -225,6 +225,9 @@ void Parser::add_location(const std::vector<std::string> &args) {
     }
     if (ctx_ == LOCATION) {
         ContextLocation *p = get_current_location();
+        if (loc.path.find(p->path) != 0) {
+            throw SyntaxError("config: \"" + loc.path + "\" is outside location \"" + p->path + "\"");
+        }
         p->locations.push_back(loc);
     }
     ctx_ = LOCATION;
