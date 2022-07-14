@@ -10,6 +10,7 @@
 #include <iostream>
 #include <map>
 #include <queue>
+#include <stack>
 #include <utility>
 
 namespace config {
@@ -200,6 +201,8 @@ std::vector<Directive> Parser::pre_parse(std::vector<std::string> ctx) {
     return parsed;
 }
 
+/// Adder
+
 void Parser::add_http(const std::vector<std::string> &args) {
     (void)args;
     ctx_ = MAIN;
@@ -215,11 +218,14 @@ void Parser::add_server(const std::vector<std::string> &args) {
 void Parser::add_location(const std::vector<std::string> &args) {
     ContextLocation loc(ctx_servers_.back());
     loc.path = args.front();
+
+    ContextServer &srv = ctx_servers_.back();
     if (ctx_ == SERVER) {
-        ctx_servers_.back().locations.push_back(loc);
+        srv.locations.push_back(loc);
     }
     if (ctx_ == LOCATION) {
-        ctx_servers_.back().locations.back().locations.push_back(loc);
+        ContextLocation *p = get_current_location();
+        p->locations.push_back(loc);
     }
     ctx_ = LOCATION;
 }
@@ -244,6 +250,7 @@ void Parser::add_limit_except(const std::vector<std::string> &args) {
 /// Normal
 void Parser::add_autoindex(const std::vector<std::string> &args) {
     const bool &flag = (str_tolower(args.front()) == "on");
+
     switch (ctx_) {
         case MAIN:
             ctx_main_.autoindex = flag;
@@ -252,10 +259,12 @@ void Parser::add_autoindex(const std::vector<std::string> &args) {
             ctx_servers_.back().autoindex             = flag;
             ctx_servers_.back().defined_["autoindex"] = true;
             break;
-        case LOCATION:
-            ctx_servers_.back().locations.back().autoindex             = flag;
-            ctx_servers_.back().locations.back().defined_["autoindex"] = true;
+        case LOCATION: {
+            ContextLocation *p       = get_current_location();
+            p->autoindex             = flag;
+            p->defined_["autoindex"] = true;
             break;
+        }
         default:;
     }
 }
@@ -279,12 +288,14 @@ void Parser::add_error_page(const std::vector<std::string> &args) {
             }
             ctx_servers_.back().defined_["error_page"] = true;
             break;
-        case LOCATION:
+        case LOCATION: {
+            ContextLocation *p = get_current_location();
             for (std::vector<int>::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
-                ctx_servers_.back().locations.back().error_pages[*it] = path;
+                p->error_pages[*it] = path;
             }
-            ctx_servers_.back().locations.back().defined_["error_page"] = true;
+            p->defined_["error_page"] = true;
             break;
+        }
         default:;
     }
 }
@@ -300,11 +311,11 @@ void Parser::add_index(const std::vector<std::string> &args) {
         }
     }
     if (ctx_ == LOCATION) {
-        ContextLocation &loc  = ctx_servers_.back().locations.back();
-        loc.defined_["index"] = true;
+        ContextLocation *p   = get_current_location();
+        p->defined_["index"] = true;
         for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
-            if (std::find(loc.indexes.begin(), loc.indexes.end(), *it) == loc.indexes.end()) {
-                loc.indexes.push_back(*it);
+            if (std::find(p->indexes.begin(), p->indexes.end(), *it) == p->indexes.end()) {
+                p->indexes.push_back(*it);
             }
         }
     }
@@ -364,10 +375,7 @@ void Parser::add_return(const std::vector<std::string> &args) {
     }
     if (ctx_ == LOCATION) {
         // 入れ子になっている場合があるので、子をたどっていく
-        ContextLocation *p = &ctx_servers_.back().locations.back();
-        while (p->locations.size() != 0) {
-            p = &p->locations.back();
-        }
+        ContextLocation *p      = get_current_location();
         p->redirect             = std::make_pair(status_code, path);
         p->defined_["redirect"] = true;
     }
@@ -378,7 +386,7 @@ void Parser::add_root(const std::vector<std::string> &args) {
 
     ContextServer &srv = ctx_servers_.back();
     switch (ctx_) {
-        case (MAIN):
+        case MAIN:
             if (ctx_main_.defined_["root"]) {
                 throw SyntaxError("config: \"root\" directive is duplicate");
             }
@@ -386,22 +394,20 @@ void Parser::add_root(const std::vector<std::string> &args) {
             ctx_main_.defined_["root"] = true;
 
             break;
-        case (SERVER):
-            if (ctx_ == SERVER) {
-                if (srv.defined_["root"]) {
-                    throw SyntaxError("config: \"root\" directive is duplicate");
-                }
-                srv.root             = path;
-                srv.defined_["root"] = true;
+        case SERVER:
+            if (srv.defined_["root"]) {
+                throw SyntaxError("config: \"root\" directive is duplicate");
             }
-        case (LOCATION):
-            if (ctx_ == LOCATION) {
-                if (srv.locations.back().defined_["root"]) {
-                    throw SyntaxError("config: \"root\" directive is duplicate");
-                }
-                srv.locations.back().root             = path;
-                srv.locations.back().defined_["root"] = true;
+            srv.root             = path;
+            srv.defined_["root"] = true;
+        case LOCATION: {
+            ContextLocation *p = get_current_location();
+            if (p->defined_["root"]) {
+                throw SyntaxError("config: \"root\" directive is duplicate");
             }
+            p->root             = path;
+            p->defined_["root"] = true;
+        }
         default:;
     }
 }
@@ -413,20 +419,22 @@ void Parser::add_server_name(const std::vector<std::string> &args) {
 }
 
 void Parser::add_client_max_body_size(const std::vector<std::string> &args) {
-    const int &client_max_body_size = std::atoi(args.front().c_str());
+    const long &size = std::strtol(args.front().c_str(), NULL, 10);
 
     switch (ctx_) {
         case MAIN:
-            ctx_main_.client_max_body_size = client_max_body_size;
+            ctx_main_.client_max_body_size = size;
             break;
         case SERVER:
-            ctx_servers_.back().client_max_body_size             = client_max_body_size;
+            ctx_servers_.back().client_max_body_size             = size;
             ctx_servers_.back().defined_["client_max_body_size"] = true;
             break;
-        case LOCATION:
-            ctx_servers_.back().locations.back().client_max_body_size             = client_max_body_size;
-            ctx_servers_.back().locations.back().defined_["client_max_body_size"] = true;
+        case LOCATION: {
+            ContextLocation *p                  = get_current_location();
+            p->client_max_body_size             = size;
+            p->defined_["client_max_body_size"] = true;
             break;
+        }
         default:;
     }
 }
@@ -479,22 +487,40 @@ void Parser::inherit_data(std::vector<ContextServer> &servers) {
     }
 }
 
+size_t Parser::count_nested_locations(void) const {
+    std::stack<ContextType> sta(ctx_stack_);
+    size_t cnt = 0;
+    while (!sta.empty() && sta.top() == LOCATION) {
+        cnt += 1;
+        sta.pop();
+    }
+    return cnt;
+}
+
+ContextLocation *Parser::get_current_location(void) {
+    ContextLocation *p = &ctx_servers_.back().locations.back();
+    const size_t &cnt  = count_nested_locations();
+    for (size_t i = 1; i < cnt; i++) {
+        p = &p->locations.back();
+    }
+    return p;
+}
+
 std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
-    // 再帰的に呼ぶので事前に定義しておきたい
+    // TODO:再帰的に呼ぶので事前に定義しておきたい
     add_directives_func_map = setting_directive_functions();
 
-    ContextType before = ctx_;
     for (std::vector<Directive>::iterator it = vdir.begin(); it != vdir.end(); ++it) {
-        before                    = ctx_;
         add_directive_functions f = add_directives_func_map[it->name];
         (this->*f)(it->args);
 
         if (is_block(it->name)) {
+            ctx_stack_.push(ctx_);
             parse(it->block);
-            ctx_ = before;
+            ctx_ = ctx_stack_.top();
+            ctx_stack_.pop();
         }
     }
-    ctx_ = before;
     return ctx_servers_;
 }
 

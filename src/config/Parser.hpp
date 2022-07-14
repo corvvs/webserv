@@ -4,6 +4,7 @@
 #include "Lexer.hpp"
 #include <iostream>
 #include <map>
+#include <stack>
 #include <string>
 #include <utility>
 
@@ -39,6 +40,7 @@ private:
     std::vector<ContextServer> ctx_servers_;
     ContextMain ctx_main_;
     ContextType ctx_;
+    std::stack<ContextType> ctx_stack_;
 
     std::map<std::string, Parser::add_directive_functions> add_directives_func_map;
     DirectiveFunctionsMap setting_directive_functions(void);
@@ -50,6 +52,8 @@ private:
     std::string brace_balanced(void);
 
     bool is_conflicted_server_name(const std::vector<ContextServer> &servers);
+    size_t count_nested_locations(void) const;
+    ContextLocation *get_current_location(void);
 
     void inherit_data(std::vector<ContextServer> &servers);
     void inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs);
