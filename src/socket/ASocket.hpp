@@ -17,9 +17,6 @@ private:
     // Socketはfactoryメソッドbind,
     // connectおよびインスタンスメソッドacceptによってのみ生成される
 
-    // デフォルトコンストラクタは使用禁止(呼び出すと例外を投げる)
-    ASocket();
-
 protected:
     ASocket(t_socket_domain sdomain, t_socket_type stype);
 

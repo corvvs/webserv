@@ -10,9 +10,6 @@ class SocketListening;
 // - ソケットを通じてバイト列の送受信を行うこと
 class SocketConnected : public ASocket {
 private:
-    // 使用禁止
-    SocketConnected();
-
     // クライアント用コンストラクタ
     SocketConnected(t_socket_domain sdomain, t_socket_type stype);
     // サーバ用コンストラクタ

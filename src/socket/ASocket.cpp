@@ -1,9 +1,5 @@
 #include "ASocket.hpp"
 
-ASocket::ASocket() {
-    throw std::runtime_error("forbidden");
-}
-
 ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
