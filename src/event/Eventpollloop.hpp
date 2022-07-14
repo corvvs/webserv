@@ -1,7 +1,7 @@
 #ifndef EVENT_POLL_LOOP_HPP
 #define EVENT_POLL_LOOP_HPP
-#include "Iobserver.hpp"
-#include "Isocketlike.hpp"
+#include "../interface/IObserver.hpp"
+#include "../interface/ISocketlike.hpp"
 #include <errno.h>
 #include <map>
 #include <poll.h>

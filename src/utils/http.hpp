@@ -1,9 +1,11 @@
 #ifndef HTTP_HPP
 #define HTTP_HPP
 #include "test_common.hpp"
+#include "types.hpp"
 #include <iostream>
 #include <map>
 #include <string>
+#include <vector>
 
 // 全体で共通して使うenum, 型, 定数, フリー関数など
 
@@ -54,9 +56,12 @@ enum t_version {
 };
 
 typedef char char_type;
-typedef unsigned char byte_type;
+typedef u8t byte_type;
 // バイト列
-typedef std::basic_string<char_type> byte_string;
+typedef std::vector<char_type> byte_string;
+typedef std::basic_string<char_type> char_string;
+typedef std::string::size_type size_type;
+const size_type npos = std::string::npos;
 // ヘッダのキーの型
 typedef byte_string header_key_type;
 // ヘッダの値の型
@@ -71,32 +76,20 @@ extern const t_version DEFAULT_HTTP_VERSION;
 const byte_string version_str(t_version version);
 const byte_string reason(t_status status);
 
-// 文字集合
-namespace Charset {
+// 文字列をbyte_stringに変換する
+byte_string strfy(const char_string &str);
+// byte_stringを文字列に変換する
+char_string restrfy(const byte_string &str);
 
-// アルファベット・小文字
-extern const byte_string alpha_low;
-// アルファベット・大文字
-extern const byte_string alpha_up;
-// アルファベット
-extern const byte_string alpha;
-// 数字
-extern const byte_string digit;
-// 16進数における数字
-extern const byte_string hexdig;
-// HTTPにおける非予約文字
-extern const byte_string unreserved;
-extern const byte_string gen_delims;
-extern const byte_string sub_delims;
-// token 構成文字
-// 空白, ":", ";", "/", "@", "?" を含まない.
-// ".", "&" は含む.
-extern const byte_string tchar;
-extern const byte_string sp;
-extern const byte_string ws;
-extern const byte_string crlf;
-extern const byte_string lf;
-} // namespace Charset
+size_type find(const byte_string &hay, const byte_string &needle);
+
 } // namespace HTTP
+
+std::ostream &operator<<(std::ostream &ost, const HTTP::byte_string &f);
+bool operator==(const HTTP::byte_string &lhs, const char *rhs);
+bool operator==(const char *lhs, const HTTP::byte_string &rhs);
+HTTP::byte_string operator+(const HTTP::byte_string &lhs, const HTTP::byte_string &rhs);
+HTTP::byte_string &operator+=(HTTP::byte_string &lhs, const HTTP::byte_string &rhs);
+HTTP::byte_string operator+(const HTTP::byte_string &lhs, const char *rhs);
 
 #endif

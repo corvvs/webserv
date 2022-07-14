@@ -4,7 +4,7 @@ ASocket::ASocket() {
     throw std::runtime_error("forbidden");
 }
 
-ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) : dying(false) {
+ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
@@ -22,7 +22,7 @@ ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) : dying(false) {
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
 }
 
-ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) : fd(sock_fd), dying(false) {
+ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) : fd(sock_fd) {
     domain = sdomain;
     type   = stype;
 }
