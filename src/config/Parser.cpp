@@ -13,7 +13,7 @@
 
 namespace config {
 
-Parser::Parser(void) {}
+Parser::Parser(void) : current_(0) {}
 Parser::~Parser(void) {}
 
 // ディレクティブとコンテキストを追加する関数を設定する
@@ -56,12 +56,13 @@ std::vector<Config> Parser::Parse(const std::string &file_data) {
 
     ctx_                                      = GLOBAL;
     std::vector<ContextServer> server_configs = parse(pre_parsed);
+    inherit_data(server_configs);
 
     std::vector<Config> configs;
 
     std::vector<ContextServer>::iterator it = server_configs.begin();
     for (; it != server_configs.end(); ++it) {
-        //        print_server(*it);
+        // print_server(*it);
 
         // TODO: listenの数だけConfigを作成する(圧縮する必要あり)
         std::vector<host_port_pair>::const_iterator hp_it = it->host_ports.begin();
@@ -175,53 +176,56 @@ void Parser::add_http(const std::vector<std::string> &args) {
 
 void Parser::add_server(const std::vector<std::string> &args) {
     (void)args;
-    ctx_ = SERVER;
     ContextServer s(ctx_main_);
     ctx_servers_.push_back(s);
+    ctx_ = SERVER;
 }
 
 void Parser::add_location(const std::vector<std::string> &args) {
-    ContextLocation l(ctx_servers_.back());
-    l.path = args.front();
+    ContextLocation loc(ctx_servers_.back());
+    loc.path = args.front();
     if (ctx_ == SERVER) {
-        ctx_servers_.back().locations.push_back(l);
+        ctx_servers_.back().locations.push_back(loc);
     }
     if (ctx_ == LOCATION) {
-        ctx_servers_.back().locations.back().locations.push_back(l);
+        ctx_servers_.back().locations.back().locations.push_back(loc);
     }
     ctx_ = LOCATION;
 }
 
 void Parser::add_limit_except(const std::vector<std::string> &args) {
-    for (size_t i = 0; i < args.size(); ++i) {
-        DXOUT(args[i]);
-    }
-    ctx_ = LIMIT_EXCEPT;
-
-    ContextLimitExcept *lmt = new ContextLimitExcept();
+    ContextLimitExcept lmt;
     for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
         if (str_tolower(*it) == "get") {
-            lmt->allowed_methods.insert(GET);
+            lmt.allowed_methods.insert(GET);
         }
         if (str_tolower(*it) == "post") {
-            lmt->allowed_methods.insert(POST);
+            lmt.allowed_methods.insert(POST);
         }
         if (str_tolower(*it) == "delete") {
-            lmt->allowed_methods.insert(DELETE);
+            lmt.allowed_methods.insert(DELETE);
         }
     }
     ctx_servers_.back().locations.back().limit_except = lmt;
+    ctx_                                              = LIMIT_EXCEPT;
 }
 
 /// Normal
 void Parser::add_autoindex(const std::vector<std::string> &args) {
     const bool &flag = (str_tolower(args.front()) == "on");
-
-    if (ctx_ == SERVER) {
-        ctx_servers_.back().autoindex = flag;
-    }
-    if (ctx_ == LOCATION) {
-        ctx_servers_.back().locations.back().autoindex = flag;
+    switch (ctx_) {
+        case MAIN:
+            ctx_main_.autoindex = flag;
+            break;
+        case SERVER:
+            ctx_servers_.back().autoindex             = flag;
+            ctx_servers_.back().defined_["autoindex"] = true;
+            break;
+        case LOCATION:
+            ctx_servers_.back().locations.back().autoindex             = flag;
+            ctx_servers_.back().locations.back().defined_["autoindex"] = true;
+            break;
+        default:;
     }
 }
 
@@ -235,9 +239,11 @@ void Parser::add_error_page(const std::vector<std::string> &args) {
             break;
         case SERVER:
             ctx_servers_.back().error_pages[error_code] = path;
+            ctx_servers_.back().defined_["error_page"]  = true;
             break;
         case LOCATION:
             ctx_servers_.back().locations.back().error_pages[error_code] = path;
+            ctx_servers_.back().locations.back().defined_["error_page"]  = true;
             break;
         default:;
     }
@@ -245,7 +251,8 @@ void Parser::add_error_page(const std::vector<std::string> &args) {
 
 void Parser::add_index(const std::vector<std::string> &args) {
     if (ctx_ == SERVER) {
-        ContextServer &srv = ctx_servers_.back();
+        ContextServer &srv    = ctx_servers_.back();
+        srv.defined_["index"] = true;
         for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
             if (std::find(srv.indexes.begin(), srv.indexes.end(), *it) == srv.indexes.end()) {
                 srv.indexes.push_back(*it);
@@ -253,7 +260,8 @@ void Parser::add_index(const std::vector<std::string> &args) {
         }
     }
     if (ctx_ == LOCATION) {
-        ContextLocation &loc = ctx_servers_.back().locations.back();
+        ContextLocation &loc  = ctx_servers_.back().locations.back();
+        loc.defined_["index"] = true;
         for (std::vector<std::string>::const_iterator it = args.begin(); it != args.end(); ++it) {
             if (std::find(loc.indexes.begin(), loc.indexes.end(), *it) == loc.indexes.end()) {
                 loc.indexes.push_back(*it);
@@ -296,6 +304,7 @@ void Parser::add_listen(const std::vector<std::string> &args) {
     if (args.size() == 2) {
         ctx_servers_.back().default_server = (args.back() == "default_server");
     }
+    ctx_servers_.back().defined_["listen"] = true;
 }
 
 void Parser::add_return(const std::vector<std::string> &args) {
@@ -303,10 +312,17 @@ void Parser::add_return(const std::vector<std::string> &args) {
     const std::string &path = args.back();
 
     if (ctx_ == SERVER) {
-        ctx_servers_.back().redirect = std::make_pair(status_code, path);
+        ctx_servers_.back().redirect             = std::make_pair(status_code, path);
+        ctx_servers_.back().defined_["redirect"] = true;
     }
     if (ctx_ == LOCATION) {
-        ctx_servers_.back().locations.back().redirect = std::make_pair(status_code, path);
+        // 入れ子になっている場合があるので、子をたどっていく
+        ContextLocation *p = &ctx_servers_.back().locations.back();
+        while (p->locations.size() != 0) {
+            p = &p->locations.back();
+        }
+        p->redirect             = std::make_pair(status_code, path);
+        p->defined_["redirect"] = true;
     }
 }
 
@@ -314,16 +330,19 @@ void Parser::add_root(const std::vector<std::string> &args) {
     const std::string &path = args.front();
 
     if (ctx_ == SERVER) {
-        ctx_servers_.back().root = path;
+        ctx_servers_.back().root             = path;
+        ctx_servers_.back().defined_["root"] = true;
     }
     if (ctx_ == LOCATION) {
-        ctx_servers_.back().locations.back().root = path;
+        ctx_servers_.back().locations.back().root             = path;
+        ctx_servers_.back().locations.back().defined_["root"] = true;
     }
 }
 
 void Parser::add_server_name(const std::vector<std::string> &args) {
     const std::vector<std::string> &server_names = args;
     ctx_servers_.back().server_names             = server_names;
+    ctx_servers_.back().defined_["server_name"]  = true;
 }
 
 void Parser::add_client_max_body_size(const std::vector<std::string> &args) {
@@ -334,10 +353,12 @@ void Parser::add_client_max_body_size(const std::vector<std::string> &args) {
             ctx_main_.client_max_body_size = client_max_body_size;
             break;
         case SERVER:
-            ctx_servers_.back().client_max_body_size = client_max_body_size;
+            ctx_servers_.back().client_max_body_size             = client_max_body_size;
+            ctx_servers_.back().defined_["client_max_body_size"] = true;
             break;
         case LOCATION:
-            ctx_servers_.back().locations.back().client_max_body_size = client_max_body_size;
+            ctx_servers_.back().locations.back().client_max_body_size             = client_max_body_size;
+            ctx_servers_.back().locations.back().defined_["client_max_body_size"] = true;
             break;
         default:;
     }
@@ -345,43 +366,69 @@ void Parser::add_client_max_body_size(const std::vector<std::string> &args) {
 
 /// Original
 void Parser::add_upload_store(const std::vector<std::string> &args) {
-    const std::string &path          = args.front();
-    ctx_servers_.back().upload_store = path;
+    const std::string &path                      = args.front();
+    ctx_servers_.back().upload_store             = path;
+    ctx_servers_.back().defined_["upload_store"] = true;
 }
 
-// ブロックを内包するかどうかで判断しても良さそう
-bool is_block(Directive dir) {
-    return dir.block.size() != 0 && dir.name != "limit_except";
+bool is_block(std::string directive) {
+    return (directive == "http" || directive == "server" || directive == "location" || directive == "limit_except");
 }
 
-// blockディレクティブの場合はstackに積んでおいてあとから処理する
+void Parser::inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &child) {
+    child.client_max_body_size
+        = child.defined_["client_max_body_size"] ? child.client_max_body_size : parent.client_max_body_size;
+    child.autoindex   = child.defined_["autoindex"] ? child.autoindex : parent.autoindex;
+    child.root        = child.defined_["root"] ? child.root : parent.root;
+    child.indexes     = child.defined_["indexes"] ? child.indexes : parent.indexes;
+    child.error_pages = child.defined_["error_pages"] ? child.error_pages : parent.error_pages;
+    child.redirect    = child.defined_["redirect"] ? child.redirect : parent.redirect;
+}
+
+void Parser::inherit_main_to_srv(const ContextMain &main, ContextServer &srv) {
+    srv.client_max_body_size
+        = srv.defined_["client_max_body_size"] ? srv.client_max_body_size : main.client_max_body_size;
+    srv.autoindex   = srv.defined_["autoindex"] ? srv.autoindex : main.autoindex;
+    srv.root        = srv.defined_["root"] ? srv.root : main.root;
+    srv.indexes     = srv.defined_["index"] ? srv.indexes : main.indexes;
+    srv.error_pages = srv.defined_["error_page"] ? srv.error_pages : main.error_pages;
+}
+
+void Parser::inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs) {
+    for (std::vector<ContextLocation>::iterator it = locs.begin(); it != locs.end(); ++it) {
+        inherit_loc_to_loc(parent, *it);
+        inherit_locations(*it, it->locations);
+    }
+}
+
+// main -> server -> locationの順に継承していく
+// 子で定義されていない場合に継承していく
+void Parser::inherit_data(std::vector<ContextServer> &servers) {
+    for (std::vector<ContextServer>::iterator it = servers.begin(); it != servers.end(); ++it) {
+        inherit_main_to_srv(ctx_main_, *it);
+        ContextLocation loc(*it);
+        // locationを再帰的に継承する
+        inherit_locations(loc, it->locations);
+    }
+}
+
 std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
+    // 再帰的に呼ぶので事前に定義しておきたい
     add_directives_func_map = setting_directive_functions();
-    std::queue<Directive> que;
 
+    ContextType before = ctx_;
     for (std::vector<Directive>::iterator it = vdir.begin(); it != vdir.end(); ++it) {
-        DXOUT(it->name);
+        before                            = ctx_;
+        defined_maps_[current_][it->name] = true;
+        add_directive_functions f         = add_directives_func_map[it->name];
+        (this->*f)(it->args);
 
-        if (is_block(*it)) {
-            que.push(*it);
-        } else {
-            // ディレクティブの処理
-            add_directive_functions f = add_directives_func_map[it->name];
-            (this->*f)(it->args);
+        if (is_block(it->name)) {
+            parse(it->block);
+            ctx_ = before;
         }
     }
-    // ブロックディレクティブの処理
-    while (!que.empty()) {
-        ContextType before = ctx_;
-        Directive d        = que.front();
-        DXOUT(d.name);
-        add_directive_functions f = add_directives_func_map[d.name];
-        (this->*f)(d.args);
-        parse(d.block);
-
-        ctx_ = before;
-        que.pop();
-    }
+    ctx_ = before;
     return ctx_servers_;
 }
 
@@ -408,17 +455,12 @@ void Parser::print_directives(const std::vector<Directive> &d, const bool &is_bl
     }
 }
 
-void Parser::print_limit_except(const ContextLimitExcept *lmt) {
-    if (lmt == NULL) {
-        std::cout << std::setw(INDENT_SIZE) << std::left << "  LimitExcept"
-                  << ": { }" << std::endl;
-        return;
-    }
+void Parser::print_limit_except(const ContextLimitExcept &lmt) {
     std::cout << std::setw(INDENT_SIZE) << std::left << "  LimitExcept {" << std::endl;
     std::cout << std::setw(INDENT_SIZE) << std::left << "  allowed_methods"
               << ": { ";
-    for (std::set<enum Methods>::iterator it = lmt->allowed_methods.begin(); it != lmt->allowed_methods.end(); ++it) {
-        if (it != lmt->allowed_methods.begin()) {
+    for (std::set<enum Methods>::iterator it = lmt.allowed_methods.begin(); it != lmt.allowed_methods.end(); ++it) {
+        if (it != lmt.allowed_methods.begin()) {
             std::cout << ", ";
         }
         switch (*it) {
@@ -434,13 +476,13 @@ void Parser::print_limit_except(const ContextLimitExcept *lmt) {
             default:;
         }
     }
-    std::cout << "  }" << std::endl;
+    std::cout << " }" << std::endl;
 }
 
 void Parser::print_location(const std::vector<ContextLocation> &loc) {
     if (loc.size() == 0) {
         std::cout << std::setw(INDENT_SIZE) << std::left << "Locations"
-                  << ": { }" << std::endl;
+                  << ": {  }" << std::endl;
         return;
     }
 
@@ -460,16 +502,16 @@ void Parser::print_location(const std::vector<ContextLocation> &loc) {
     }
 }
 
-void Parser::print_server(const ContextServer &serv) {
-    print_key_value("client_max_body_size", serv.client_max_body_size);
-    print_key_value("autoindex", serv.autoindex);
-    print_key_value("root", serv.root);
-    print_key_value("indexes", vector_to_string(serv.indexes));
-    print_key_value("error_pages", map_to_string(serv.error_pages));
-    print_key_value("host, port", vector_pair_to_string(serv.host_ports));
-    print_key_value("upload_store", serv.upload_store);
-    print_key_value("server_names", vector_to_string(serv.server_names));
-    print_key_value("redirect", pair_to_string(serv.redirect));
-    print_location(serv.locations);
+void Parser::print_server(const ContextServer &srv) {
+    print_key_value("client_max_body_size", srv.client_max_body_size);
+    print_key_value("autoindex", srv.autoindex);
+    print_key_value("root", srv.root);
+    print_key_value("indexes", vector_to_string(srv.indexes));
+    print_key_value("error_pages", map_to_string(srv.error_pages));
+    print_key_value("host, port", vector_pair_to_string(srv.host_ports));
+    print_key_value("upload_store", srv.upload_store);
+    print_key_value("server_names", vector_to_string(srv.server_names));
+    print_key_value("redirect", pair_to_string(srv.redirect));
+    print_location(srv.locations);
 }
 } // namespace config

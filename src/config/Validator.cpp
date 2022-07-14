@@ -139,9 +139,6 @@ static std::map<std::string, int> setting_directives(void) {
     directives["limit_except"] = (HTTP_LOC | BLOCK | MORE1);
 
     /// Simple
-    directives["allow"] = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | HTTP_LMT | TAKE1);
-    directives["deny"]  = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | HTTP_LMT | TAKE1);
-
     directives["autoindex"]   = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | FLAG);
     directives["error_page"]  = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE2);
     directives["index"]       = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE1);

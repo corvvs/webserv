@@ -25,14 +25,8 @@ ContextLocation::ContextLocation(const ContextServer &server) {
     indexes              = server.indexes;
     error_pages          = server.error_pages;
     redirect             = server.redirect;
-    limit_except         = NULL;
 }
-
-ContextLocation::~ContextLocation(void) {
-    if (limit_except != NULL) {
-        delete limit_except;
-    }
-}
+ContextLocation::~ContextLocation(void) {}
 
 ContextLimitExcept::ContextLimitExcept(void) {}
 

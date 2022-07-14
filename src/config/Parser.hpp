@@ -49,6 +49,11 @@ private:
     std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
     std::string brace_balanced(void);
 
+    void inherit_data(std::vector<ContextServer> &servers);
+    void inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs);
+    void inherit_main_to_srv(const ContextMain &main, ContextServer &srv);
+    void inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &child);
+
     /// Block
     void add_http(const std::vector<std::string> &args);
     void add_server(const std::vector<std::string> &args);
@@ -73,7 +78,7 @@ private:
     print_directives(const std::vector<Directive> &d, const bool &is_block = false, const std::string &before = "");
     void print_location(const std::vector<ContextLocation> &loc);
     void print_server(const ContextServer &serv);
-    void print_limit_except(const ContextLimitExcept *lmt);
+    void print_limit_except(const ContextLimitExcept &lmt);
 };
 } // namespace config
 

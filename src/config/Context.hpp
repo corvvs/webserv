@@ -68,6 +68,8 @@ public:
     // 内部にlocationを持つ可能性がある
     std::vector<class ContextLocation> locations;
 
+    std::map<std::string, bool> defined_;
+
 private:
 };
 
@@ -96,7 +98,9 @@ public:
     /// 継承しない
     std::string path;
     std::vector<class ContextLocation> locations;
-    ContextLimitExcept *limit_except; // 持たない可能性もあるのでポインタにする(デストラクタでデリートする)
+    ContextLimitExcept limit_except;
+
+    std::map<std::string, bool> defined_;
 
 private:
 };
