@@ -1,10 +1,10 @@
 #include "Parser.hpp"
+#include "../utils/test_common.hpp"
 #include "Config.hpp"
 #include "ConfigUtility.hpp"
 #include "Context.hpp"
 #include "Lexer.hpp"
 #include "Validator.hpp"
-#include "test_common.hpp"
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -62,7 +62,7 @@ std::vector<Config> Parser::Parse(const std::string &file_data) {
 
     std::vector<ContextServer>::iterator it = server_configs.begin();
     for (; it != server_configs.end(); ++it) {
-        // print_server(*it);
+        print_server(*it);
 
         // TODO: listenの数だけConfigを作成する(圧縮する必要あり)
         std::vector<host_port_pair>::const_iterator hp_it = it->host_ports.begin();
@@ -230,20 +230,30 @@ void Parser::add_autoindex(const std::vector<std::string> &args) {
 }
 
 void Parser::add_error_page(const std::vector<std::string> &args) {
-    const int &error_code   = std::atoi(args.front().c_str());
+    std::vector<int> error_codes;
+    for (size_t i = 0; i < args.size() - 1; ++i) {
+        DXOUT(args[i]);
+        error_codes.push_back(std::atoi(args[i].c_str()));
+    }
     const std::string &path = args.back();
 
     switch (ctx_) {
         case MAIN:
-            ctx_main_.error_pages[error_code] = path;
+            for (std::vector<int>::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
+                ctx_main_.error_pages[*it] = path;
+            }
             break;
         case SERVER:
-            ctx_servers_.back().error_pages[error_code] = path;
-            ctx_servers_.back().defined_["error_page"]  = true;
+            for (std::vector<int>::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
+                ctx_servers_.back().error_pages[*it] = path;
+            }
+            ctx_servers_.back().defined_["error_page"] = true;
             break;
         case LOCATION:
-            ctx_servers_.back().locations.back().error_pages[error_code] = path;
-            ctx_servers_.back().locations.back().defined_["error_page"]  = true;
+            for (std::vector<int>::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
+                ctx_servers_.back().locations.back().error_pages[*it] = path;
+            }
+            ctx_servers_.back().locations.back().defined_["error_page"] = true;
             break;
         default:;
     }

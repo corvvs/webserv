@@ -1,8 +1,8 @@
 #include "Validator.hpp"
+#include "../utils/test_common.hpp"
 #include "ConfigUtility.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
-#include "test_common.hpp"
 #include <iostream>
 #include <locale>
 #include <map>
@@ -66,12 +66,16 @@ bool is_port(const std::string &arg) {
 }
 
 static bool is_valid_error_page(const std::vector<std::string> &args) {
-    if (!is_integer(args.front())) {
-        return false;
+    for (size_t i = 0; i < args.size() - 1; ++i) {
+        if (!is_integer(args[i])) {
+            return false;
+        }
+        const int &n = std::atoi(args[i].c_str());
+        if (!(300 <= n && n <= 599)) {
+            return false;
+        }
     }
-    const int &n = std::atoi(args.front().c_str());
-
-    return 300 <= n && n <= 599;
+    return true;
 }
 
 static bool is_valid_return(const std::vector<std::string> &args) {

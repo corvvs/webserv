@@ -1,8 +1,8 @@
+#include "../utils/test_common.hpp"
 #include "File.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
 #include "Validator.hpp"
-#include "test_common.hpp"
 #include <iostream>
 #include <vector>
 
