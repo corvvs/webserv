@@ -44,6 +44,33 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     return directives;
 }
 
+bool Parser::is_conflicted_server_name(const std::vector<ContextServer> &servers) {
+    std::map<std::pair<std::string, int>, std::string> mp;
+
+    for (size_t i = 0; i < servers.size(); ++i) {
+        for (size_t j = i + 1; j < servers.size(); ++j) {
+            const ContextServer &srv1                            = servers[i];
+            const ContextServer &srv2                            = servers[j];
+            const std::vector<std::pair<std::string, int> > &hp1 = srv1.host_ports;
+            const std::vector<std::pair<std::string, int> > &hp2 = srv2.host_ports;
+
+            for (size_t k = 0; k < hp2.size(); ++k) {
+                // 同一のhostとportを持っているか
+                if (std::find(hp1.begin(), hp1.end(), hp2[k]) != hp1.end()) {
+                    const std::vector<std::string> &names1 = srv1.server_names;
+                    const std::vector<std::string> &names2 = srv2.server_names;
+                    for (size_t l = 0; l < names2.size(); ++l) {
+                        // 同一のサーバーネームを持っているか
+                        if (std::find(names1.begin(), names1.end(), names2[l]) != names1.end()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
 // vector<ContextServer>を返す
 std::vector<Config> Parser::Parse(const std::string &file_data) {
     // トークンごとに分割する
@@ -57,6 +84,9 @@ std::vector<Config> Parser::Parse(const std::string &file_data) {
 
     ctx_                                      = GLOBAL;
     std::vector<ContextServer> server_configs = parse(pre_parsed);
+    if (is_conflicted_server_name(server_configs)) {
+        throw SyntaxError("config: conflicting server name");
+    }
     inherit_data(server_configs);
 
     std::vector<Config> configs;

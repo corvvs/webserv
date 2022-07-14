@@ -49,6 +49,8 @@ private:
     std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
     std::string brace_balanced(void);
 
+    bool is_conflicted_server_name(const std::vector<ContextServer> &servers);
+
     void inherit_data(std::vector<ContextServer> &servers);
     void inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs);
     void inherit_main_to_srv(const ContextMain &main, ContextServer &srv);
