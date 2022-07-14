@@ -5,6 +5,7 @@
 #include "Context.hpp"
 #include "Lexer.hpp"
 #include "Validator.hpp"
+#include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -310,6 +311,13 @@ void Parser::add_listen(const std::vector<std::string> &args) {
         port = std::atoi(splitted.back().c_str());
     }
 
+    ContextServer &srv = ctx_servers_.back();
+    std::pair<std::string, int> p(host, port);
+
+    // 既にlistenで同じ引数で定義されていたらエラー
+    if (std::find(srv.host_ports.begin(), srv.host_ports.end(), p) != srv.host_ports.end()) {
+        throw SyntaxError("config: duplicate listen");
+    }
     ctx_servers_.back().host_ports.push_back(std::make_pair(host, port));
     if (args.size() == 2) {
         ctx_servers_.back().default_server = (args.back() == "default_server");
