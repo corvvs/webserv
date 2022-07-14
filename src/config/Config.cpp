@@ -37,7 +37,7 @@ std::string Config::get_root(const std::string &target) const {
     return loc.root;
 }
 
-int Config::get_client_max_body_size(const std::string &target) const {
+long Config::get_client_max_body_size(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.client_max_body_size;
 }

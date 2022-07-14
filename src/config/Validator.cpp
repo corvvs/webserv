@@ -25,6 +25,7 @@ static int get_context_mask(std::vector<std::string> ctx);
 static bool is_valid_flag(std::string s);
 static bool is_must_be_on_off(Directive dire, int mask);
 
+// TODO: strtolに置き換える
 static bool is_integer(const std::string &s) {
     if (s.empty()) {
         return false;
@@ -83,6 +84,18 @@ static bool is_valid_return(const std::vector<std::string> &args) {
     }
     const int &n = std::atoi(args.front().c_str());
     return 0 <= n && n <= 999;
+}
+
+static bool is_valid_client_max_body_size(const std::vector<std::string> &args) {
+    char *err;
+    const long &n = std::strtol(args.front().c_str(), &err, 10);
+    if (*err != '\0' || errno == ERANGE || errno == EINVAL) {
+        return false;
+    }
+    if (n < 0) {
+        return false;
+    }
+    return true;
 }
 
 bool is_host(const std::string &s) {
@@ -219,6 +232,9 @@ bool is_correct_details(Directive dire) {
     }
     if (dire.name == "listen") {
         return is_valid_listen(dire.args);
+    }
+    if (dire.name == "client_max_body_size") {
+        return is_valid_client_max_body_size(dire.args);
     }
     return true;
 }

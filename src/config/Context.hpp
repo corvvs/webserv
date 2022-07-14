@@ -11,14 +11,13 @@
  * error_page           vector<map<int, string> > -> (status, path)
  * index                vector<string>
  * root                 string
- * client_max_body_size int
+ * client_max_body_size long
  * host_port            pair<string, int>
  * redirect             pair<int, string> -> (status, path)
  * server_name          vector<string>
  * upload_store         string
  * default_server       bool
  */
-
 namespace config {
 
 class IContext {
@@ -34,7 +33,7 @@ class ContextMain : public IContext {
 public:
     ContextMain(void);
     ~ContextMain(void);
-    int client_max_body_size;
+    long client_max_body_size;
     bool autoindex;
     std::string root;
     std::vector<std::string> indexes;
@@ -51,7 +50,7 @@ public:
     ~ContextServer(void);
 
     // mainから継承する
-    int client_max_body_size;
+    long client_max_body_size;
     bool autoindex;
     std::string root;
     std::vector<std::string> indexes;
@@ -90,7 +89,7 @@ public:
     ~ContextLocation(void);
 
     /// 親から継承する
-    int client_max_body_size;
+    long client_max_body_size;
     bool autoindex;
     std::string root; //
     std::vector<std::string> indexes;

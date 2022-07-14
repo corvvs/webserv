@@ -12,7 +12,7 @@
  * error_page           vector<map<int, string> > -> (status, path)
  * index                vector<string>
  * root                 string
- * client_max_body_size int
+ * client_max_body_size long
  * host_port            pair<string, int>
  * redirect             pair<int, string> -> (status, path)
  * server_name          vector<string>
@@ -37,7 +37,7 @@ public:
     std::map<int, std::string> get_error_page(const std::string &target) const;
     std::vector<std::string> get_index(const std::string &target) const;
     std::string get_root(const std::string &target) const;
-    int get_client_max_body_size(const std::string &target) const;
+    long get_client_max_body_size(const std::string &target) const;
     std::string get_host(const std::string &target) const;
     int get_port(const std::string &target) const;
     std::pair<int, std::string> get_redirect(const std::string &target) const;
