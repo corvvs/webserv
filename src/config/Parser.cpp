@@ -13,7 +13,7 @@
 
 namespace config {
 
-Parser::Parser(void) : current_(0) {}
+Parser::Parser(void) {}
 Parser::~Parser(void) {}
 
 // ディレクティブとコンテキストを追加する関数を設定する
@@ -418,9 +418,8 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
 
     ContextType before = ctx_;
     for (std::vector<Directive>::iterator it = vdir.begin(); it != vdir.end(); ++it) {
-        before                            = ctx_;
-        defined_maps_[current_][it->name] = true;
-        add_directive_functions f         = add_directives_func_map[it->name];
+        before                    = ctx_;
+        add_directive_functions f = add_directives_func_map[it->name];
         (this->*f)(it->args);
 
         if (is_block(it->name)) {
