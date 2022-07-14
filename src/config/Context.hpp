@@ -40,6 +40,8 @@ public:
     std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
 
+    std::map<std::string, bool> defined_;
+
 private:
 };
 

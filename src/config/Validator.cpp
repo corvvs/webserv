@@ -13,7 +13,6 @@
 /**
  * TODO:
  * バリデーション強化
- *  - root の重複
  *  - locationの入れ子のパスが正しいか
  */
 namespace config {
@@ -146,10 +145,10 @@ static std::map<std::string, int> setting_directives(void) {
     directives["autoindex"]   = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | FLAG);
     directives["error_page"]  = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE2);
     directives["index"]       = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE1);
-    directives["listen"]      = (HTTP_SRV | MORE1);
-    directives["return"]      = (HTTP_SRV | HTTP_LOC | TAKE12);
     directives["root"]        = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | TAKE1);
     directives["server_name"] = (HTTP_SRV | MORE1);
+    directives["listen"]      = (HTTP_SRV | MORE1);
+    directives["return"]      = (HTTP_SRV | HTTP_LOC | TAKE12);
 
     directives["client_max_body_size"] = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | TAKE1);
 

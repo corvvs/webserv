@@ -233,7 +233,6 @@ void Parser::add_autoindex(const std::vector<std::string> &args) {
 void Parser::add_error_page(const std::vector<std::string> &args) {
     std::vector<int> error_codes;
     for (size_t i = 0; i < args.size() - 1; ++i) {
-        DXOUT(args[i]);
         error_codes.push_back(std::atoi(args[i].c_str()));
     }
     const std::string &path = args.back();
@@ -347,13 +346,33 @@ void Parser::add_return(const std::vector<std::string> &args) {
 void Parser::add_root(const std::vector<std::string> &args) {
     const std::string &path = args.front();
 
-    if (ctx_ == SERVER) {
-        ctx_servers_.back().root             = path;
-        ctx_servers_.back().defined_["root"] = true;
-    }
-    if (ctx_ == LOCATION) {
-        ctx_servers_.back().locations.back().root             = path;
-        ctx_servers_.back().locations.back().defined_["root"] = true;
+    ContextServer &srv = ctx_servers_.back();
+    switch (ctx_) {
+        case (MAIN):
+            if (ctx_main_.defined_["root"]) {
+                throw SyntaxError("config: \"root\" directive is duplicate");
+            }
+            ctx_main_.root             = path;
+            ctx_main_.defined_["root"] = true;
+
+            break;
+        case (SERVER):
+            if (ctx_ == SERVER) {
+                if (srv.defined_["root"]) {
+                    throw SyntaxError("config: \"root\" directive is duplicate");
+                }
+                srv.root             = path;
+                srv.defined_["root"] = true;
+            }
+        case (LOCATION):
+            if (ctx_ == LOCATION) {
+                if (srv.locations.back().defined_["root"]) {
+                    throw SyntaxError("config: \"root\" directive is duplicate");
+                }
+                srv.locations.back().root             = path;
+                srv.locations.back().defined_["root"] = true;
+            }
+        default:;
     }
 }
 
