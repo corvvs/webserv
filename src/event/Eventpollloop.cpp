@@ -102,8 +102,6 @@ void EventPollLoop::update() {
         ISocketLike *sock = unholdqueue[i].sock;
         size_t index      = indexmap[fd];
 
-        // std::cout << "unholding: " << it->fd << std::endl;
-        // DXOUT("unholding: " << it->sock);
         fds[index].fd = -1;
         sockmap.erase(fd);
         indexmap.erase(fd);

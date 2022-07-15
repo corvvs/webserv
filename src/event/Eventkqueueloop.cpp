@@ -163,17 +163,10 @@ void EventKqueueLoop::update() {
         n++;
     }
     if (n > 0) {
-        std::cout << "[";
-        for (size_t i = 0; i < changelist.size(); ++i) {
-            std::cout << changelist[i].ident << " ";
-        }
-        std::cout << "]" << std::endl;
         errno     = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
-            VOUT(errno);
             QVOUT(strerror(errno));
-            DXOUT(changelist.size() << ", " << n << ", " << count);
         }
     }
 
