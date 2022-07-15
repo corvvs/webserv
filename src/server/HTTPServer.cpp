@@ -9,6 +9,7 @@ HTTPServer::~HTTPServer() {
 void HTTPServer::listen(t_socket_domain sdomain, t_socket_type stype, t_port port) {
     Channel *ch            = new Channel(this, sdomain, stype, port);
     channels[ch->get_id()] = ch;
+    socket_observer_->reserve_hold(ch);
     socket_observer_->reserve_set(ch, IObserver::OT_READ);
 }
 

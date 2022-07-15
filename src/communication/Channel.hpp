@@ -2,7 +2,7 @@
 #define CHANNEL_HPP
 #include "../interface/IObserver.hpp"
 #include "../interface/IRouter.hpp"
-#include "../interface/ISocketlike.hpp"
+#include "../interface/ISocketLike.hpp"
 #include "../socket/SocketListening.hpp"
 #include <map>
 #include <utility>
@@ -29,8 +29,7 @@ public:
     ~Channel();
 
     t_fd get_fd() const;
-    void notify(IObserver &observer);
-    void timeout(IObserver &observer, t_time_epoch_ms epoch);
+    void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
 
     t_channel_id get_id() const;
 };

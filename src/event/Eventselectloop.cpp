@@ -2,7 +2,7 @@
 #include "../utils/test_common.hpp"
 
 void EventSelectLoop::destroy_all(EventSelectLoop::socket_map &m) {
-    for (EventSelectLoop::socket_map::iterator it = m.begin(); it != m.end(); it++) {
+    for (EventSelectLoop::socket_map::iterator it = m.begin(); it != m.end(); ++it) {
         delete it->second;
     }
 }
@@ -15,32 +15,32 @@ EventSelectLoop::~EventSelectLoop() {
     destroy_all(exception_map);
 }
 
-void EventSelectLoop::watch(ISocketLike *socket, t_observation_target map_type) {
+void EventSelectLoop::watch(t_fd fd, ISocketLike *socket, observation_category map_type) {
     switch (map_type) {
         case OT_READ:
-            read_map[socket->get_fd()] = socket;
+            read_map[fd] = socket;
             break;
         case OT_WRITE:
-            write_map[socket->get_fd()] = socket;
+            write_map[fd] = socket;
             break;
         case OT_EXCEPTION:
-            exception_map[socket->get_fd()] = socket;
+            exception_map[fd] = socket;
             break;
         default:
             throw std::runtime_error("unexpected map_type");
     }
 }
 
-void EventSelectLoop::unwatch(ISocketLike *socket, t_observation_target map_type) {
+void EventSelectLoop::unwatch(t_fd fd, observation_category map_type) {
     switch (map_type) {
         case OT_READ:
-            read_map.erase(socket->get_fd());
+            read_map.erase(fd);
             break;
         case OT_WRITE:
-            write_map.erase(socket->get_fd());
+            write_map.erase(fd);
             break;
         case OT_EXCEPTION:
-            exception_map.erase(socket->get_fd());
+            exception_map.erase(fd);
             break;
         default:
             throw std::runtime_error("unexpected map_type");
@@ -50,20 +50,23 @@ void EventSelectLoop::unwatch(ISocketLike *socket, t_observation_target map_type
 // ソケットマップ sockmap をFD集合 socketset に変換する
 void EventSelectLoop::prepare_fd_set(socket_map &sockmap, fd_set *sockset) {
     FD_ZERO(sockset);
-    for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
+    for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
         FD_SET(it->first, sockset);
     }
 }
 
 // sockmap 中のソケットがFD集合 socketset に含まれるかどうかを調べ,
 // 含まれている場合はソケットの notify メソッドを実行する
-void EventSelectLoop::scan_fd_set(socket_map &sockmap, fd_set *sockset, t_time_epoch_ms now) {
-    for (EventSelectLoop::socket_map::iterator it = sockmap.begin(); it != sockmap.end(); it++) {
-        if (now == 0) {
-            it->second->timeout(*this, now);
+void EventSelectLoop::scan_fd_set(socket_map &sockmap,
+                                  fd_set *sockset,
+                                  t_time_epoch_ms now,
+                                  IObserver::observation_category cat) {
+    for (EventSelectLoop::socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
+        if (cat == OT_TIMEOUT) {
+            it->second->notify(*this, OT_TIMEOUT, now);
         } else {
             if (FD_ISSET(it->first, sockset)) {
-                it->second->notify(*this);
+                it->second->notify(*this, cat, 0);
             }
         }
     }
@@ -100,48 +103,71 @@ void EventSelectLoop::loop() {
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             DXOUT("timeout?: " << now);
-            scan_fd_set(read_map, &read_set, now);
-            scan_fd_set(write_map, &write_set, now);
-            scan_fd_set(exception_map, &exception_set, now);
+            scan_fd_set(read_map, &read_set, now, OT_TIMEOUT);
+            scan_fd_set(write_map, &write_set, now, OT_TIMEOUT);
+            scan_fd_set(exception_map, &exception_set, now, OT_TIMEOUT);
         } else {
-            scan_fd_set(read_map, &read_set, 0);
-            scan_fd_set(write_map, &write_set, 0);
-            scan_fd_set(exception_map, &exception_set, 0);
+            scan_fd_set(read_map, &read_set, 0, OT_READ);
+            scan_fd_set(write_map, &write_set, 0, OT_WRITE);
+            scan_fd_set(exception_map, &exception_set, 0, OT_EXCEPTION);
         }
     }
 }
 
-void EventSelectLoop::reserve(ISocketLike *socket, t_observation_target from, t_observation_target to) {
-    t_socket_reservation pre = {socket, from, to};
+void EventSelectLoop::reserve(ISocketLike *socket, observation_category cat, bool in) {
+    t_socket_reservation pre = {socket->get_fd(), socket, cat, in};
     up_queue.push_back(pre);
 }
 
-// 次のselectの前に, このソケットを監視対象から除外する
-// (その際ソケットはdeleteされる)
-void EventSelectLoop::reserve_clear(ISocketLike *socket, t_observation_target from) {
-    reserve(socket, from, OT_NONE);
+void EventSelectLoop::reserve_hold(ISocketLike *socket) {
+    reserve(socket, OT_NONE, true);
 }
 
-// 次のselectの前に, このソケットを監視対象に追加する
-void EventSelectLoop::reserve_set(ISocketLike *socket, t_observation_target to) {
-    reserve(socket, OT_NONE, to);
+void EventSelectLoop::reserve_unhold(ISocketLike *socket) {
+    reserve(socket, OT_READ, false);
+    reserve(socket, OT_WRITE, false);
+    reserve(socket, OT_EXCEPTION, false);
+    reserve(socket, OT_NONE, false);
 }
 
-// 次のselectの前に, このソケットの監視方法を変更する
-void EventSelectLoop::reserve_transit(ISocketLike *socket, t_observation_target from, t_observation_target to) {
-    reserve(socket, from, to);
+void EventSelectLoop::reserve_unset(ISocketLike *socket, observation_category cat) {
+    reserve(socket, cat, false);
+}
+
+void EventSelectLoop::reserve_set(ISocketLike *socket, observation_category cat) {
+    reserve(socket, cat, true);
 }
 
 // ソケットの監視状態変更予約を実施する
 void EventSelectLoop::update() {
-    for (EventSelectLoop::update_queue::iterator it = up_queue.begin(); it != up_queue.end(); it++) {
-        if (it->from != OT_NONE) {
-            unwatch(it->sock, it->from);
+    // exec hold
+    for (update_queue::size_type i = 0; i < up_queue.size(); ++i) {
+        ISocketLike *sock = up_queue[i].sock;
+        t_fd fd           = up_queue[i].fd;
+        if (up_queue[i].cat == OT_NONE && up_queue[i].in) {
+            holding_map.insert(socket_map::value_type(fd, sock));
         }
-        if (it->to != OT_NONE) {
-            watch(it->sock, it->to);
+    }
+
+    // exec set or unset
+    for (update_queue::size_type i = 0; i < up_queue.size(); ++i) {
+        if (up_queue[i].cat == OT_NONE) {
+            continue;
+        }
+        if (up_queue[i].in) {
+            watch(up_queue[i].fd, up_queue[i].sock, up_queue[i].cat);
         } else {
-            delete it->sock;
+            unwatch(up_queue[i].fd, up_queue[i].cat);
+        }
+    }
+
+    // exec unhold
+    for (update_queue::size_type i = 0; i < up_queue.size(); ++i) {
+        ISocketLike *sock = up_queue[i].sock;
+        t_fd fd           = up_queue[i].fd;
+        if (up_queue[i].cat == OT_NONE && !up_queue[i].in) {
+            holding_map.erase(fd);
+            delete sock;
         }
     }
     up_queue.clear();

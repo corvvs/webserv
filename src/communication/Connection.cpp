@@ -35,9 +35,18 @@ t_fd Connection::get_fd() const {
     return sock->get_fd();
 }
 
-void Connection::notify(IObserver &observer) {
+void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
+    (void)cat;
     if (dying) {
         return;
+    }
+    if (cat == IObserver::OT_TIMEOUT) {
+        if (epoch < attr.timeout + latest_operated_at) {
+            return;
+        }
+        // タイムアウト処理
+        DXOUT("timeout!!: " << get_fd());
+        die(observer);
     }
 
     const size_t read_buffer_size = RequestHTTP::MAX_REQLINE_END;
@@ -146,18 +155,6 @@ void Connection::notify(IObserver &observer) {
     }
 }
 
-void Connection::timeout(IObserver &observer, t_time_epoch_ms epoch) {
-    if (dying) {
-        return;
-    }
-    if (epoch < attr.timeout + latest_operated_at) {
-        return;
-    }
-    // タイムアウト処理
-    DXOUT("timeout!!: " << get_fd());
-    die(observer);
-}
-
 void Connection::touch() {
     t_time_epoch_ms t = WSTime::get_epoch_ms();
     DXOUT("operated_at: " << latest_operated_at << " -> " << t);
@@ -169,17 +166,20 @@ void Connection::ready_receiving(IObserver &observer) {
     delete current_req;
     current_res = NULL;
     current_req = NULL;
-    observer.reserve_transit(this, IObserver::OT_WRITE, IObserver::OT_READ);
+    observer.reserve_unset(this, IObserver::OT_WRITE);
+    observer.reserve_set(this, IObserver::OT_READ);
     phase = CONNECTION_RECEIVING;
 }
 
 void Connection::ready_sending(IObserver &observer) {
-    observer.reserve_transit(this, IObserver::OT_READ, IObserver::OT_WRITE);
+    observer.reserve_unset(this, IObserver::OT_READ);
+    observer.reserve_set(this, IObserver::OT_WRITE);
     phase = CONNECTION_RESPONDING;
 }
 
 void Connection::ready_shutting_down(IObserver &observer) {
-    observer.reserve_transit(this, IObserver::OT_WRITE, IObserver::OT_READ);
+    observer.reserve_unset(this, IObserver::OT_WRITE);
+    observer.reserve_set(this, IObserver::OT_READ);
     sock->shutdown_write();
     phase = CONNECTION_SHUTTING_DOWN;
 }
@@ -188,11 +188,11 @@ void Connection::die(IObserver &observer) {
     switch (phase) {
         case CONNECTION_RESPONDING:
         case CONNECTION_ERROR_RESPONDING: {
-            observer.reserve_clear(this, IObserver::OT_WRITE);
+            observer.reserve_unhold(this);
             break;
         }
         default: {
-            observer.reserve_clear(this, IObserver::OT_READ);
+            observer.reserve_unhold(this);
             break;
         }
     }

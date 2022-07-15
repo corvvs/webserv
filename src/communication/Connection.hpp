@@ -2,7 +2,7 @@
 #define CONNECTION_HPP
 #include "../interface/IObserver.hpp"
 #include "../interface/IRouter.hpp"
-#include "../interface/ISocketlike.hpp"
+#include "../interface/ISocketLike.hpp"
 #include "../socket/SocketConnected.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
@@ -77,8 +77,7 @@ public:
     ~Connection();
 
     t_fd get_fd() const;
-    void notify(IObserver &observer);
-    void timeout(IObserver &observer, t_time_epoch_ms epoch);
+    void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
 };
 
 #endif
