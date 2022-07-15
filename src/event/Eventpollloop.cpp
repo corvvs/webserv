@@ -24,14 +24,14 @@ void EventPollLoop::loop() {
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
-                size_t i = indexmap[it->first];
+                index_map::mapped_type i = indexmap[it->first];
                 if (fds[i].fd >= 0) {
                     it->second->notify(*this, OT_TIMEOUT, now);
                 }
             }
         } else {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
-                size_t i = indexmap[it->first];
+                index_map::mapped_type i = indexmap[it->first];
                 if (fds[i].fd >= 0 && fds[i].revents) {
                     DXOUT("[S]FD-" << it->first << ": revents: " << fds[i].revents);
                     if (mask(IObserver::OT_READ) & fds[i].revents) {
@@ -98,22 +98,20 @@ void EventPollLoop::update() {
     // exec unhold
 
     for (EventPollLoop::update_queue::size_type i = 0; i < unholdqueue.size(); ++i) {
-        t_fd fd           = unholdqueue[i].fd;
-        ISocketLike *sock = unholdqueue[i].sock;
-        size_t index      = indexmap[fd];
+        const t_fd fd                    = unholdqueue[i].fd;
+        const index_map::mapped_type idx = indexmap[fd];
 
-        fds[index].fd = -1;
+        fds[idx].fd = -1;
         sockmap.erase(fd);
         indexmap.erase(fd);
-        gapset.insert(index);
-        delete sock;
+        gapset.insert(idx);
+        delete unholdqueue[i].sock;
         nfds--;
     }
     // exec hold
     for (EventPollLoop::update_queue::size_type i = 0; i < holdqueue.size(); ++i) {
-        ISocketLike *sock = holdqueue[i].sock;
-        t_fd fd           = holdqueue[i].fd;
-        size_t idx;
+        const t_fd fd = holdqueue[i].fd;
+        index_map::mapped_type idx;
         if (gapset.empty()) {
             pollfd p = {};
             p.fd     = fd;
@@ -125,15 +123,15 @@ void EventPollLoop::update() {
             gapset.erase(gapset.begin());
         }
         fds[idx].events = 0;
-        sockmap[fd]     = sock;
+        sockmap[fd]     = holdqueue[i].sock;
         indexmap[fd]    = idx;
         nfds++;
     }
     // exec set / unset
     for (EventPollLoop::update_queue::size_type i = 0; i < movequeue.size(); ++i) {
-        t_fd fd         = movequeue[i].fd;
-        size_t idx      = indexmap[fd];
-        fds[idx].events = fds[idx].events | mask(movequeue[i].cat);
+        const t_fd fd                    = movequeue[i].fd;
+        const index_map::mapped_type idx = indexmap[fd];
+        fds[idx].events                  = fds[idx].events | mask(movequeue[i].cat);
         if (!movequeue[i].in) {
             fds[idx].events = fds[idx].events ^ mask(movequeue[i].cat);
         }

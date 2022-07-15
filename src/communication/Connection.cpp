@@ -36,7 +36,6 @@ t_fd Connection::get_fd() const {
 }
 
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    (void)cat;
     if (dying) {
         return;
     }

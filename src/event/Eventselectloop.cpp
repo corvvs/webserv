@@ -142,10 +142,8 @@ void EventSelectLoop::reserve_set(ISocketLike *socket, observation_category cat)
 void EventSelectLoop::update() {
     // exec hold
     for (update_queue::size_type i = 0; i < up_queue.size(); ++i) {
-        ISocketLike *sock = up_queue[i].sock;
-        t_fd fd           = up_queue[i].fd;
         if (up_queue[i].cat == OT_NONE && up_queue[i].in) {
-            holding_map.insert(socket_map::value_type(fd, sock));
+            holding_map.insert(socket_map::value_type(up_queue[i].fd, up_queue[i].sock));
         }
     }
 
@@ -163,11 +161,9 @@ void EventSelectLoop::update() {
 
     // exec unhold
     for (update_queue::size_type i = 0; i < up_queue.size(); ++i) {
-        ISocketLike *sock = up_queue[i].sock;
-        t_fd fd           = up_queue[i].fd;
         if (up_queue[i].cat == OT_NONE && !up_queue[i].in) {
-            holding_map.erase(fd);
-            delete sock;
+            holding_map.erase(up_queue[i].fd);
+            delete up_queue[i].sock;
         }
     }
     up_queue.clear();

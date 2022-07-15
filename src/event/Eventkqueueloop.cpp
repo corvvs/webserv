@@ -57,16 +57,14 @@ void EventKqueueLoop::loop() {
         } else if (count == 0) {
             t_time_epoch_ms now = WSTime::get_epoch_ms();
             for (int i = 0; i < count; i++) {
-                int fd            = static_cast<int>(evlist[i].ident);
-                ISocketLike *sock = holding_map[fd];
-                sock->notify(*this, OT_TIMEOUT, now);
+                const t_fd fd = static_cast<int>(evlist[i].ident);
+                holding_map[fd]->notify(*this, OT_TIMEOUT, now);
             }
         } else {
             for (int i = 0; i < count; i++) {
-                int fd                   = static_cast<int>(evlist[i].ident);
-                ISocketLike *sock        = holding_map[fd];
+                const t_fd fd            = static_cast<int>(evlist[i].ident);
                 observation_category cat = filter_to_cat(evlist[i].filter);
-                sock->notify(*this, cat, 0);
+                holding_map[fd]->notify(*this, cat, 0);
             }
         }
     }
@@ -105,10 +103,9 @@ void EventKqueueLoop::update() {
     }
     // exec hold
     for (update_queue::size_type i = 0; i < upqueue.size(); ++i) {
-        ISocketLike *sock = upqueue[i].sock;
-        t_fd fd           = upqueue[i].fd;
         if (upqueue[i].cat == OT_NONE && upqueue[i].in) {
-            holding_map.insert(socket_map::value_type(fd, sock));
+            const t_fd fd = upqueue[i].fd;
+            holding_map.insert(socket_map::value_type(fd, upqueue[i].sock));
             DXOUT("HOLDED: " << fd);
         }
     }
@@ -119,9 +116,9 @@ void EventKqueueLoop::update() {
         if (upqueue[i].cat == OT_NONE) {
             continue;
         }
-        t_fd fd                  = upqueue[i].fd;
-        bool in                  = upqueue[i].in;
-        observation_category cat = upqueue[i].cat;
+        const t_fd fd                  = upqueue[i].fd;
+        const bool in                  = upqueue[i].in;
+        const observation_category cat = upqueue[i].cat;
         t_kevent ke;
         ISocketLike *sock = upqueue[i].sock;
         switch (cat) {
@@ -166,17 +163,18 @@ void EventKqueueLoop::update() {
         errno     = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
+            VOUT(count);
             QVOUT(strerror(errno));
+            (void)count; // DXOUT を無効化すると`count`がunusedになるため
         }
     }
 
     // exec unhold
     for (update_queue::size_type i = 0; i < upqueue.size(); ++i) {
-        ISocketLike *sock = upqueue[i].sock;
-        t_fd fd           = upqueue[i].fd;
         if (upqueue[i].cat == OT_NONE && !upqueue[i].in) {
+            const t_fd fd = upqueue[i].fd;
             holding_map.erase(fd);
-            delete sock;
+            delete upqueue[i].sock;
             DXOUT("UNHOLDED: " << fd);
         }
     }
