@@ -46,6 +46,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
         // タイムアウト処理
         DXOUT("timeout!!: " << get_fd());
         die(observer);
+        return;
     }
 
     const size_t read_buffer_size = RequestHTTP::MAX_REQLINE_END;
