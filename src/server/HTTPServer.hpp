@@ -4,7 +4,7 @@
 #include "../interface/IObserver.hpp"
 #include "../interface/IOriginator.hpp"
 #include "../interface/IRouter.hpp"
-#include "../interface/ISocketlike.hpp"
+#include "../interface/ISocketLike.hpp"
 #include <map>
 
 // [サーバクラス]
