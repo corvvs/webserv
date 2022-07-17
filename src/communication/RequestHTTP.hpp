@@ -192,8 +192,6 @@ public:
 
     // 受信したデータから本文を抽出して返す
     byte_string get_body() const;
-    // HTTPメッセージ全文を返す
-    byte_string get_plain_message() const;
 
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
     bool is_routable() const;
@@ -203,8 +201,6 @@ public:
     bool is_freezed() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
-
-    HeaderHTTPHolder::joined_dict_type get_cgi_http_vars() const;
 };
 
 #endif

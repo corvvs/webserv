@@ -1059,10 +1059,6 @@ RequestHTTP::byte_string RequestHTTP::get_body() const {
     }
 }
 
-RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
-    return bytebuffer;
-}
-
 RequestHTTP::light_string RequestHTTP::freeze() {
     if (this->ps.is_freezed) {
         return light_string();
@@ -1074,8 +1070,4 @@ RequestHTTP::light_string RequestHTTP::freeze() {
 bool RequestHTTP::should_keep_in_touch() const {
     // TODO: 仮実装
     return false;
-}
-
-HeaderHTTPHolder::joined_dict_type RequestHTTP::get_cgi_http_vars() const {
-    return header_holder.get_cgi_http_vars();
 }
