@@ -20,17 +20,14 @@ void test_lexer(const std::string &path) {
     config::Lexer lexer;
     try {
         lexer.tokenize(file_data);
-    } catch (const std::runtime_error &e) {
+    } catch (const config::SyntaxError &e) {
         std::cout << e.what() << std::endl;
         return;
     }
 
 #ifdef NDEBUG
     std::cout << "===============LEX===============" << std::endl;
-    config::wsToken *token;
-    while ((token = lexer.read()) != NULL) {
-        std::cout << *token << std::endl;
-    }
+    lexer.print_tokens();
 #else
     std::cout << "lexer : the configuration file " + path + " syntax is ok" << std::endl;
 #endif
@@ -74,8 +71,8 @@ int main(int argc, char **argv) {
     }
     const char *path = argv[1];
 
-    // test_lexer(path);
-    test_validation(path);
+    test_lexer(path);
+    // test_validation(path);
 
     return 0;
 }
