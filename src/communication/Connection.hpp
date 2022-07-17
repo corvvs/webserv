@@ -66,6 +66,7 @@ private:
     // 最終操作時刻を更新する
     void touch();
 
+    void perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
     void perform_receiving(IObserver &observer);
     void perform_sending(IObserver &observer);
     void perform_shutting_down(IObserver &observer);

@@ -39,44 +39,22 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
     VOUT(phase);
     VOUT(cat);
     try {
-        if (phase == CONNECTION_ESTABLISHED) {
-            switch (cat) {
-                case IObserver::OT_TIMEOUT:
-                    if (epoch >= attr.timeout + latest_operated_at) {
-                        throw http_error("connection timed out", HTTP::STATUS_TIMEOUT);
-                    }
+        switch (phase) {
+            case CONNECTION_ESTABLISHED:
+                perform_reaction(observer, cat, epoch);
+                if (cat == IObserver::OT_TIMEOUT) {
                     return;
-
-                // オリジネータへの通知
-                case IObserver::OT_ORIGINATOR_WRITE:
-                case IObserver::OT_ORIGINATOR_READ:
-                case IObserver::OT_ORIGINATOR_EXCEPTION:
-                case IObserver::OT_ORIGINATOR_TIMEOUT:
-                    rt.notify_originator(observer, cat, epoch);
-                    break;
-
-                case IObserver::OT_READ:
-                    perform_receiving(observer);
-                    break;
-
-                case IObserver::OT_WRITE:
-                    perform_sending(observer);
-                    break;
-
-                default:
-                    DXOUT("unexpected cat: " << cat);
-                    throw std::runtime_error("????");
-            }
-            detect_update(observer);
-        } else if (phase == CONNECTION_SHUTTING_DOWN) {
-            // コネクション 切断中
-            perform_shutting_down(observer);
-        } else {
-            DXOUT("unexpected phase: " << phase);
-            throw std::runtime_error("????");
+                }
+                detect_update(observer);
+                break;
+            case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
+                perform_shutting_down(observer);
+                break;
+            default:
+                DXOUT("unexpected phase: " << phase);
+                assert(false);
         }
-    } catch (const http_error &err) {
-        // 受信中のHTTPエラー
+    } catch (const http_error &err) { // 受信中のHTTPエラー
         DXOUT("error occurred");
         if (phase == CONNECTION_SHUTTING_DOWN || rt.is_responding()) {
             // レスポンス送信中のHTTPエラー
@@ -88,6 +66,35 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
             rt.respond_error(err);
             observer.reserve_set(this, IObserver::OT_WRITE);
         }
+    }
+}
+
+void Connection::perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
+    switch (cat) {
+        case IObserver::OT_TIMEOUT:
+            if (epoch >= attr.timeout + latest_operated_at) {
+                throw http_error("connection timed out", HTTP::STATUS_TIMEOUT);
+            }
+            break;
+        // オリジネータへの通知
+        case IObserver::OT_ORIGINATOR_WRITE:
+        case IObserver::OT_ORIGINATOR_READ:
+        case IObserver::OT_ORIGINATOR_EXCEPTION:
+        case IObserver::OT_ORIGINATOR_TIMEOUT:
+            rt.notify_originator(observer, cat, epoch);
+            break;
+
+        case IObserver::OT_READ:
+            perform_receiving(observer);
+            break;
+
+        case IObserver::OT_WRITE:
+            perform_sending(observer);
+            break;
+
+        default:
+            DXOUT("unexpected cat: " << cat);
+            throw std::runtime_error("????");
     }
 }
 
@@ -127,27 +134,17 @@ void Connection::detect_update(IObserver &observer) {
         // どこかで状態変化が起きた場合はもう1度最初から.
         if (rt.is_routable()) { // リクエストの解析が完了したら応答開始
             rt.route(*this);
-            continue;
-        }
-        if (rt.is_freezable()) { // リクエストが凍結可能なら凍結実施
+        } else if (rt.is_freezable()) { // リクエストが凍結可能なら凍結実施
             const light_string extra_data = rt.freeze_request();
             extra_data_buffer.insert(extra_data_buffer.begin(), extra_data.begin(), extra_data.end());
-            continue;
-        }
-        if (rt.is_originatable()) { // オリジネーション開始
+        } else if (rt.is_originatable()) { // オリジネーション開始
             rt.originate(observer);
-            continue;
-        }
-        if (rt.is_reroutable()) { // 再ルーティング
+        } else if (rt.is_reroutable()) { // 再ルーティング
             rt.reroute(*this);
-            continue;
-        }
-        if (rt.is_responsive()) { // レスポンス開始
+        } else if (rt.is_responsive()) { // レスポンス開始
             rt.respond();
             observer.reserve_set(this, IObserver::OT_WRITE);
-            continue;
-        }
-        if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
+        } else if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
             rt.wipeout();
             if (rt.req()->should_keep_in_touch()) {
                 DXOUT("KEEP");
@@ -156,9 +153,9 @@ void Connection::detect_update(IObserver &observer) {
                 DXOUT("CLOSE");
                 shutdown_gracefully(observer);
             }
-            continue;
+        } else {
+            break;
         }
-        break;
     }
 }
 
