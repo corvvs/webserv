@@ -23,21 +23,20 @@ HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
     throw http_error("unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
-RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false) {}
+RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
 
 RequestHTTP::RequestHTTP() : mid(0), cp() {
+    DXOUT("[create_requedt]");
     this->ps.parse_progress = PP_REQLINE_START;
     this->cp.http_method    = HTTP::METHOD_UNKNOWN;
     this->cp.http_version   = HTTP::V_UNKNOWN;
-    bytebuffer.reserve(MAX_REQLINE_END);
+    bytebuffer.reserve(HTTP::MAX_REQLINE_END);
 }
 
 RequestHTTP::~RequestHTTP() {}
 
-void RequestHTTP::feed_bytestring(char *bytes, size_t feed_len) {
-    bytebuffer.insert(bytebuffer.end(), bytes, bytes + feed_len);
-    bool is_disconnected = feed_len == 0;
-    size_t len           = 1;
+void RequestHTTP::after_injection(bool is_disconnected) {
+    size_t len = 1;
     t_parse_progress flow;
     do {
         len = bytebuffer.size() - this->mid;
@@ -316,7 +315,7 @@ bool RequestHTTP::seek_reqline_end(size_t len) {
     this->ps.end_of_reqline  = res.first;
     this->ps.start_of_header = this->mid;
     // -> end_of_reqline が8192バイト以内かどうか調べる。
-    if (MAX_REQLINE_END <= this->ps.end_of_reqline) {
+    if (HTTP::MAX_REQLINE_END <= this->ps.end_of_reqline) {
         throw http_error("Invalid Response: request line is too long", HTTP::STATUS_URI_TOO_LONG);
     }
     this->ps.crlf_in_header = IndexRange(this->ps.start_of_header, this->ps.start_of_header);
@@ -474,7 +473,7 @@ void RequestHTTP::extract_control_headers() {
     this->cp.determine_via(header_holder);
 }
 
-void RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_body_size(const HeaderHTTPHolder &holder) {
     // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
 
     if (transfer_encoding.currently_chunked) {
@@ -505,7 +504,7 @@ void RequestHTTP::ControlParams::determine_body_size(const HeaderHTTPHolder &hol
     is_body_chunked = false;
     DXOUT("body_size is zero.");
 }
-void RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_host(const HeaderHTTPHolder &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
     const HeaderHTTPHolder::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
     if (!hosts || hosts->size() == 0) {
@@ -527,7 +526,7 @@ void RequestHTTP::ControlParams::determine_host(const HeaderHTTPHolder &holder) 
     pack_host(header_host, lhost);
 }
 
-void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_transfer_encoding(const HeaderHTTPHolder &holder) {
     // https://httpwg.org/specs/rfc7230.html#header.transfer-encoding
     // Transfer-Encoding  = 1#transfer-coding
     // transfer-coding    = "chunked"
@@ -599,7 +598,7 @@ void RequestHTTP::ControlParams::determine_transfer_encoding(const HeaderHTTPHol
     QVOUT(transfer_encoding.transfer_codings.back().coding);
 }
 
-void RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_content_type(const HeaderHTTPHolder &holder) {
     // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that
     // message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type
     // header field is not present, the recipient MAY either assume a media type of "application/octet-stream"
@@ -648,7 +647,7 @@ void RequestHTTP::ControlParams::determine_content_type(const HeaderHTTPHolder &
     // DXOUT("continuation: \"" << continuation << "\"");
 }
 
-void RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_connection(const HeaderHTTPHolder &holder) {
     // Connection        = 1#connection-option
     // connection-option = token
     const HeaderHTTPHolder::value_list_type *cons = holder.get_vals(HeaderHTTP::connection);
@@ -705,7 +704,7 @@ void RequestHTTP::ControlParams::determine_connection(const HeaderHTTPHolder &ho
     DXOUT("close: " << connection.will_close() << ", keep-alive: " << connection.will_keep_alive());
 }
 
-void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_te(const HeaderHTTPHolder &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.te
     // TE        = #t-codings
     // t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
@@ -791,7 +790,7 @@ void RequestHTTP::ControlParams::determine_te(const HeaderHTTPHolder &holder) {
     }
 }
 
-void RequestHTTP::ControlParams::determine_upgrade(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_upgrade(const HeaderHTTPHolder &holder) {
     // Upgrade          = 1#protocol
     // protocol         = protocol-name ["/" protocol-version]
     // protocol-name    = token
@@ -836,7 +835,7 @@ void RequestHTTP::ControlParams::determine_upgrade(const HeaderHTTPHolder &holde
     }
 }
 
-void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_via(const HeaderHTTPHolder &holder) {
     // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
     // received-protocol = [ protocol-name "/" ] protocol-version
     // received-by       = ( uri-host [ ":" port ] ) / pseudonym
@@ -908,7 +907,7 @@ void RequestHTTP::ControlParams::determine_via(const HeaderHTTPHolder &holder) {
     }
 }
 
-void RequestHTTP::ControlParams::pack_host(HTTP::Term::Host &host_item, const light_string &lhost) {
+void RequestHTTP::RoutingParameters::pack_host(HTTP::Term::Host &host_item, const light_string &lhost) {
     host_item.value = lhost.str();
     // この時点で lhost は Host: として妥当
     // -> 1文字目が [ かどうかで ipv6(vfuture) かどうかを判別する.
@@ -932,7 +931,7 @@ void RequestHTTP::ControlParams::pack_host(HTTP::Term::Host &host_item, const li
     DXOUT("port: \"" << host_item.port << "\"");
 }
 
-RequestHTTP::light_string RequestHTTP::ControlParams::extract_comment(light_string &val_lstr) {
+RequestHTTP::light_string RequestHTTP::RoutingParameters::extract_comment(light_string &val_lstr) {
     // comment        = "(" *( ctext / quoted-pair / comment ) ")"
     // ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
     //                ; HTAB + SP + 表示可能文字, ただしカッコとバッスラを除く
@@ -978,8 +977,8 @@ RequestHTTP::light_string RequestHTTP::ControlParams::extract_comment(light_stri
 }
 
 RequestHTTP::light_string
-RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(const light_string &kvlist_str,
-                                                                 HTTP::IDictHolder &holder) {
+RequestHTTP::RoutingParameters::decompose_semicoron_separated_kvlist(const light_string &kvlist_str,
+                                                                     HTTP::IDictHolder &holder) {
     light_string list_str = kvlist_str;
     // *( OWS ";" OWS parameter )
     for (;;) {
@@ -1024,12 +1023,16 @@ RequestHTTP::ControlParams::decompose_semicoron_separated_kvlist(const light_str
     return list_str;
 }
 
-bool RequestHTTP::is_ready_to_navigate() const {
+bool RequestHTTP::is_routable() const {
     return this->ps.parse_progress >= PP_BODY;
 }
 
-bool RequestHTTP::is_ready_to_respond() const {
+bool RequestHTTP::is_complete() const {
     return this->ps.parse_progress >= PP_OVER;
+}
+
+bool RequestHTTP::is_freezed() const {
+    return this->ps.is_freezed;
 }
 
 size_t RequestHTTP::receipt_size() const {
@@ -1056,7 +1059,23 @@ RequestHTTP::byte_string RequestHTTP::get_body() const {
     }
 }
 
+RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
+    return bytebuffer;
+}
+
+RequestHTTP::light_string RequestHTTP::freeze() {
+    if (this->ps.is_freezed) {
+        return light_string();
+    }
+    this->ps.is_freezed = true;
+    return light_string(bytebuffer, mid);
+}
+
 bool RequestHTTP::should_keep_in_touch() const {
     // TODO: 仮実装
     return false;
+}
+
+HeaderHTTPHolder::joined_dict_type RequestHTTP::get_cgi_http_vars() const {
+    return header_holder.get_cgi_http_vars();
 }

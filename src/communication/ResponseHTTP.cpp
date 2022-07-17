@@ -33,7 +33,7 @@ void ResponseHTTP::render() {
                            HTTP::header_kvpair_type(HeaderHTTP::content_length, ParserHelper::utos(body.size())));
     }
     // ヘッダ
-    for (std::vector<HTTP::header_kvpair_type>::iterator it = header_list.begin(); it != header_list.end(); it++) {
+    for (std::vector<HTTP::header_kvpair_type>::iterator it = header_list.begin(); it != header_list.end(); ++it) {
         message_text += it->first + ParserHelper::HEADER_KV_SPLITTER + it->second + ParserHelper::CRLF;
     }
     // 空行
@@ -64,6 +64,6 @@ size_t ResponseHTTP::get_unsent_size() const {
     return message_text.size() - sent_size;
 }
 
-bool ResponseHTTP::is_over_sending() const {
+bool ResponseHTTP::is_complete() const {
     return get_unsent_size() == 0;
 }

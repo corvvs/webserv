@@ -17,21 +17,17 @@ void HTTPServer::run() {
     socket_observer_->loop();
 }
 
-IOriginator *HTTPServer::route_origin(RequestHTTP *request) {
+IOriginator *HTTPServer::route_origin(const RequestHTTP *request) {
     (void)request;
     return NULL;
 }
 
-ResponseHTTP *HTTPServer::route(RequestHTTP *request) {
+ResponseHTTP *HTTPServer::route(const RequestHTTP *request) {
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK);
-
-    res->feed_body(request->get_body());
-    res->render();
-    DXOUT(res->get_message_text());
     return res;
 }
 
-ResponseHTTP *HTTPServer::respond_error(RequestHTTP *request, http_error error) {
+ResponseHTTP *HTTPServer::respond_error(const RequestHTTP *request, http_error error) {
     (void)request;
     ResponseHTTP *res = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, error);
     res->render();

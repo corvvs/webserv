@@ -21,8 +21,10 @@ enum t_status {
     STATUS_FORBIDDEN          = 403,
     STATUS_NOT_FOUND          = 404,
     STATUS_METHOD_NOT_ALLOWED = 405,
+    STATUS_TIMEOUT            = 408,
     STATUS_URI_TOO_LONG       = 414,
     STATUS_IM_A_TEAPOT        = 418,
+    STATUS_HEADER_TOO_LARGE   = 431,
 
     STATUS_INTERNAL_SERVER_ERROR = 500,
     STATUS_NOT_IMPLEMENTED       = 501,
@@ -73,6 +75,7 @@ typedef std::map<header_key_type, header_val_type> header_dict_type;
 
 // サーバのデフォルトのHTTPバージョン
 extern const t_version DEFAULT_HTTP_VERSION;
+extern const size_t MAX_REQLINE_END;
 const byte_string version_str(t_version version);
 const byte_string reason(t_status status);
 

@@ -1,6 +1,7 @@
 #include "http.hpp"
 
 const HTTP::t_version HTTP::DEFAULT_HTTP_VERSION = V_1_1;
+const size_t HTTP::MAX_REQLINE_END               = 8192;
 
 const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
     switch (version) {
@@ -31,6 +32,8 @@ const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
             return strfy("Not Found");
         case HTTP::STATUS_METHOD_NOT_ALLOWED:
             return strfy("Method Not Allowed");
+        case HTTP::STATUS_TIMEOUT:
+            return strfy("Connection Timed out");
         case HTTP::STATUS_IM_A_TEAPOT:
             return strfy("I'm a teapot");
         case HTTP::STATUS_INTERNAL_SERVER_ERROR:

@@ -47,10 +47,9 @@ public:
         PP_ERROR
     };
 
-    static const size_t MAX_REQLINE_END = 8192;
     typedef HTTP::byte_string byte_string;
     // 他の byte_string の一部分を参照する軽量 string
-    typedef LightString<HTTP::char_type> light_string;
+    typedef HTTP::light_string light_string;
     typedef std::map<byte_string, light_string> header_dict_type;
     typedef HeaderHTTPItem::header_val_type header_val_type;
 
@@ -72,12 +71,14 @@ public:
         size_t start_of_trailer_field;
         size_t end_of_trailer_field;
         ChunkedBody::Chunk current_chunk;
+        // 凍結されたかどうか
+        bool is_freezed;
 
         ParserStatus();
     };
 
     // リクエストの制御, ルーティングにかかわるパラメータ
-    struct ControlParams {
+    struct RoutingParameters {
         light_string request_path;
         HTTP::t_method http_method;
         HTTP::t_version http_version;
@@ -128,10 +129,8 @@ private:
 
     // 解析中の情報
     ParserStatus ps;
-
-    // 確定した情報
-    // 制御パラメータ
-    ControlParams cp;
+    // ルーティングパラメータ
+    RoutingParameters cp;
 
     // chunked本文
     ChunkedBody chunked_body;
@@ -172,7 +171,14 @@ public:
     ~RequestHTTP();
 
     // 内部バッファにバイト列を追加し, ラフパースを試みる
-    void feed_bytestring(char *bytes, size_t len);
+    template <class InputItr>
+    void inject_bytestring(const InputItr begin, const InputItr end) {
+        bytebuffer.insert(bytebuffer.end(), begin, end);
+    }
+    void after_injection(bool is_disconnected);
+
+    // リクエストを凍結し, 余ったデータを返す
+    light_string freeze();
 
     // 受信済み(未解釈含む)データサイズ
     size_t receipt_size() const;
@@ -186,13 +192,19 @@ public:
 
     // 受信したデータから本文を抽出して返す
     byte_string get_body() const;
+    // HTTPメッセージ全文を返す
+    byte_string get_plain_message() const;
 
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
-    bool is_ready_to_navigate() const;
-    // predicate: レスポンスを作成できる状態になったかどうか
-    bool is_ready_to_respond() const;
+    bool is_routable() const;
+    // predicate: レスポンスの受信が完了したかどうか
+    bool is_complete() const;
+    // predicate: レスポンスを凍結したかどうか
+    bool is_freezed() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
+
+    HeaderHTTPHolder::joined_dict_type get_cgi_http_vars() const;
 };
 
 #endif
