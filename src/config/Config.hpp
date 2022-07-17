@@ -18,10 +18,9 @@
  * server_name          vector<string>
  * upload_store         string
  * default_server       bool
- * limit_except         enum method
+ * limit_except         set<enum> method
  */
 
-// 最終的に返すconfigクラスを定義する
 namespace config {
 
 class Config {
@@ -44,8 +43,7 @@ public:
     std::vector<std::string> get_server_name(const std::string &target) const;
     std::string get_upload_store(const std::string &target) const;
     bool get_default_server(const std::string &target) const;
-
-    // get_limit_except(const std::string& target) const;
+    std::set<enum Methods> get_limit_except(const std::string &target) const;
 
 private:
     ContextServer ctx_server_;

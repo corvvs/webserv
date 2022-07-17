@@ -23,7 +23,6 @@ std::map<int, std::string> Config::get_error_page(const std::string &target) con
 std::vector<std::string> Config::get_index(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
 
-    // indexが指定されていない場合は, index.htmlを設定する
     if (loc.indexes.empty()) {
         std::vector<std::string> res;
         res.push_back("index.html");
@@ -55,6 +54,11 @@ int Config::get_port(const std::string &target) const {
 std::pair<int, std::string> Config::get_redirect(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.redirect;
+}
+
+std::set<enum Methods> Config::get_limit_except(const std::string &target) const {
+    const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
+    return loc.limit_except.allowed_methods;
 }
 
 std::vector<std::string> Config::get_server_name(const std::string &target) const {
@@ -89,8 +93,8 @@ ContextLocation Config::longest_prefix_match_location(const ContextServer &srv, 
         sta.pop();
         // 一致していたら子要素をstackに積む
         if (path.find(cur.path) == 0) {
-            for (std::vector<ContextLocation>::const_iterator it = cur.locations.begin(); it != cur.locations.end();
-                 ++it) {
+            std::vector<ContextLocation>::const_iterator it = cur.locations.begin();
+            for (; it != cur.locations.end(); ++it) {
                 sta.push(*it);
             }
             // マッチしてる部分が長い場合は更新する
@@ -101,5 +105,4 @@ ContextLocation Config::longest_prefix_match_location(const ContextServer &srv, 
     }
     return longest;
 }
-
 } // namespace config

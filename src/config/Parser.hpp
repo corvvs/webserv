@@ -47,11 +47,11 @@ private:
     ContextMain ctx_main_;
     ContextType ctx_;
     std::stack<ContextType> ctx_stack_;
-
-    std::map<std::string, Parser::add_directive_functions> add_directives_func_map;
-    DirectiveFunctionsMap setting_directive_functions(void);
+    std::map<std::string, Parser::add_directive_functions> adder_maps;
 
     /// Member functions
+    std::vector<Config> create_configs(const std::vector<ContextServer> &ctx_servers);
+    DirectiveFunctionsMap setting_directive_functions(void);
     std::string brace_balanced(void);
 
     /// Analyze
@@ -59,6 +59,21 @@ private:
     std::vector<Directive> analyze(std::vector<std::string> ctx = std::vector<std::string>());
     std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
     bool is_special(const std::string &s) const;
+
+    /// Adder
+    void add_http(const std::vector<std::string> &args);
+    void add_server(const std::vector<std::string> &args);
+    void add_location(const std::vector<std::string> &args);
+    void add_limit_except(const std::vector<std::string> &args);
+    void add_autoindex(const std::vector<std::string> &args);
+    void add_error_page(const std::vector<std::string> &args);
+    void add_index(const std::vector<std::string> &args);
+    void add_listen(const std::vector<std::string> &args);
+    void add_return(const std::vector<std::string> &args);
+    void add_root(const std::vector<std::string> &args);
+    void add_server_name(const std::vector<std::string> &args);
+    void add_client_max_body_size(const std::vector<std::string> &args);
+    void add_upload_store(const std::vector<std::string> &args);
 
     bool is_conflicted_server_name(const std::vector<ContextServer> &servers);
     size_t count_nested_locations(void) const;
@@ -69,26 +84,11 @@ private:
     void inherit_main_to_srv(const ContextMain &main, ContextServer &srv);
     void inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &child);
 
-    /// Block
-    void add_http(const std::vector<std::string> &args);
-    void add_server(const std::vector<std::string> &args);
-    void add_location(const std::vector<std::string> &args);
-    void add_limit_except(const std::vector<std::string> &args);
-
-    /// Simple
-    void add_autoindex(const std::vector<std::string> &args);
-    void add_error_page(const std::vector<std::string> &args);
-    void add_index(const std::vector<std::string> &args);
-    void add_listen(const std::vector<std::string> &args);
-    void add_return(const std::vector<std::string> &args);
-    void add_root(const std::vector<std::string> &args);
-    void add_server_name(const std::vector<std::string> &args);
-    void add_client_max_body_size(const std::vector<std::string> &args);
-
-    /// Original
-    void add_upload_store(const std::vector<std::string> &args);
-
     /// Debug
+
+#ifdef NDEBUG
+public:
+#endif
     void
     print_directives(const std::vector<Directive> &d, const bool &is_block = false, const std::string &before = "");
     void print_location(const std::vector<ContextLocation> &loc);

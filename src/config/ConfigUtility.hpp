@@ -18,6 +18,7 @@ const static size_t INDENT_SIZE = 24;
 std::vector<std::string> split_str(const std::string &s, const std::string &sep);
 std::string str_tolower(const std::string &s);
 void indent(const size_t &size);
+std::string dquote(const std::string &s);
 
 template <class First, class Second>
 std::string pair_to_string(const std::pair<First, Second> &p) {
@@ -60,9 +61,9 @@ std::string map_to_string(const std::map<Key, Value> &mp) {
     std::ostringstream oss;
     oss << "{ ";
     for (typename std::map<Key, Value>::const_iterator it = mp.begin(); it != mp.end(); ++it) {
-        oss << "< " << it->first << ", " << it->second << " >";
+        oss << "< " << it->first << ", " << it->second << " > ";
     }
-    oss << " }";
+    oss << "}";
     return oss.str();
 }
 
