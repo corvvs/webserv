@@ -29,7 +29,6 @@ ContextLocation::ContextLocation(const ContextServer &server) {
 ContextLocation::~ContextLocation(void) {}
 
 ContextLimitExcept::ContextLimitExcept(void) {}
-
 ContextLimitExcept::~ContextLimitExcept(void) {}
 
 } // namespace config

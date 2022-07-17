@@ -5,31 +5,13 @@
 #include <string>
 #include <vector>
 
-/**
- * [directives]
- * autoindex            bool
- * error_page           vector<map<int, string> > -> (status, path)
- * index                vector<string>
- * root                 string
- * client_max_body_size long
- * host_port            pair<string, int>
- * redirect             pair<int, string> -> (status, path)
- * server_name          vector<string>
- * upload_store         string
- * default_server       bool
- */
 namespace config {
-
-class IContext {
-public:
-    virtual ~IContext() {}
-};
 
 typedef std::string host_type;
 typedef int port_type;
 typedef std::pair<host_type, port_type> host_port_pair;
 
-class ContextMain : public IContext {
+class ContextMain {
 public:
     ContextMain(void);
     ~ContextMain(void);
@@ -38,44 +20,34 @@ public:
     std::string root;
     std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
-
-    std::map<std::string, bool> defined_;
-
-private:
 };
 
-class ContextServer : public IContext {
+class ContextServer {
 public:
     ContextServer(const ContextMain &main);
     ~ContextServer(void);
 
-    // mainから継承する
+    // 継承する
     long client_max_body_size;
     bool autoindex;
     std::string root;
     std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
 
-    // 新たに追加する
+    // 継承しない
     std::vector<std::string> server_names;
-    std::string upload_store;
-    std::pair<int, std::string> redirect;
-
-    // std::vector<std::pair<std::string, int>> host_ports;
     std::vector<host_port_pair> host_ports;
-
+    std::vector<class ContextLocation> locations;
+    std::pair<int, std::string> redirect;
+    std::string upload_store;
     bool default_server;
 
-    // 内部にlocationを持つ可能性がある
-    std::vector<class ContextLocation> locations;
-
+    // 継承するか判定するときに使用する
     std::map<std::string, bool> defined_;
-
-private:
 };
 
 enum Methods { GET, POST, DELETE };
-class ContextLimitExcept : public IContext {
+class ContextLimitExcept {
 public:
     ContextLimitExcept(void);
     ~ContextLimitExcept(void);
@@ -83,15 +55,15 @@ public:
     std::set<enum Methods> allowed_methods;
 };
 
-class ContextLocation : public IContext {
+class ContextLocation {
 public:
     ContextLocation(const ContextServer &server);
     ~ContextLocation(void);
 
-    /// 親から継承する
+    /// 継承する
     long client_max_body_size;
     bool autoindex;
-    std::string root; //
+    std::string root;
     std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
     std::pair<int, std::string> redirect;
@@ -101,9 +73,8 @@ public:
     std::vector<class ContextLocation> locations;
     ContextLimitExcept limit_except;
 
+    // 継承するか判定するときに使用する
     std::map<std::string, bool> defined_;
-
-private:
 };
 
 } // namespace config
