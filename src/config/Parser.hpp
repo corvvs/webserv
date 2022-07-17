@@ -14,7 +14,13 @@ struct Directive {
     std::string name;
     int line;
     std::vector<std::string> args;
-    std::vector<Directive> block; // 入れ子になっている場合に子要素を格納する
+    std::vector<Directive> block;
+
+    Directive(const std::string &n,
+              const int &l,
+              std::vector<std::string> a = std::vector<std::string>(),
+              std::vector<Directive> b   = std::vector<Directive>())
+        : name(n), line(l), args(a), block(b) {}
 };
 
 class Parser {
@@ -45,11 +51,14 @@ private:
     std::map<std::string, Parser::add_directive_functions> add_directives_func_map;
     DirectiveFunctionsMap setting_directive_functions(void);
 
-    /// PreParser
-    std::vector<ContextServer> parse(std::vector<Directive> vdir);
-    std::vector<Directive> pre_parse(std::vector<std::string> ctx = std::vector<std::string>());
-    std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
+    /// Member functions
     std::string brace_balanced(void);
+
+    /// Analyze
+    std::vector<ContextServer> parse(std::vector<Directive> vdir);
+    std::vector<Directive> analyze(std::vector<std::string> ctx = std::vector<std::string>());
+    std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
+    bool is_special(const std::string &s) const;
 
     bool is_conflicted_server_name(const std::vector<ContextServer> &servers);
     size_t count_nested_locations(void) const;

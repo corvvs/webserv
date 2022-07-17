@@ -6,129 +6,11 @@
 #include <iostream>
 #include <locale>
 #include <map>
-#include <sstream>
 #include <string>
 #include <vector>
 
-/**
- * TODO:
- * バリデーション強化
- *  - locationの入れ子のパスが正しいか
- */
 namespace config {
-
-/// static functions
-static std::map<std::vector<std::string>, int> setting_contexts(void);
-static std::map<std::string, int> setting_directives(void);
-static int get_directive_mask(std::string dire);
-static int get_context_mask(std::vector<std::string> ctx);
-static bool is_valid_flag(std::string s);
-static bool is_must_be_on_off(Directive dire, int mask);
-
-// TODO: strtolに置き換える
-static bool is_integer(const std::string &s) {
-    if (s.empty()) {
-        return false;
-    }
-    for (std::string::const_iterator it = s.begin(); it != s.end(); it++) {
-        if (!std::isdigit(*it)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static bool is_ipaddr(const std::string &s) {
-    std::vector<std::string> splitted(split_str(s, "."));
-    // 要素が4つじゃなかったらout
-    if (splitted.size() != 4) {
-        return false;
-    }
-    // 範囲が0~255じゃなかったらOUT
-    for (std::vector<std::string>::iterator it = splitted.begin(); it != splitted.end(); ++it) {
-        if (!is_integer(*it)) {
-            return false;
-        }
-        size_t n = std::stol(*it);
-        if (!(0 <= n && n <= 255)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool is_port(const std::string &arg) {
-    if (!is_integer(arg)) {
-        return false;
-    }
-    const int n = std::atoi(arg.c_str());
-    return 0 <= n && n <= 65535;
-}
-
-static bool is_valid_error_page(const std::vector<std::string> &args) {
-    for (size_t i = 0; i < args.size() - 1; ++i) {
-        if (!is_integer(args[i])) {
-            return false;
-        }
-        const int &n = std::atoi(args[i].c_str());
-        if (!(300 <= n && n <= 599)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static bool is_valid_return(const std::vector<std::string> &args) {
-    if (!is_integer(args.front())) {
-        return false;
-    }
-    const int &n = std::atoi(args.front().c_str());
-    return 0 <= n && n <= 999;
-}
-
-static bool is_valid_client_max_body_size(const std::vector<std::string> &args) {
-    char *err;
-    const long &n = std::strtol(args.front().c_str(), &err, 10);
-    if (*err != '\0' || errno == ERANGE || errno == EINVAL) {
-        return false;
-    }
-    if (n < 0) {
-        return false;
-    }
-    return true;
-}
-
-bool is_host(const std::string &s) {
-    if (s == "localhost" || s == "*") {
-        return true;
-    }
-    return is_ipaddr(s);
-}
-
-static bool is_valid_listen(const std::vector<std::string> &args) {
-    if (args.size() == 2 && args.back() != "default_server") {
-        return false;
-    }
-    std::vector<std::string> splitted(split_str(args.front(), ":"));
-    if (splitted.size() != 1 && splitted.size() != 2) {
-        return false;
-    }
-    if (splitted.size() == 1) {
-        if (is_host(splitted.front())) {
-            return true;
-        }
-        if (is_port(splitted.front())) {
-            return true;
-        }
-    }
-
-    if (splitted.size() == 2) {
-        if (is_host(splitted.front()) && is_port(splitted.back())) {
-            return true;
-        }
-    }
-    return false;
-}
+namespace Validator {
 
 std::string validation_error(const std::string &message, const size_t &line, const std::string name) {
     std::ostringstream oss;
@@ -141,40 +23,143 @@ std::string validation_error(const std::string &message, const size_t &line, con
     return oss.str();
 }
 
-// ディレクティブとコンテキストのルールを設定する
-static const std::map<std::string, int> directives            = setting_directives();
-static const std::map<std::vector<std::string>, int> contexts = setting_contexts();
+bool is_valid_integer(const std::string &s) {
+    char *err;
+    std::strtol(s.c_str(), &err, 10);
+    if (*err != '\0' || errno == ERANGE || errno == EINVAL) {
+        return false;
+    }
+    return true;
+}
 
-static std::map<std::string, int> setting_directives(void) {
+bool is_ipaddr(const std::string &s) {
+    const std::vector<std::string> splitted(split_str(s, "."));
+
+    if (splitted.size() != 4) {
+        return false;
+    }
+    for (std::vector<std::string>::const_iterator it = splitted.begin(); it != splitted.end(); ++it) {
+        if (!is_valid_integer(*it)) {
+            return false;
+        }
+
+        std::istringstream iss(*it);
+        long n;
+        iss >> n;
+        if (!(0 <= n && n <= 255)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool is_host(const std::string &s) {
+    if (s == "localhost" || s == "*") {
+        return true;
+    }
+    return is_ipaddr(s);
+}
+
+bool is_port(const std::string &arg) {
+    if (!is_valid_integer(arg)) {
+        return false;
+    }
+    std::istringstream iss(arg);
+    long n;
+    iss >> n;
+    return 0 <= n && n <= 65535;
+}
+
+bool is_valid_error_page(const std::vector<std::string> &args) {
+    for (size_t i = 0; i < args.size() - 1; ++i) {
+        if (!is_valid_integer(args[i])) {
+            return false;
+        }
+        std::istringstream iss(args[i]);
+        long n;
+        iss >> n;
+        if (!(300 <= n && n <= 599)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool is_valid_return(const std::vector<std::string> &args) {
+    if (!is_valid_integer(args.front())) {
+        return false;
+    }
+    std::istringstream iss(args.front());
+    long n;
+    iss >> n;
+    return 0 <= n && n <= 999;
+}
+
+bool is_valid_client_max_body_size(const std::vector<std::string> &args) {
+    if (!is_valid_integer(args.front())) {
+        return false;
+    }
+    std::istringstream iss(args.front());
+    long n;
+    iss >> n;
+    return n >= 0;
+}
+
+bool is_valid_listen(const std::vector<std::string> &args) {
+    if (args.size() == 2 && args.back() != "default_server") {
+        return false;
+    }
+
+    const std::vector<std::string> splitted(split_str(args.front(), ":"));
+    if (splitted.size() != 1 && splitted.size() != 2) {
+        return false;
+    }
+
+    if (splitted.size() == 1) {
+        if (is_host(splitted.front()) || is_port(splitted.front())) {
+            return true;
+        }
+    }
+
+    if (splitted.size() == 2) {
+        if (is_host(splitted.front()) && is_port(splitted.back())) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// ディレクティブとコンテキストのルールを設定する
+const std::map<std::string, int> directives            = setting_directives();
+const std::map<std::vector<std::string>, int> contexts = setting_contexts();
+
+std::map<std::string, int> setting_directives(void) {
     std::map<std::string, int> directives;
 
     /// Block
-    directives["http"]         = (MAIN | BLOCK | NOARGS);
+    directives["http"]         = (GLOBAL | BLOCK | NOARGS);
     directives["server"]       = (HTTP_MAIN | BLOCK | NOARGS);
     directives["location"]     = (HTTP_SRV | HTTP_LOC | BLOCK | TAKE12);
     directives["limit_except"] = (HTTP_LOC | BLOCK | MORE1);
 
     /// Simple
-    directives["autoindex"]   = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | FLAG);
-    directives["error_page"]  = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE2);
-    directives["index"]       = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE1);
-    directives["root"]        = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | TAKE1);
-    directives["server_name"] = (HTTP_SRV | MORE1);
-    directives["listen"]      = (HTTP_SRV | MORE1);
-    directives["return"]      = (HTTP_SRV | HTTP_LOC | TAKE12);
-
+    directives["autoindex"]            = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | FLAG);
+    directives["error_page"]           = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE2);
+    directives["index"]                = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | MORE1);
+    directives["root"]                 = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | TAKE1);
     directives["client_max_body_size"] = (HTTP_MAIN | HTTP_SRV | HTTP_LOC | TAKE1);
-
-    /// Original
-    directives["upload_store"] = (HTTP_SRV | HTTP_LOC | TAKE1);
+    directives["server_name"]          = (HTTP_SRV | MORE1);
+    directives["listen"]               = (HTTP_SRV | MORE1);
+    directives["return"]               = (HTTP_SRV | HTTP_LOC | TAKE12);
+    directives["upload_store"]         = (HTTP_SRV | HTTP_LOC | TAKE1);
 
     return directives;
 }
 
-static std::map<std::vector<std::string>, int> setting_contexts(void) {
+std::map<std::vector<std::string>, int> setting_contexts(void) {
     std::map<std::vector<std::string>, int> contexts;
 
-    contexts[std::vector<std::string>()] = MAIN;
+    contexts[std::vector<std::string>()] = GLOBAL;
 
     std::vector<std::string> v;
     v.push_back("http");
@@ -192,10 +177,9 @@ static std::map<std::vector<std::string>, int> setting_contexts(void) {
     return contexts;
 }
 
-static int get_directive_mask(std::string dire) {
-    std::map<std::string, int>::const_iterator it;
+int get_directive_mask(std::string dire) {
     int mask = 0;
-
+    std::map<std::string, int>::const_iterator it;
     it = directives.find(dire);
     if (it != directives.end()) {
         mask = it->second;
@@ -203,10 +187,9 @@ static int get_directive_mask(std::string dire) {
     return mask;
 }
 
-static int get_context_mask(std::vector<std::string> ctx) {
-    std::map<std::vector<std::string>, int>::const_iterator it;
+int get_context_mask(std::vector<std::string> ctx) {
     int mask = 0;
-
+    std::map<std::vector<std::string>, int>::const_iterator it;
     it = contexts.find(ctx);
     if (it != contexts.end()) {
         mask = it->second;
@@ -214,8 +197,7 @@ static int get_context_mask(std::vector<std::string> ctx) {
     return mask;
 }
 
-// on または offが必須のもの
-static bool is_valid_flag(std::string s) {
+bool is_valid_flag(std::string s) {
     std::locale loc;
     for (size_t i = 0; i < s.size(); i++) {
         s[i] = std::tolower(s[i], loc);
@@ -239,15 +221,19 @@ bool is_correct_details(Directive dire) {
     return true;
 }
 
+bool is_must_be_on_off(Directive dire, int mask) {
+    return ((mask & FLAG) != 0 && dire.args.size() == 1 && !is_valid_flag(dire.args[0]));
+}
+
 /**
- * 引数の数チェック
+ * @brief 引数の数が正しいか判定する
  * (mask >> argsの数) & 1 = 1 (1であれば正しい)
  * (0x01>>0)&1 = 1 // 0 args (0001 -> 0001)
  * (0x02>>1)&1 = 1 // 1 args (0010 -> 0001)
  * (0x04>>2)&1 = 1 // 2 args (0100 -> 0001)
  * (0x08>>3)&1 = 1 // 3 args (1000 -> 0001)
  */
-static bool is_correct_number_of_args(Directive dire, int mask) {
+bool is_correct_number_of_args(Directive dire, int mask) {
     // 引数の数が指定通りか
     if ((mask >> dire.args.size() & 1) != 0 && dire.args.size() <= 7) {
         return true;
@@ -273,15 +259,10 @@ static bool is_correct_number_of_args(Directive dire, int mask) {
         return true;
     }
 
-    // どれも条件を満たしていない場合は引数が正しくない
     return false;
 }
 
-static bool is_must_be_on_off(Directive dire, int mask) {
-    return ((mask & FLAG) != 0 && dire.args.size() == 1 && !is_valid_flag(dire.args[0]));
-}
-
-ErrorType validate(Directive dire, std::string term, std::vector<std::string> ctx) {
+ErrorMsg validate(Directive dire, std::string term, std::vector<std::string> ctx) {
     const int dire_mask = get_directive_mask(dire.name);
     const int ctx_mask  = get_context_mask(ctx);
 
@@ -289,17 +270,17 @@ ErrorType validate(Directive dire, std::string term, std::vector<std::string> ct
         return validation_error("unknown name", dire.line, dire.name);
     }
 
-    // ディレクティブがこのコンテキストで使用できない場合
+    // ディレクティブが現在のコンテキストで使用できない場合
     if ((dire_mask & ctx_mask) == 0) {
         return validation_error("is not allowed here", dire.line, dire.name);
     }
 
-    // ブロックディレクティブで波括弧が続いていない場合
+    // ブロックディレクティブで `{` が続いていない場合
     if ((dire_mask & BLOCK) != 0 && term != "{") {
-        return validation_error(" has no opening \"{\"", dire.line, dire.name);
+        return validation_error("has no opening \"{\"", dire.line, dire.name);
     }
 
-    // シンプルディレクティブで ";"が続いていない場合
+    // シンプルディレクティブで `;` が続いていない場合
     if ((dire_mask & BLOCK) == 0 && term != ";") {
         return validation_error("is not terminated by \";\"", dire.line, dire.name);
     }
@@ -308,15 +289,15 @@ ErrorType validate(Directive dire, std::string term, std::vector<std::string> ct
     if (!is_correct_number_of_args(dire, dire_mask)) {
         if (is_must_be_on_off(dire, dire_mask)) {
             return validation_error("it must be \"on\" or \"off\"", dire.line, dire.name);
-
         } else {
             return validation_error("invalid number of arguments", dire.line, dire.name);
         }
     }
-
+    // 数値の範囲など詳細なチェック(あるものだけ)
     if (!is_correct_details(dire)) {
         return validation_error("invalid arguments", dire.line, dire.name);
     }
     return "";
 }
+} // namespace Validator
 } // namespace config

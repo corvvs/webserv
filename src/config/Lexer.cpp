@@ -7,7 +7,7 @@
 
 namespace config {
 
-/// public functions
+/// Public functions
 
 Lexer::Lexer(void) : idx_(0), line_count_(1) {}
 Lexer::~Lexer(void) {}
@@ -64,7 +64,7 @@ void Lexer::reset_read_idx(void) {
     idx_ = 0;
 }
 
-/// private functions
+/// Private functions
 
 bool Lexer::is_space(const char &c) const {
     const std::string spaces = " \t";
@@ -120,7 +120,7 @@ std::string Lexer::skip_spaces(std::string &s) const {
 
 std::string Lexer::tokenize_error(const std::string &s) const {
     size_t lines = count_lines(s, s.size());
-    return validation_error("unexpected end of file, expecting \";\" or \"}\"", lines);
+    return Validator::validation_error("unexpected end of file, expecting \";\" or \"}\"", lines);
 }
 
 // クォートなどの前後に挟まれた文字列をトークンの配列に追加する

@@ -15,7 +15,7 @@
 
 namespace config {
 
-Parser::Parser(void) {}
+Parser::Parser(void) : ctx_(GLOBAL) {}
 Parser::~Parser(void) {}
 
 // ディレクティブとコンテキストを追加する関数を設定する
@@ -45,6 +45,134 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     return directives;
 }
 
+std::vector<Config> Parser::Parse(const std::string &file_data) {
+    lexer_.tokenize(file_data);
+
+    ErrorMsg err;
+    if ((err = brace_balanced()) != "") {
+        throw SyntaxError(err);
+    }
+
+    std::vector<Directive> analyzed           = analyze();
+    std::vector<ContextServer> server_configs = parse(analyzed);
+    if (is_conflicted_server_name(server_configs)) {
+        throw SyntaxError("config: conflicting server name");
+    }
+    inherit_data(server_configs);
+
+    std::vector<Config> configs;
+    std::vector<ContextServer>::iterator it = server_configs.begin();
+    for (; it != server_configs.end(); ++it) {
+        print_server(*it);
+
+        // TODO: listenの数だけConfigを作成する(圧縮する必要あり)
+        std::vector<host_port_pair>::const_iterator hp_it = it->host_ports.begin();
+        for (; hp_it != it->host_ports.end(); ++hp_it) {
+            // サーバーコンテキストからconfigを作成
+            Config conf(*it);
+
+            // configに対応するhostとportのペアを与える
+            conf.set_host_port(*hp_it);
+            configs.push_back(conf);
+        }
+    }
+    return configs;
+}
+
+ErrorMsg Parser::brace_balanced(void) {
+    int depth = 0;
+    int line  = 0;
+
+    wsToken *tok;
+    while ((tok = lexer_.read()) != NULL) {
+        line = tok->line;
+        if (tok->value == "}" && !tok->is_quoted) {
+            depth -= 1;
+        } else if (tok->value == "{" && !tok->is_quoted) {
+            depth += 1;
+        }
+        if (depth < 0) {
+            return Validator::validation_error("unexpected \"}\"", line);
+        }
+    }
+    if (depth > 0) {
+        return Validator::validation_error("unexpected end of file, expecting \"}\"", line);
+    }
+    lexer_.reset_read_idx();
+    return "";
+}
+
+/// Analyze
+bool Parser::is_special(const std::string &s) const {
+    return s == "{" || s == "}" || s == ";";
+}
+
+std::vector<std::string> Parser::enter_block_ctx(Directive dire, std::vector<std::string> ctx) {
+    if (ctx.size() > 0 && ctx[0] == "http" && dire.name == "location") {
+        ctx.clear();
+        ctx.push_back("http");
+        ctx.push_back("location");
+        return ctx;
+    }
+
+    // location以外はネストすることができないので追加する
+    ctx.push_back(dire.name);
+    return ctx;
+}
+
+/**
+ * @brief lexerによって分割されたtokenを解析する
+ * 1. "}"のチェック
+ * 2. 引数のチェック
+ * 3. 構文解析
+ *   - ディレクティブが正しいか
+ *   - 引数の数が正しいか
+ * 4. ブロックディレクティブの場合は再帰的にパースする
+ */
+std::vector<Directive> Parser::analyze(std::vector<std::string> ctx) {
+    std::vector<Directive> parsed;
+
+    wsToken *cur;
+    while (1) {
+        if ((cur = lexer_.read()) == NULL) {
+            break;
+        }
+        if (cur->value == "}" && !cur->is_quoted) {
+            break;
+        }
+
+        // Directives
+        Directive dire(cur->value, cur->line);
+        if ((cur = lexer_.read()) == NULL) {
+            break;
+        }
+
+        // Arguments
+        while (cur->is_quoted || !is_special(cur->value)) {
+            dire.args.push_back(cur->value);
+            dire.line = cur->line;
+            if ((cur = lexer_.read()) == NULL) {
+                return parsed;
+            }
+        }
+
+        // Validation
+        ErrorMsg err;
+        if ((err = Validator::validate(dire, cur->value, ctx)) != "") {
+            throw SyntaxError(err);
+        }
+
+        // For block directives, parse recursively
+        if (cur->value == "{" && !cur->is_quoted) {
+            std::vector<std::string> inner;
+            inner      = enter_block_ctx(dire, ctx);
+            dire.block = analyze(inner);
+        }
+        parsed.push_back(dire);
+    }
+    return parsed;
+}
+
 bool Parser::is_conflicted_server_name(const std::vector<ContextServer> &servers) {
     std::map<std::pair<std::string, int>, std::string> mp;
 
@@ -71,134 +199,6 @@ bool Parser::is_conflicted_server_name(const std::vector<ContextServer> &servers
         }
     }
     return false;
-}
-// vector<ContextServer>を返す
-std::vector<Config> Parser::Parse(const std::string &file_data) {
-    // トークンごとに分割する
-    lexer_.tokenize(file_data);
-
-    ErrorType err;
-    if ((err = brace_balanced()) != "") {
-        throw SyntaxError(err);
-    }
-    std::vector<Directive> pre_parsed = pre_parse();
-
-    ctx_                                      = GLOBAL;
-    std::vector<ContextServer> server_configs = parse(pre_parsed);
-    if (is_conflicted_server_name(server_configs)) {
-        throw SyntaxError("config: conflicting server name");
-    }
-    inherit_data(server_configs);
-
-    std::vector<Config> configs;
-
-    std::vector<ContextServer>::iterator it = server_configs.begin();
-    for (; it != server_configs.end(); ++it) {
-        print_server(*it);
-
-        // TODO: listenの数だけConfigを作成する(圧縮する必要あり)
-        std::vector<host_port_pair>::const_iterator hp_it = it->host_ports.begin();
-        for (; hp_it != it->host_ports.end(); ++hp_it) {
-            // サーバーコンテキストからconfigを作成
-            Config conf(*it);
-
-            // configに対応するhostとportのペアを与える
-            conf.set_host_port(*hp_it);
-            configs.push_back(conf);
-        }
-    }
-    return configs;
-}
-
-std::vector<std::string> Parser::enter_block_ctx(Directive dire, std::vector<std::string> ctx) {
-    if (ctx.size() > 0 && ctx[0] == "http" && dire.name == "location") {
-        ctx.clear();
-        ctx.push_back("http");
-        ctx.push_back("location");
-        return ctx;
-    }
-
-    // location以外はネストすることができないので追加する
-    ctx.push_back(dire.name);
-    return ctx;
-}
-
-ErrorType Parser::brace_balanced(void) {
-    int depth = 0;
-    int line  = 0;
-
-    wsToken *tok;
-    while ((tok = lexer_.read()) != NULL) {
-        line = tok->line;
-        if (tok->value == "}" && !tok->is_quoted) {
-            depth -= 1;
-        } else if (tok->value == "{" && !tok->is_quoted) {
-            depth += 1;
-        }
-        if (depth < 0) {
-            return validation_error("unexpected \"}\"", line);
-        }
-    }
-    if (depth > 0) {
-        return validation_error("unexpected end of file, expecting \"}\"", line);
-    }
-    lexer_.reset_read_idx();
-    return "";
-}
-
-/**
- * @brief lexerによって分割されたtokenを解析する
- * 1. "}"のチェック
- * 2. 引数のチェック
- * 3. 構文解析
- *  - ディレクティブが正しいか
- *  - 引数の数が正しいか
- * 4. ブロックディレクティブの場合は再帰的にパースする
- */
-std::vector<Directive> Parser::pre_parse(std::vector<std::string> ctx) {
-    std::vector<Directive> parsed;
-
-    wsToken *cur;
-    while (1) {
-        cur = lexer_.read();
-        if (cur == NULL) {
-            return parsed;
-        }
-
-        if (cur->value == "}" && !cur->is_quoted) {
-            break;
-        }
-
-        Directive dire = {cur->value, cur->line, std::vector<std::string>(), std::vector<Directive>()};
-
-        cur = lexer_.read();
-        if (cur == NULL) {
-            return parsed;
-        }
-        // 引数のパース(特殊文字が来るまで足し続ける)
-        while (cur->is_quoted || (cur->value != "{" && cur->value != ";" && cur->value != "}")) {
-            dire.args.push_back(cur->value);
-            dire.line = cur->line;
-            cur       = lexer_.read();
-            if (cur == NULL) {
-                return parsed;
-            }
-        }
-        std::string err;
-        if ((err = validate(dire, cur->value, ctx)) != "") {
-            throw SyntaxError(err);
-        }
-
-        // "{" で終わってた場合はcontextを調べる
-        std::vector<std::string> inner;
-        if (cur->value == "{" && !cur->is_quoted) {
-            inner      = enter_block_ctx(dire, ctx); // get context for block
-            dire.block = pre_parse(inner);
-        }
-        parsed.push_back(dire);
-    }
-
-    return parsed;
 }
 
 /// Adder
@@ -330,7 +330,7 @@ void Parser::add_listen(const std::vector<std::string> &args) {
     std::string host;
     int port;
     if (splitted.size() == 1) {
-        if (is_host(splitted.front())) {
+        if (Validator::is_host(splitted.front())) {
             host = splitted.front();
             if (host == "localhost") {
                 host = "127.0.0.1";
@@ -377,7 +377,6 @@ void Parser::add_return(const std::vector<std::string> &args) {
         ctx_servers_.back().defined_["redirect"] = true;
     }
     if (ctx_ == LOCATION) {
-        // 入れ子になっている場合があるので、子をたどっていく
         ContextLocation *p      = get_current_location();
         p->redirect             = std::make_pair(status_code, path);
         p->defined_["redirect"] = true;
@@ -502,13 +501,15 @@ size_t Parser::count_nested_locations(void) const {
 
 ContextLocation *Parser::get_current_location(void) {
     ContextLocation *p = &ctx_servers_.back().locations.back();
-    const size_t &cnt  = count_nested_locations();
+
+    const size_t &cnt = count_nested_locations();
     for (size_t i = 1; i < cnt; i++) {
         p = &p->locations.back();
     }
     return p;
 }
 
+// 前処理を行ったconfigの情報を元にパースする
 std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
     // TODO:再帰的に呼ぶので事前に定義しておきたい
     add_directives_func_map = setting_directive_functions();
@@ -528,6 +529,7 @@ std::vector<ContextServer> Parser::parse(std::vector<Directive> vdir) {
 }
 
 /// Debug functions
+
 void Parser::print_directives(const std::vector<Directive> &d, const bool &is_block, const std::string &before) {
     std::string dir = is_block ? "Dire" : "Block";
 

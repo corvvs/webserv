@@ -71,8 +71,8 @@ int main(int argc, char **argv) {
     }
     const char *path = argv[1];
 
-    test_lexer(path);
-    // test_validation(path);
+    //    test_lexer(path);
+    test_validation(path);
 
     return 0;
 }
