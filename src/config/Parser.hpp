@@ -27,7 +27,7 @@ class Parser {
 public:
     Parser(void);
     ~Parser(void);
-    std::vector<Config> Parse(const std::string &file_data);
+    std::vector<Config> parse(const std::string &file_data);
 
 private:
     enum ContextType {
@@ -38,15 +38,13 @@ private:
         LIMIT_EXCEPT,
     };
 
-    typedef void (Parser::*add_directive_functions)(const std::vector<std::string> &args);
+    typedef void (Parser::*add_directive_functions)(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
     typedef std::map<std::string, add_directive_functions> DirectiveFunctionsMap;
 
     /// Member variables
     Lexer lexer_;
     std::vector<ContextServer> ctx_servers_;
     ContextMain ctx_main_;
-    ContextType ctx_;
-    std::stack<ContextType> ctx_stack_;
     std::map<std::string, Parser::add_directive_functions> adder_maps;
 
     /// Member functions
@@ -54,30 +52,29 @@ private:
     DirectiveFunctionsMap setting_directive_functions(void);
     std::string brace_balanced(void);
 
-    /// Analyze
-    std::vector<ContextServer> parse(std::vector<Directive> vdir);
-    std::vector<Directive> analyze(std::vector<std::string> ctx = std::vector<std::string>());
+    std::vector<ContextServer> forestize(std::vector<Directive> vdir, std::stack<ContextType> &ctx);
+    std::vector<Directive> clusterize(std::vector<std::string> ctx = std::vector<std::string>());
     std::vector<std::string> enter_block_ctx(Directive dire, std::vector<std::string> ctx);
     bool is_special(const std::string &s) const;
 
     /// Adder
-    void add_http(const std::vector<std::string> &args);
-    void add_server(const std::vector<std::string> &args);
-    void add_location(const std::vector<std::string> &args);
-    void add_limit_except(const std::vector<std::string> &args);
-    void add_autoindex(const std::vector<std::string> &args);
-    void add_error_page(const std::vector<std::string> &args);
-    void add_index(const std::vector<std::string> &args);
-    void add_listen(const std::vector<std::string> &args);
-    void add_return(const std::vector<std::string> &args);
-    void add_root(const std::vector<std::string> &args);
-    void add_server_name(const std::vector<std::string> &args);
-    void add_client_max_body_size(const std::vector<std::string> &args);
-    void add_upload_store(const std::vector<std::string> &args);
+    void add_http(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_server(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_location(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_limit_except(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_autoindex(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_error_page(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_index(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_listen(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_return(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_root(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_server_name(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_client_max_body_size(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_upload_store(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
 
     bool is_conflicted_server_name(const std::vector<ContextServer> &servers);
-    size_t count_nested_locations(void) const;
-    ContextLocation *get_current_location(void);
+    size_t count_nested_locations(const std::stack<ContextType> &ctx) const;
+    ContextLocation *get_current_location(const std::stack<ContextType> &ctx);
 
     void inherit_data(std::vector<ContextServer> &servers);
     void inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs);
@@ -86,9 +83,6 @@ private:
 
     /// Debug
 
-#ifdef NDEBUG
-public:
-#endif
     void
     print_directives(const std::vector<Directive> &d, const bool &is_block = false, const std::string &before = "");
     void print_location(const std::vector<ContextLocation> &loc);

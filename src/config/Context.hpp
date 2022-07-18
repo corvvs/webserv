@@ -20,6 +20,9 @@ public:
     std::string root;
     std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
+
+    // 重複していいディレクティブか判定するときに使用する
+    std::map<std::string, bool> defined_;
 };
 
 class ContextServer {
@@ -67,6 +70,7 @@ public:
     std::vector<std::string> indexes;
     std::map<int, std::string> error_pages;
     std::pair<int, std::string> redirect;
+    std::string upload_store;
 
     /// 継承しない
     std::string path;

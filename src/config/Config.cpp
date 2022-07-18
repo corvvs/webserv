@@ -67,8 +67,8 @@ std::vector<std::string> Config::get_server_name(const std::string &target) cons
 }
 
 std::string Config::get_upload_store(const std::string &target) const {
-    (void)target;
-    return ctx_server_.upload_store;
+    const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
+    return loc.upload_store;
 }
 
 bool Config::get_default_server(const std::string &target) const {

@@ -61,9 +61,12 @@ std::string map_to_string(const std::map<Key, Value> &mp) {
     std::ostringstream oss;
     oss << "{ ";
     for (typename std::map<Key, Value>::const_iterator it = mp.begin(); it != mp.end(); ++it) {
-        oss << "< " << it->first << ", " << it->second << " > ";
+        if (it != mp.begin()) {
+            oss << ", ";
+        }
+        oss << "< " << it->first << ", " << it->second << " >";
     }
-    oss << "}";
+    oss << " }";
     return oss.str();
 }
 
