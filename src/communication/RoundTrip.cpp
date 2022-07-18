@@ -34,7 +34,7 @@ bool RoundTrip::inject_data(const u8t *received_buffer, ssize_t received_size, e
         request_->inject_bytestring(received_buffer, received_buffer + received_size);
         return received_size == 0;
     } else {
-        assert(extra_buffer.empty() == false);
+        assert(extra_buffer.size() > 0);
         const extra_buffer_type::size_type n = std::min(extra_buffer.size(), (extra_buffer_type::size_type)1024);
         bool is_disconnected                 = (extra_buffer.size() == n);
         request_->inject_bytestring(extra_buffer.begin(), extra_buffer.begin() + n);

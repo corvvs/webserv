@@ -25,11 +25,11 @@ HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
 
 RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
 
-RequestHTTP::RequestHTTP() : mid(0), cp() {
+RequestHTTP::RequestHTTP() : mid(0), rp() {
     DXOUT("[create_requedt]");
     this->ps.parse_progress = PP_REQLINE_START;
-    this->cp.http_method    = HTTP::METHOD_UNKNOWN;
-    this->cp.http_version   = HTTP::V_UNKNOWN;
+    this->rp.http_method    = HTTP::METHOD_UNKNOWN;
+    this->rp.http_version   = HTTP::V_UNKNOWN;
     bytebuffer.reserve(HTTP::MAX_REQLINE_END);
 }
 
@@ -173,7 +173,7 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is
     }
     // あたり: ヘッダの終わりが見つかった
     analyze_headers(res);
-    if (this->cp.is_body_chunked) {
+    if (this->rp.is_body_chunked) {
         return PP_CHUNK_SIZE_LINE_END;
     } else {
         return PP_BODY;
@@ -192,10 +192,10 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool
     //   -> 受信済みサイズ = this->mid - start_of_body が content-length になるよう調整
     (void)is_disconnected;
     this->mid += len;
-    if (parsed_body_size() < this->cp.body_size) {
+    if (parsed_body_size() < this->rp.body_size) {
         return PP_UNREACHED;
     }
-    this->ps.end_of_body = this->cp.body_size + this->ps.start_of_body;
+    this->ps.end_of_body = this->rp.body_size + this->ps.start_of_body;
     this->mid            = this->ps.end_of_body;
     return PP_OVER;
 }
@@ -298,8 +298,8 @@ void RequestHTTP::analyze_headers(IndexRange res) {
     const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
     parse_header_lines(header_lines, &this->header_holder);
     extract_control_headers();
-    VOUT(this->cp.is_body_chunked);
-    if (this->cp.is_body_chunked) {
+    VOUT(this->rp.is_body_chunked);
+    if (this->rp.is_body_chunked) {
         this->ps.start_of_current_chunk = this->ps.start_of_body;
     }
 }
@@ -331,16 +331,16 @@ void RequestHTTP::parse_reqline(const light_string &raw_req_line) {
             // HTTP/0.9?
             // HTTP/1.*?
 
-            this->cp.http_method = discriminate_request_method(splitted[0]);
-            DXOUT(splitted[0] << " -> http_method: " << this->cp.http_method);
-            this->cp.request_path = splitted[1];
-            DXOUT("request_path: " << this->cp.request_path);
+            this->rp.http_method = discriminate_request_method(splitted[0]);
+            DXOUT(splitted[0] << " -> http_method: " << this->rp.http_method);
+            this->rp.request_path = splitted[1];
+            DXOUT("request_path: " << this->rp.request_path);
             if (splitted.size() == 3) {
-                this->cp.http_version = discriminate_request_version(splitted[2]);
+                this->rp.http_version = discriminate_request_version(splitted[2]);
             } else {
-                this->cp.http_version = HTTP::V_0_9;
+                this->rp.http_version = HTTP::V_0_9;
             }
-            DXOUT(splitted[2] << " -> http_version: " << this->cp.http_version);
+            DXOUT(splitted[2] << " -> http_version: " << this->rp.http_version);
             break;
         }
         default:
@@ -463,14 +463,14 @@ void RequestHTTP::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     // TODO: ここで何を抽出すべきか洗い出す
 
-    this->cp.determine_host(header_holder);
-    this->cp.determine_content_type(header_holder);
-    this->cp.determine_transfer_encoding(header_holder);
-    this->cp.determine_body_size(header_holder);
-    this->cp.determine_connection(header_holder);
-    this->cp.determine_te(header_holder);
-    this->cp.determine_upgrade(header_holder);
-    this->cp.determine_via(header_holder);
+    this->rp.determine_host(header_holder);
+    this->rp.determine_content_type(header_holder);
+    this->rp.determine_transfer_encoding(header_holder);
+    this->rp.determine_body_size(header_holder);
+    this->rp.determine_connection(header_holder);
+    this->rp.determine_te(header_holder);
+    this->rp.determine_upgrade(header_holder);
+    this->rp.determine_via(header_holder);
 }
 
 void RequestHTTP::RoutingParameters::determine_body_size(const HeaderHTTPHolder &holder) {
@@ -1048,11 +1048,11 @@ size_t RequestHTTP::parsed_size() const {
 }
 
 HTTP::t_version RequestHTTP::get_http_version() const {
-    return this->cp.http_version;
+    return this->rp.http_version;
 }
 
 RequestHTTP::byte_string RequestHTTP::get_body() const {
-    if (cp.is_body_chunked) {
+    if (rp.is_body_chunked) {
         return chunked_body.body();
     } else {
         return byte_string(bytebuffer.begin() + this->ps.start_of_body, bytebuffer.begin() + this->ps.end_of_body);

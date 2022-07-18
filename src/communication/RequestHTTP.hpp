@@ -130,7 +130,7 @@ private:
     // 解析中の情報
     ParserStatus ps;
     // ルーティングパラメータ
-    RoutingParameters cp;
+    RoutingParameters rp;
 
     // chunked本文
     ChunkedBody chunked_body;

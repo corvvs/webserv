@@ -102,7 +102,7 @@ void Connection::perform_receiving(IObserver &observer) {
     // データ受信
     const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
     u8t buf[read_buffer_size];
-    ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
+    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
     if (received_size == 0) {
         DXOUT("sock closed?");
     }
@@ -168,7 +168,7 @@ void Connection::perform_sending(IObserver &observer) {
     }
     // まだレスポンスを終了できない場合
     // -> レスポンスから一定量のデータを取って送信する
-    ssize_t sent = sock->send(rt.res()->get_unsent_head(), rt.res()->get_unsent_size(), 0);
+    const ssize_t sent = sock->send(rt.res()->get_unsent_head(), rt.res()->get_unsent_size(), 0);
     // 送信ができなかったか, エラーが起きた場合
     if (sent <= 0) {
         // TODO: とりあえず接続を閉じておくが, 本当はどうするべき？
@@ -182,7 +182,7 @@ void Connection::perform_sending(IObserver &observer) {
 void Connection::perform_shutting_down(IObserver &observer) {
     const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
     u8t buf[read_buffer_size];
-    ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
+    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
     if (received_size > 0) {
         return;
     }
@@ -190,7 +190,7 @@ void Connection::perform_shutting_down(IObserver &observer) {
 }
 
 void Connection::touch() {
-    t_time_epoch_ms t = WSTime::get_epoch_ms();
+    const t_time_epoch_ms t = WSTime::get_epoch_ms();
     DXOUT("operated_at: " << latest_operated_at << " -> " << t);
     latest_operated_at = t;
 }
