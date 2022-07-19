@@ -1,10 +1,8 @@
 #ifndef HTTPSERVER_HPP
 #define HTTPSERVER_HPP
+#include "../Interfaces.hpp"
+#include "../Originators.hpp"
 #include "../communication/Channel.hpp"
-#include "../interface/IObserver.hpp"
-#include "../interface/IOriginator.hpp"
-#include "../interface/IRouter.hpp"
-#include "../interface/ISocketLike.hpp"
 #include <map>
 
 // [サーバクラス]
@@ -33,11 +31,11 @@ public:
     // イベントループ開始
     void run();
 
-    IOriginator *route_origin(RequestHTTP *request);
+    IOriginator *route_origin(const RequestHTTP *request);
 
-    ResponseHTTP *route(RequestHTTP *request);
+    ResponseHTTP *route(const RequestHTTP *request);
 
-    ResponseHTTP *respond_error(RequestHTTP *request, http_error error);
+    ResponseHTTP *respond_error(const RequestHTTP *request, http_error error);
 };
 
 #endif

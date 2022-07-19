@@ -58,7 +58,7 @@ public:
     size_t get_unsent_size() const;
 
     // predicate: メッセージ全体の送信が完了したかどうか
-    bool is_over_sending() const;
+    bool is_complete() const;
 };
 
 #endif
