@@ -1,7 +1,7 @@
 #include "HeaderHTTP.hpp"
 #define DEFINE_ATTR(key, list, aggr, uniq)                                                                             \
     {                                                                                                                  \
-        HeaderHTTPAttribute attr = {                                                                                   \
+        HeaderAttribute attr = {                                                                                       \
             list,                                                                                                      \
             aggr,                                                                                                      \
             uniq,                                                                                                      \
@@ -9,11 +9,11 @@
         predefined_attrs[key] = attr;                                                                                  \
     }
 
-// [HeaderHTTPAttribute]
+// [HeaderAttribute]
 
-HeaderHTTPAttribute::attr_dict_type HeaderHTTPAttribute::predefined_attrs = HeaderHTTPAttribute::attr_dict_type();
+HeaderAttribute::attr_dict_type HeaderAttribute::predefined_attrs = HeaderAttribute::attr_dict_type();
 
-void HeaderHTTPAttribute::set_predefined_attrs() {
+void HeaderAttribute::set_predefined_attrs() {
     // [transfer-encoding]
     // https://triple-underscore.github.io/RFC7230-ja.html#_xref-6-10
     // "TE"ヘッダとは別物(TEは同じメッセージへの応答に対する指定; Transfer-Encodingは同じメッセージに対する指定)
@@ -34,43 +34,44 @@ void HeaderHTTPAttribute::set_predefined_attrs() {
     DEFINE_ATTR(HeaderHTTP::host, 0, 0, 1);
 }
 
-// [HeaderHTTPItem]
+// [HeaderItem]
 
-HeaderHTTPItem::HeaderHTTPItem(const header_key_type &key) : key(key) {
+HeaderItem::HeaderItem(const header_key_type &key) : key(key) {
     // 属性(attr)
-    HeaderHTTPAttribute::attr_dict_type::iterator it = HeaderHTTPAttribute::predefined_attrs.find(key);
-    if (it == HeaderHTTPAttribute::predefined_attrs.end()) {
-        HeaderHTTPAttribute a = {};
-        attr                  = a;
+    HeaderAttribute::attr_dict_type::iterator it = HeaderAttribute::predefined_attrs.find(key);
+    if (it == HeaderAttribute::predefined_attrs.end()) {
+        HeaderAttribute a = {};
+        attr              = a;
     } else {
         // predefineされているならそれを設定する
         attr = it->second;
     }
 }
 
-void HeaderHTTPItem::add_val(const header_val_type &val) {
+void HeaderItem::add_val(const header_val_type &val) {
     if (values.size() > 0) {
         // すでにvalueがある場合 -> 必要に応じてしかるべく処理する
         DXOUT("* MULTIPLE VALUES * " << values.size());
     }
+    DXOUT("ADDING Val to `" << key << "`: " << val);
     values.push_back(val);
 }
 
-const HeaderHTTPItem::header_val_type *HeaderHTTPItem::get_val() const {
+const HeaderItem::header_val_type *HeaderItem::get_val() const {
     return values.empty() ? NULL : &(values.front());
 }
 
-const HeaderHTTPItem::header_val_type *HeaderHTTPItem::get_back_val() const {
+const HeaderItem::header_val_type *HeaderItem::get_back_val() const {
     return values.empty() ? NULL : &(values.back());
 }
 
-const HeaderHTTPItem::value_list_type &HeaderHTTPItem::get_vals() const {
+const HeaderItem::value_list_type &HeaderItem::get_vals() const {
     return values;
 }
 
-// [HeaderHTTPHolder]
+// [HeaderHolderHTTP]
 
-void HeaderHTTPHolder::add_item(const light_string &key, const light_string &val) {
+void AHeaderHolder::add_item(const light_string &key, const light_string &val) {
     // val の obs-foldを除去し, 全体を string に変換する.
     // obs-fold を検知した場合, そのことを記録する
 
@@ -93,16 +94,16 @@ void HeaderHTTPHolder::add_item(const light_string &key, const light_string &val
     }
 
     header_key_type norm_key = ParserHelper::normalize_header_key(key);
-    HeaderHTTPItem *item     = dict[norm_key];
+    HeaderItem *item         = dict[norm_key];
     if (item == NULL) {
-        list.push_back(HeaderHTTPItem(norm_key));
+        list.push_back(HeaderItem(norm_key));
         item           = &(list.back());
         dict[norm_key] = item;
     }
     item->add_val(sval);
 }
 
-const HeaderHTTPHolder::header_item_type *HeaderHTTPHolder::get_item(const header_key_type &normalized_key) const {
+const AHeaderHolder::header_item_type *AHeaderHolder::get_item(const header_key_type &normalized_key) const {
     dict_type::const_iterator it = dict.find(normalized_key);
     if (it == dict.end()) {
         return NULL;
@@ -110,29 +111,29 @@ const HeaderHTTPHolder::header_item_type *HeaderHTTPHolder::get_item(const heade
     return it->second;
 }
 
-const HeaderHTTPHolder::header_val_type *HeaderHTTPHolder::get_val(const header_key_type &normalized_key) const {
-    const HeaderHTTPItem *p = get_item(normalized_key);
+const AHeaderHolder::header_val_type *AHeaderHolder::get_val(const header_key_type &normalized_key) const {
+    const HeaderItem *p = get_item(normalized_key);
     return p ? p->get_val() : NULL;
 }
 
-const HeaderHTTPHolder::header_val_type *HeaderHTTPHolder::get_back_val(const header_key_type &normalized_key) const {
-    const HeaderHTTPItem *p = get_item(normalized_key);
+const AHeaderHolder::header_val_type *AHeaderHolder::get_back_val(const header_key_type &normalized_key) const {
+    const HeaderItem *p = get_item(normalized_key);
     return p ? p->get_back_val() : NULL;
 }
 
-const HeaderHTTPHolder::value_list_type *HeaderHTTPHolder::get_vals(const header_key_type &normalized_key) const {
-    const HeaderHTTPItem *p = get_item(normalized_key);
+const AHeaderHolder::value_list_type *AHeaderHolder::get_vals(const header_key_type &normalized_key) const {
+    const HeaderItem *p = get_item(normalized_key);
     return p ? &(p->get_vals()) : NULL;
 }
 
-HeaderHTTPHolder::joined_dict_type HeaderHTTPHolder::get_cgi_http_vars() const {
-    HeaderHTTPHolder::joined_dict_type d;
+HeaderHolderHTTP::joined_dict_type HeaderHolderHTTP::get_cgi_http_vars() const {
+    HeaderHolderHTTP::joined_dict_type d;
     for (dict_type::const_iterator it = dict.begin(); it != dict.end(); ++it) {
         header_key_type key = HTTP::strfy("HTTP_") + it->first;
         HTTP::Utils::normalize_cgi_metavar_key(key);
         HTTP::byte_string val;
-        HeaderHTTPItem::value_list_type vals = it->second->get_vals();
-        for (HeaderHTTPItem::value_list_type::const_iterator it = vals.begin(); it != vals.end(); ++it) {
+        HeaderItem::value_list_type vals = it->second->get_vals();
+        for (HeaderItem::value_list_type::const_iterator it = vals.begin(); it != vals.end(); ++it) {
             if (it != vals.begin()) {
                 val += HTTP::strfy(", ");
             }

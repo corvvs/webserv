@@ -25,12 +25,15 @@ const HTTP::byte_string te                = HTTP::strfy("te");
 const HTTP::byte_string vary              = HTTP::strfy("vary");
 const HTTP::byte_string upgrade           = HTTP::strfy("upgrade");
 const HTTP::byte_string via               = HTTP::strfy("via");
+// for CGI
+const HTTP::byte_string status   = HTTP::strfy("status");
+const HTTP::byte_string location = HTTP::strfy("location");
 } // namespace HeaderHTTP
 
 // あるヘッダキーの属性
-struct HeaderHTTPAttribute {
+struct HeaderAttribute {
     typedef HTTP::header_key_type header_key_type;
-    typedef std::map<header_key_type, HeaderHTTPAttribute> attr_dict_type;
+    typedef std::map<header_key_type, HeaderAttribute> attr_dict_type;
 
     // [属性]
 
@@ -49,7 +52,7 @@ struct HeaderHTTPAttribute {
 
 // ヘッダーのkeyとvalue(s)を保持する
 // 再確保が起きないコンテナ(list)で保持し, mapにポインタを保持する
-class HeaderHTTPItem {
+class HeaderItem {
 public:
     typedef HTTP::header_key_type header_key_type;
     typedef HTTP::header_val_type header_val_type;
@@ -59,11 +62,11 @@ public:
 private:
     const header_key_type key;
     value_list_type values;
-    HeaderHTTPAttribute attr;
+    HeaderAttribute attr;
 
 public:
     // キーを与えて構築
-    HeaderHTTPItem(const header_key_type &key);
+    HeaderItem(const header_key_type &key);
 
     // 値を与える
     void add_val(const header_val_type &val);
@@ -73,22 +76,22 @@ public:
     const value_list_type &get_vals() const;
 };
 
-// HeaderHTTPItem を保持する
-class HeaderHTTPHolder {
+// HeaderItem を保持する
+class AHeaderHolder {
 public:
     typedef HTTP::header_key_type header_key_type;
     typedef HTTP::header_val_type header_val_type;
     typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
-    typedef HeaderHTTPItem header_item_type;
+    typedef HeaderItem header_item_type;
     // なぜ vector などではなく list を使うのかというと, 再確保を防ぐため.
-    // 再確保を防ぐのは, dict で HeaderHTTPItem のポインタを保持するから.
-    typedef std::list<HeaderHTTPItem> list_type;
-    typedef std::map<header_key_type, HeaderHTTPItem *> dict_type;
-    typedef HeaderHTTPItem::value_list_type value_list_type;
+    // 再確保を防ぐのは, dict で HeaderItem のポインタを保持するから.
+    typedef std::list<HeaderItem> list_type;
+    typedef std::map<header_key_type, HeaderItem *> dict_type;
+    typedef HeaderItem::value_list_type value_list_type;
     typedef std::map<byte_string, byte_string> joined_dict_type;
 
-private:
+protected:
     list_type list;
     dict_type dict;
 
@@ -103,10 +106,16 @@ public:
     const header_val_type *get_back_val(const header_key_type &normalized_key) const;
     // 指定したキーの値をすべて取得する
     const value_list_type *get_vals(const header_key_type &normalized_key) const;
+};
 
+class HeaderHolderHTTP : public AHeaderHolder {
+
+public:
     // HTTPヘッダをCGIメタ変数に加工した辞書を返す
     // 同じキーの値はすべて ", " で連結する
     joined_dict_type get_cgi_http_vars() const;
 };
+
+class HeaderHolderCGI : public AHeaderHolder {};
 
 #endif

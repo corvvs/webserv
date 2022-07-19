@@ -36,7 +36,7 @@ RequestHTTP::RequestHTTP() : mid(0), rp() {
 RequestHTTP::~RequestHTTP() {}
 
 void RequestHTTP::after_injection(bool is_disconnected) {
-    size_t len = 1;
+    size_t len;
     t_parse_progress flow;
     do {
         len = bytebuffer.size() - this->mid;
@@ -181,7 +181,6 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is
 }
 
 RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool is_disconnected) {
-    // TODO: 切断対応
     // - 接続が切れていたら
     //   -> ここまでをbodyとする
     // - content-lengthが不定なら
@@ -190,9 +189,8 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool
     //   -> 続行
     // - (else) 受信済みサイズが content-length 以上なら
     //   -> 受信済みサイズ = this->mid - start_of_body が content-length になるよう調整
-    (void)is_disconnected;
     this->mid += len;
-    if (parsed_body_size() < this->rp.body_size) {
+    if (!is_disconnected && parsed_body_size() < this->rp.body_size) {
         return PP_UNREACHED;
     }
     this->ps.end_of_body = this->rp.body_size + this->ps.start_of_body;
@@ -349,17 +347,17 @@ void RequestHTTP::parse_reqline(const light_string &raw_req_line) {
     DXOUT("* parsed reqline *");
 }
 
-void RequestHTTP::parse_header_lines(const light_string &lines, HeaderHTTPHolder *holder) const {
+void RequestHTTP::parse_header_lines(const light_string &lines, header_holder_type *holder) const {
     light_string rest(lines);
     DXOUT(std::endl << "==============" << std::endl << rest << std::endl << "==============");
     while (true) {
-        QVOUT(rest);
+        // QVOUT(rest);
         const IndexRange res = ParserHelper::find_crlf_header_value(rest);
         if (res.is_invalid()) {
             break;
         }
         const light_string header_line = rest.substr(0, res.first);
-        QVOUT(header_line);
+        // QVOUT(header_line);
         if (header_line.length() > 0) {
             // header_line が空文字列でない
             // -> ヘッダ行としてパースを試みる
@@ -369,11 +367,11 @@ void RequestHTTP::parse_header_lines(const light_string &lines, HeaderHTTPHolder
     }
 }
 
-void RequestHTTP::parse_header_line(const light_string &line, HeaderHTTPHolder *holder) const {
+void RequestHTTP::parse_header_line(const light_string &line, header_holder_type *holder) const {
 
     const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
-    QVOUT(line);
-    QVOUT(key);
+    // QVOUT(line);
+    // QVOUT(key);
     if (key.length() == line.length()) {
         // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
         // は無視して処理を続けます。
@@ -473,7 +471,7 @@ void RequestHTTP::extract_control_headers() {
     this->rp.determine_via(header_holder);
 }
 
-void RequestHTTP::RoutingParameters::determine_body_size(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_type &holder) {
     // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
 
     if (transfer_encoding.currently_chunked) {
@@ -504,9 +502,10 @@ void RequestHTTP::RoutingParameters::determine_body_size(const HeaderHTTPHolder 
     is_body_chunked = false;
     DXOUT("body_size is zero.");
 }
-void RequestHTTP::RoutingParameters::determine_host(const HeaderHTTPHolder &holder) {
+
+void RequestHTTP::RoutingParameters::determine_host(const header_holder_type &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
-    const HeaderHTTPHolder::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
+    const header_holder_type::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
     if (!hosts || hosts->size() == 0) {
         // HTTP/1.1 なのに host がない場合, BadRequest を出す
         if (http_version == HTTP::V_1_1) {
@@ -526,7 +525,7 @@ void RequestHTTP::RoutingParameters::determine_host(const HeaderHTTPHolder &hold
     pack_host(header_host, lhost);
 }
 
-void RequestHTTP::RoutingParameters::determine_transfer_encoding(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_transfer_encoding(const header_holder_type &holder) {
     // https://httpwg.org/specs/rfc7230.html#header.transfer-encoding
     // Transfer-Encoding  = 1#transfer-coding
     // transfer-coding    = "chunked"
@@ -537,17 +536,17 @@ void RequestHTTP::RoutingParameters::determine_transfer_encoding(const HeaderHTT
     // transfer-extension = token *( OWS ";" OWS transfer-parameter )
     // transfer-parameter = token BWS "=" BWS ( token / quoted-string )
 
-    const HeaderHTTPHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::transfer_encoding);
+    const header_holder_type::value_list_type *tes = holder.get_vals(HeaderHTTP::transfer_encoding);
     if (!tes) {
         return;
     }
     int i = 0;
-    for (HeaderHTTPHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
+    for (header_holder_type::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
         ++i;
-        VOUT(i);
+        // VOUT(i);
         light_string val_lstr = light_string(*it);
         for (;;) {
-            QVOUT(val_lstr);
+            // QVOUT(val_lstr);
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
             if (val_lstr.size() == 0) {
                 DXOUT("away; sp only.");
@@ -560,12 +559,12 @@ void RequestHTTP::RoutingParameters::determine_transfer_encoding(const HeaderHTT
             }
 
             // 本体
-            QVOUT(tc_lstr);
+            // QVOUT(tc_lstr);
             HTTP::Term::TransferCoding tc;
             tc.coding = tc_lstr.str();
-            QVOUT(tc.coding);
+            // QVOUT(tc.coding);
             transfer_encoding.transfer_codings.push_back(tc);
-            QVOUT(transfer_encoding.transfer_codings.back().coding);
+            // QVOUT(transfer_encoding.transfer_codings.back().coding);
 
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
@@ -574,12 +573,12 @@ void RequestHTTP::RoutingParameters::determine_transfer_encoding(const HeaderHTT
                 break;
             }
             // cat(sp_end) が "," か ";" かによって分岐
-            QVOUT(val_lstr);
+            // QVOUT(val_lstr);
             if (val_lstr[0] == ';') {
                 // parameterがはじまる
                 val_lstr = decompose_semicoron_separated_kvlist(val_lstr, transfer_encoding.transfer_codings.back());
             }
-            QVOUT(val_lstr);
+            // QVOUT(val_lstr);
             if (val_lstr.size() > 0 && val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
@@ -598,7 +597,7 @@ void RequestHTTP::RoutingParameters::determine_transfer_encoding(const HeaderHTT
     QVOUT(transfer_encoding.transfer_codings.back().coding);
 }
 
-void RequestHTTP::RoutingParameters::determine_content_type(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_content_type(const header_holder_type &holder) {
     // A sender that generates a message containing a payload body SHOULD generate a Content-Type header field in that
     // message unless the intended media type of the enclosed representation is unknown to the sender. If a Content-Type
     // header field is not present, the recipient MAY either assume a media type of "application/octet-stream"
@@ -617,16 +616,21 @@ void RequestHTTP::RoutingParameters::determine_content_type(const HeaderHTTPHold
         return;
     }
     const light_string lct(*ct);
+    // [`type`の捕捉]
+    // type = token = 1*tchar
     light_string::size_type type_end = lct.find_first_not_of(HTTP::CharFilter::tchar);
     if (type_end == light_string::npos) {
         DXOUT("[KO] no /: \"" << lct << "\"");
         return;
     }
+    // [`/`の捕捉]
     if (lct[type_end] != '/') {
         DXOUT("[KO] not separated by /: \"" << lct << "\"");
         return;
     }
     light_string type_str(lct, 0, type_end);
+    // [`subtype`の捕捉]
+    // subtype = token = 1*char
     light_string::size_type subtype_end = lct.find_first_not_of(HTTP::CharFilter::tchar, type_end + 1);
     light_string subtype_str(lct, type_end + 1, subtype_end);
     if (subtype_str.size() == 0) {
@@ -639,18 +643,19 @@ void RequestHTTP::RoutingParameters::determine_content_type(const HeaderHTTPHold
     }
     content_type.value = lct.substr(0, subtype_end).str();
     DXOUT("content_type.value: " << content_type.value);
-
-    // media-type     = type "/" subtype *( OWS ";" OWS parameter )
-    // light_string    parameters_str(lct, subtype_end);
-    // light_string    continuation = decompose_semicoron_separated_kvlist(parameters_str, content_type);
-    // DXOUT("parameter: " << content_type.parameters.size());
-    // DXOUT("continuation: \"" << continuation << "\"");
+    // [`parameter`の捕捉]
+    // parameter  = 1*tchar "=" ( 1*tchar / quoted-string )
+    light_string parameters_str(lct, subtype_end);
+    QVOUT(parameters_str);
+    light_string continuation = decompose_semicoron_separated_kvlist(parameters_str, content_type);
+    DXOUT("parameter: " << content_type.parameters.size());
+    QVOUT(continuation);
 }
 
-void RequestHTTP::RoutingParameters::determine_connection(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_connection(const header_holder_type &holder) {
     // Connection        = 1#connection-option
     // connection-option = token
-    const HeaderHTTPHolder::value_list_type *cons = holder.get_vals(HeaderHTTP::connection);
+    const header_holder_type::value_list_type *cons = holder.get_vals(HeaderHTTP::connection);
     if (!cons) {
         return;
     }
@@ -658,10 +663,10 @@ void RequestHTTP::RoutingParameters::determine_connection(const HeaderHTTPHolder
         DXOUT("[KO] list exists, but it's empty.");
         return;
     }
-    for (HeaderHTTPHolder::value_list_type::const_iterator it = cons->begin(); it != cons->end(); ++it) {
+    for (header_holder_type::value_list_type::const_iterator it = cons->begin(); it != cons->end(); ++it) {
         light_string val_lstr = light_string(*it);
         for (;;) {
-            DXOUT("val_lstr: \"" << val_lstr << "\"");
+            // DXOUT("val_lstr: \"" << val_lstr << "\"");
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
             if (val_lstr.size() == 0) {
                 DXOUT("away; sp only.");
@@ -675,7 +680,7 @@ void RequestHTTP::RoutingParameters::determine_connection(const HeaderHTTPHolder
 
             // 本体
             byte_string target_str = HTTP::Utils::downcase(target_lstr.str());
-            DXOUT("target_str: \"" << target_str << "\"");
+            // DXOUT("target_str: \"" << target_str << "\"");
             connection.connection_options.push_back(target_str);
             if (target_str == "close") {
                 connection.close_ = true;
@@ -690,7 +695,7 @@ void RequestHTTP::RoutingParameters::determine_connection(const HeaderHTTPHolder
                 break;
             }
             // cat(sp_end) が "," か ";" かによって分岐
-            DXOUT("val_lstr[0]: " << val_lstr[0]);
+            // DXOUT("val_lstr[0]: " << val_lstr[0]);
             if (val_lstr[0] == ',') {
                 // 次の要素
                 val_lstr = val_lstr.substr(1);
@@ -704,7 +709,7 @@ void RequestHTTP::RoutingParameters::determine_connection(const HeaderHTTPHolder
     DXOUT("close: " << connection.will_close() << ", keep-alive: " << connection.will_keep_alive());
 }
 
-void RequestHTTP::RoutingParameters::determine_te(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_te(const header_holder_type &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.te
     // TE        = #t-codings
     // t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
@@ -719,14 +724,14 @@ void RequestHTTP::RoutingParameters::determine_te(const HeaderHTTPHolder &holder
     // transfer-extension = token *( OWS ";" OWS transfer-parameter )
     // transfer-parameter = token BWS "=" BWS ( token / quoted-string )
 
-    const HeaderHTTPHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::te);
+    const header_holder_type::value_list_type *tes = holder.get_vals(HeaderHTTP::te);
     if (!tes) {
         return;
     }
-    for (HeaderHTTPHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
+    for (header_holder_type::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
         light_string val_lstr = light_string(*it);
         for (;;) {
-            DXOUT("val_lstr: \"" << val_lstr << "\"");
+            // DXOUT("val_lstr: \"" << val_lstr << "\"");
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
             if (val_lstr.size() == 0) {
                 DXOUT("away; sp only.");
@@ -739,7 +744,7 @@ void RequestHTTP::RoutingParameters::determine_te(const HeaderHTTPHolder &holder
             }
 
             // 本体
-            DXOUT("tc_lstr: \"" << tc_lstr << "\"");
+            // DXOUT("tc_lstr: \"" << tc_lstr << "\"");
             HTTP::Term::TransferCoding tc = HTTP::Term::TransferCoding::init();
             tc.coding                     = tc_lstr.str();
             te.transfer_codings.push_back(tc);
@@ -751,7 +756,7 @@ void RequestHTTP::RoutingParameters::determine_te(const HeaderHTTPHolder &holder
                 break;
             }
 
-            DXOUT("val_lstr[0]: " << val_lstr[0]);
+            // DXOUT("val_lstr[0]: " << val_lstr[0]);
             HTTP::Term::TransferCoding &last_coding = te.transfer_codings.back();
             if (val_lstr[0] == ';') {
                 // parameterがはじまる
@@ -762,14 +767,14 @@ void RequestHTTP::RoutingParameters::determine_te(const HeaderHTTPHolder &holder
             if (!te.transfer_codings.empty()) {
                 HTTP::IDictHolder::parameter_dict::iterator qit = last_coding.parameters.find(HTTP::strfy("q"));
                 if (qit != last_coding.parameters.end()) {
-                    DXOUT("rank: \"" << qit->second << "\"");
+                    // DXOUT("rank: \"" << qit->second << "\"");
                     if (HTTP::Validator::is_valid_rank(qit->second)) {
-                        DXOUT("rank is valid: " << qit->second);
-                        DXOUT("q: " << last_coding.quality_int);
+                        // DXOUT("rank is valid: " << qit->second);
+                        // DXOUT("q: " << last_coding.quality_int);
                         last_coding.quality_int = ParserHelper::quality_to_u(qit->second);
-                        DXOUT("q -> " << last_coding.quality_int);
+                        // DXOUT("q -> " << last_coding.quality_int);
                     } else {
-                        DXOUT("rank is INVALID: " << qit->second);
+                        // DXOUT("rank is INVALID: " << qit->second);
                     }
                 }
             }
@@ -790,16 +795,16 @@ void RequestHTTP::RoutingParameters::determine_te(const HeaderHTTPHolder &holder
     }
 }
 
-void RequestHTTP::RoutingParameters::determine_upgrade(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_upgrade(const header_holder_type &holder) {
     // Upgrade          = 1#protocol
     // protocol         = protocol-name ["/" protocol-version]
     // protocol-name    = token
     // protocol-version = token
-    const HeaderHTTPHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::upgrade);
+    const header_holder_type::value_list_type *elems = holder.get_vals(HeaderHTTP::upgrade);
     if (!elems) {
         return;
     }
-    for (HeaderHTTPHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
+    for (header_holder_type::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
         light_string val_lstr = light_string(*it);
         for (; val_lstr.size() > 0;) {
             val_lstr          = val_lstr.substr_after(HTTP::CharFilter::sp);
@@ -835,22 +840,22 @@ void RequestHTTP::RoutingParameters::determine_upgrade(const HeaderHTTPHolder &h
     }
 }
 
-void RequestHTTP::RoutingParameters::determine_via(const HeaderHTTPHolder &holder) {
+void RequestHTTP::RoutingParameters::determine_via(const header_holder_type &holder) {
     // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
     // received-protocol = [ protocol-name "/" ] protocol-version
     // received-by       = ( uri-host [ ":" port ] ) / pseudonym
     // pseudonym         = token
     // protocol-name     = token
     // protocol-version  = token
-    const HeaderHTTPHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::via);
+    const header_holder_type::value_list_type *elems = holder.get_vals(HeaderHTTP::via);
     if (!elems) {
         return;
     }
-    for (HeaderHTTPHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
+    for (header_holder_type::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
         light_string val_lstr = light_string(*it);
         for (;;) {
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
-            QVOUT(val_lstr);
+            // QVOUT(val_lstr);
             if (val_lstr.size() == 0) {
                 break;
             }
@@ -894,9 +899,9 @@ void RequestHTTP::RoutingParameters::determine_via(const HeaderHTTPHolder &holde
             via.receiveds.push_back(r);
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
 
-            const light_string comment = extract_comment(val_lstr);
-            QVOUT(comment);
-            QVOUT(val_lstr);
+            // const light_string comment = extract_comment(val_lstr);
+            // QVOUT(comment);
+            // QVOUT(val_lstr);
 
             if (val_lstr.size() > 0 && val_lstr[0] == ',') {
                 val_lstr = val_lstr.substr(1);
@@ -927,100 +932,8 @@ void RequestHTTP::RoutingParameters::pack_host(HTTP::Term::Host &host_item, cons
             host_item.port    = port.str();
         }
     }
-    DXOUT("host: \"" << host_item.host << "\"");
-    DXOUT("port: \"" << host_item.port << "\"");
-}
-
-RequestHTTP::light_string RequestHTTP::RoutingParameters::extract_comment(light_string &val_lstr) {
-    // comment        = "(" *( ctext / quoted-pair / comment ) ")"
-    // ctext          = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
-    //                ; HTAB + SP + 表示可能文字, ただしカッコとバッスラを除く
-    if (val_lstr.size() == 0 || val_lstr[0] != '(') {
-        return val_lstr.substr(0, 0);
-    }
-    int paren                 = 0;
-    bool quoted               = false;
-    light_string comment_from = val_lstr;
-    light_string::size_type n = 0;
-    for (; val_lstr.size() > 0; ++n, val_lstr = val_lstr.substr(1)) {
-        const char c = val_lstr[0];
-        if (quoted) {
-            if (!HTTP::CharFilter::qdright.includes(c)) {
-                DXOUT("[KO] quoting non-quotable char: " << val_lstr.qstr());
-                break;
-            }
-            quoted = false;
-        } else {
-            if (c == '(') {
-                paren += 1;
-            } else if (c == ')') {
-                if (paren <= 0) {
-                    DXOUT("[KO] too much ): " << val_lstr.qstr());
-                    break;
-                }
-                paren -= 1;
-                if (paren == 0) {
-                    DXOUT("finish comment");
-                    val_lstr = val_lstr.substr(1);
-                    ++n;
-                    break;
-                }
-            } else if (c == '\\') {
-                quoted = true;
-            } else if (!HTTP::CharFilter::ctext.includes(c)) {
-                DXOUT("[KO] non ctext in comment: " << val_lstr.qstr());
-                break;
-            }
-        }
-    }
-    return comment_from.substr(0, n);
-}
-
-RequestHTTP::light_string
-RequestHTTP::RoutingParameters::decompose_semicoron_separated_kvlist(const light_string &kvlist_str,
-                                                                     HTTP::IDictHolder &holder) {
-    light_string list_str = kvlist_str;
-    // *( OWS ";" OWS parameter )
-    for (;;) {
-        light_string params_str = list_str;
-        DXOUT("params_str: \"" << params_str << "\"");
-        params_str = params_str.substr_after(HTTP::CharFilter::sp);
-        if (params_str.size() == 0) {
-            DXOUT("away, there's only sp.");
-            return params_str;
-        }
-        if (params_str[0] != ';') {
-            DXOUT("away");
-            return params_str;
-        }
-        params_str = params_str.substr_after(HTTP::CharFilter::sp, 1);
-        // DXOUT("param_sep2: " << sep_pos);
-        if (params_str.size() == 0) {
-            DXOUT("[KO] there's only sp after ';'");
-            return params_str;
-        }
-        // ここからparameterを取得
-        // token
-        const light_string key_lstr = params_str.substr_while(HTTP::CharFilter::tchar);
-        if (key_lstr.size() == params_str.size() || params_str[key_lstr.size()] != '=') {
-            DXOUT("[KO] no equal");
-            return params_str.substr(params_str.size());
-        }
-        // [引数名]
-        // 引数名はcase-insensitive
-        // https://wiki.suikawiki.org/n/Content-Type#anchor-11
-        // > 引数名は、大文字・小文字の区別なしで定義されています。
-        params_str = params_str.substr(key_lstr.size() + 1);
-
-        byte_string key_str = ParserHelper::normalize_header_key(key_lstr);
-        DXOUT("key: \"" << key_str << "\"");
-        {
-            const light_string just_value_str = ParserHelper::extract_quoted_or_token(params_str);
-            holder.store_list_item(key_str, just_value_str);
-            list_str = params_str.substr(just_value_str.size());
-        }
-    }
-    return list_str;
+    // DXOUT("host: \"" << host_item.host << "\"");
+    // DXOUT("port: \"" << host_item.port << "\"");
 }
 
 bool RequestHTTP::is_routable() const {
@@ -1059,6 +972,10 @@ RequestHTTP::byte_string RequestHTTP::get_body() const {
     }
 }
 
+RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
+    return bytebuffer;
+}
+
 RequestHTTP::light_string RequestHTTP::freeze() {
     if (this->ps.is_freezed) {
         return light_string();
@@ -1070,4 +987,8 @@ RequestHTTP::light_string RequestHTTP::freeze() {
 bool RequestHTTP::should_keep_in_touch() const {
     // TODO: 仮実装
     return false;
+}
+
+RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_http_vars() const {
+    return header_holder.get_cgi_http_vars();
 }

@@ -18,8 +18,19 @@ void HTTPServer::run() {
 }
 
 IOriginator *HTTPServer::route_origin(const RequestHTTP *request) {
+
     (void)request;
-    return NULL;
+    {
+        CGI::metavar_dict_type metavar = request->get_cgi_http_vars();
+        CGI::byte_string script_path   = HTTP::strfy("./cgi.rb");
+        CGI::byte_string query_string  = HTTP::strfy("");
+        CGI *o                         = new CGI(script_path, query_string, metavar, 0);
+        o->set_content(request->get_plain_message());
+        return o;
+    }
+    // return new FileWriter(HTTP::strfy("./write_test"), request->get_plain_message());
+    // return new FileReader("./hat.png");
+    // return new Echoer(*request);
 }
 
 ResponseHTTP *HTTPServer::route(const RequestHTTP *request) {

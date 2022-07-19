@@ -12,7 +12,8 @@
 namespace HTTP {
 // ステータスコード
 enum t_status {
-    STATUS_OK = 200,
+    STATUS_UNSPECIFIED = 1,
+    STATUS_OK          = 200,
 
     STATUS_FOUND = 302,
 

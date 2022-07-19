@@ -68,9 +68,16 @@ public:
     static const CharFilter bslash;
     static const CharFilter obs_text;
     static const CharFilter vchar;
+    static const CharFilter printables;
     static const CharFilter qdtext;
     static const CharFilter qdright;
     static const CharFilter ctext;
+    static const CharFilter cgi_mark;
+    static const CharFilter cgi_sp;
+    static const CharFilter cgi_unreserved;
+    static const CharFilter cgi_reserved;
+    static const CharFilter cgi_extra;
+    static const CharFilter pchar_without_pct;
 
     byte_string str() const;
 };

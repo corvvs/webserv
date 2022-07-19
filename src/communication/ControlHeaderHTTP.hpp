@@ -96,7 +96,33 @@ struct Upgrade {
 struct Via {
     std::vector<HTTP::Term::Received> receiveds;
 };
+
 } // namespace CH
 } // namespace HTTP
+
+namespace CGIP {
+namespace CH {
+typedef std::string parameter_key_type;
+typedef HTTP::light_string parameter_value_type;
+typedef std::map<parameter_key_type, parameter_value_type> parameter_dict;
+
+struct ContentType : public HTTP::CH::ContentType {};
+
+struct Status {
+    int code;
+    HTTP::byte_string reason;
+};
+
+struct Location {
+    HTTP::byte_string value;
+    HTTP::light_string abs_path;
+    HTTP::light_string query_string;
+    HTTP::light_string fragment;
+    HTTP::light_string authority;
+    bool is_local;
+};
+
+} // namespace CH
+} // namespace CGIP
 
 #endif

@@ -9,6 +9,7 @@
 #include "ControlHeaderHTTP.hpp"
 #include "HeaderHTTP.hpp"
 #include "ParserHelper.hpp"
+#include "RoutingParameters.hpp"
 #include "ValidatorHTTP.hpp"
 #include <iostream>
 #include <list>
@@ -51,7 +52,8 @@ public:
     // 他の byte_string の一部分を参照する軽量 string
     typedef HTTP::light_string light_string;
     typedef std::map<byte_string, light_string> header_dict_type;
-    typedef HeaderHTTPItem::header_val_type header_val_type;
+    typedef HeaderItem::header_val_type header_val_type;
+    typedef HeaderHolderHTTP header_holder_type;
 
     struct ParserStatus {
         // ヘッダ終端探索時において, 最後に遭遇したCRLFのレンジ
@@ -78,12 +80,11 @@ public:
     };
 
     // リクエストの制御, ルーティングにかかわるパラメータ
-    struct RoutingParameters {
+    struct RoutingParameters : public ARoutingParameters {
         light_string request_path;
         HTTP::t_method http_method;
         HTTP::t_version http_version;
 
-        size_t body_size;
         bool is_body_chunked;
 
         HTTP::CH::Host header_host;
@@ -97,30 +98,19 @@ public:
         // いろいろ抽出関数群
 
         // TODO: struct に結びつくやつは struct に移したほうがいいかも
-        void determine_host(const HeaderHTTPHolder &holder);
-        void determine_transfer_encoding(const HeaderHTTPHolder &holder);
+        void determine_host(const header_holder_type &holder);
+        void determine_transfer_encoding(const header_holder_type &holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
-        void determine_body_size(const HeaderHTTPHolder &holder);
-        void determine_content_type(const HeaderHTTPHolder &holder);
-        void determine_connection(const HeaderHTTPHolder &holder);
-        void determine_te(const HeaderHTTPHolder &holder);
-        void determine_upgrade(const HeaderHTTPHolder &holder);
-        void determine_via(const HeaderHTTPHolder &holder);
+        void determine_body_size(const header_holder_type &holder);
+        void determine_content_type(const header_holder_type &holder);
+        void determine_connection(const header_holder_type &holder);
+        void determine_te(const header_holder_type &holder);
+        void determine_upgrade(const header_holder_type &holder);
+        void determine_via(const header_holder_type &holder);
 
         // `lhost`の中身を`Host`構造体に詰める.
         // `lhost`はHost:ヘッダとしてvalidでなければならない.
         void pack_host(HTTP::Term::Host &host_item, const light_string &lhost);
-
-        // "セミコロン分割key-valueリスト" をパースして辞書に詰める
-        // その後, パースできた部分以降を返す
-        light_string decompose_semicoron_separated_kvlist(const light_string &list_str, HTTP::IDictHolder &holder);
-
-        // val_lstr のコメント部分を抽出して返す.
-        // val_lstr はコメント部分を通過した状態になる.
-        light_string extract_comment(light_string &val_lstr);
-
-        // HTTP における`comment`を取り出す.
-        light_string extract_comment(const light_string &str);
     };
 
 private:
@@ -136,7 +126,7 @@ private:
     ChunkedBody chunked_body;
 
     // [HTTPヘッダ]
-    HeaderHTTPHolder header_holder;
+    header_holder_type header_holder;
 
     // [フロー関数群]
     t_parse_progress reach_reqline_start(size_t len, bool is_disconnected);
@@ -156,9 +146,9 @@ private:
     // [begin, end) を要求行としてパースする
     void parse_reqline(const light_string &line);
     // ヘッダ行全体をパースする
-    void parse_header_lines(const light_string &lines, HeaderHTTPHolder *holder) const;
+    void parse_header_lines(const light_string &lines, header_holder_type *holder) const;
     // ヘッダ行をパースする
-    void parse_header_line(const light_string &line, HeaderHTTPHolder *holder) const;
+    void parse_header_line(const light_string &line, header_holder_type *holder) const;
 
     void parse_chunk_size_line(const light_string &line);
     void parse_chunk_data(const light_string &data);
@@ -170,7 +160,7 @@ public:
     RequestHTTP();
     ~RequestHTTP();
 
-    // 内部バッファにバイト列を追加し, ラフパースを試みる
+    // 内部バッファにバイト列を追加する
     template <class InputItr>
     void inject_bytestring(const InputItr begin, const InputItr end) {
         bytebuffer.insert(bytebuffer.end(), begin, end);
@@ -192,6 +182,8 @@ public:
 
     // 受信したデータから本文を抽出して返す
     byte_string get_body() const;
+    // HTTPメッセージ全文を返す
+    byte_string get_plain_message() const;
 
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
     bool is_routable() const;
@@ -201,6 +193,8 @@ public:
     bool is_freezed() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
+
+    header_holder_type::joined_dict_type get_cgi_http_vars() const;
 };
 
 #endif
