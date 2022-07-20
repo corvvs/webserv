@@ -78,7 +78,7 @@ ErrorMsg Parser::brace_balanced(void) {
     int depth = 0;
     int line  = 0;
 
-    wsToken *tok;
+    Token *tok;
     while ((tok = lexer_.read()) != NULL) {
         line = tok->line;
         if (tok->value == "}" && !tok->is_quoted) {
@@ -129,7 +129,7 @@ std::vector<std::string> Parser::enter_block_ctx(Directive dire, std::vector<std
 std::vector<Directive> Parser::clusterize(std::vector<std::string> ctx) {
     std::vector<Directive> parsed;
 
-    wsToken *cur;
+    Token *cur;
     while (1) {
         if ((cur = lexer_.read()) == NULL) {
             break;

@@ -4,10 +4,10 @@
 #include <vector>
 
 namespace config {
-struct wsToken {
-    std::string value;
-    size_t line;
-    bool is_quoted;
+struct Token {
+    const std::string value;
+    const size_t line;
+    const bool is_quoted;
 };
 
 class Lexer {
@@ -15,13 +15,13 @@ public:
     Lexer(void);
     ~Lexer(void);
 
-    wsToken *read(void);
+    Token *read(void);
     void reset_read_idx(void);
     void tokenize(std::string data);
 
 private:
     /// member variables
-    std::vector<wsToken> tokens_;
+    std::vector<Token> tokens_;
     size_t idx_;
     size_t line_count_;
 

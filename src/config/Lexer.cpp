@@ -13,7 +13,7 @@ Lexer::Lexer(void) : idx_(0), line_count_(1) {}
 Lexer::~Lexer(void) {}
 
 // トークンを1つ返す(パーサーで使用する)
-wsToken *Lexer::read(void) {
+Token *Lexer::read(void) {
     if (tokens_.size() <= idx_) {
         return NULL;
     } else {
@@ -92,7 +92,7 @@ size_t Lexer::count_lines(const std::string &s, const size_t &len) const {
 
 // 特殊文字は単体で区切り文字として扱う
 std::string Lexer::tokenize_special(std::string &s) {
-    wsToken tok = {s.substr(0, 1), line_count_, false};
+    Token tok = {s.substr(0, 1), line_count_, false};
     tokens_.push_back(tok);
     s = s.substr(1);
     return s;
@@ -130,7 +130,7 @@ std::string Lexer::tokenize_string(std::string &s, const char &end) {
         throw SyntaxError(tokenize_error(s));
     }
 
-    wsToken tok = {s.substr(1, pos - 1), line_count_, is_quote(end)};
+    Token tok = {s.substr(1, pos - 1), line_count_, is_quote(end)};
     tokens_.push_back(tok);
     s = s.substr(pos + 1);
     return s;
@@ -143,14 +143,14 @@ std::string Lexer::tokenize_bare_string(std::string &s) {
         throw SyntaxError(tokenize_error(s));
     }
 
-    wsToken tok = {s.substr(0, pos), line_count_, false};
+    Token tok = {s.substr(0, pos), line_count_, false};
     tokens_.push_back(tok);
     s = s.substr(pos);
     return s;
 }
 
 void Lexer::print_tokens(void) const {
-    for (std::vector<wsToken>::const_iterator it = tokens_.begin(); it != tokens_.end(); ++it) {
+    for (std::vector<Token>::const_iterator it = tokens_.begin(); it != tokens_.end(); ++it) {
         std::cout << "Line: ";
         if (it->line < 10) {
             std::cout << "0";
