@@ -361,7 +361,6 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             ctx_main_.root             = path;
             ctx_main_.defined_["root"] = true;
-
             break;
         case SERVER:
             if (srv.defined_["root"]) {
@@ -369,6 +368,7 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             srv.root             = path;
             srv.defined_["root"] = true;
+            break;
         case LOCATION: {
             ContextLocation *p = get_current_location(ctx);
             if (p->defined_["root"]) {
@@ -376,6 +376,7 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             p->root             = path;
             p->defined_["root"] = true;
+            break;
         }
         default:;
     }
