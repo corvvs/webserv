@@ -64,10 +64,10 @@ std::vector<Config> Parser::create_configs(const std::vector<ContextServer> &ctx
 #ifdef NDEBUG
         print_server(*it);
 #endif
-        std::vector<host_port_pair>::const_iterator hp_it = it->host_ports.begin();
-        for (; hp_it != it->host_ports.end(); ++hp_it) {
+        for (size_t i = 0; i < it->host_ports.size(); ++i) {
             Config conf(*it);
-            conf.set_host_port(*hp_it);
+            conf.set_host_port(it->host_ports[i]);
+            conf.set_is_default_server(it->is_default_servers[i]);
             configs.push_back(conf);
         }
     }
@@ -179,13 +179,13 @@ void Parser::add_http(const std::vector<std::string> &args, std::stack<ContextTy
 
 void Parser::add_server(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
     (void)args;
-    ContextServer srv(ctx_main_);
+    ContextServer srv;
     ctx_servers_.push_back(srv);
     ctx.push(SERVER);
 }
 
 void Parser::add_location(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
-    ContextLocation loc(ctx_servers_.back());
+    ContextLocation loc;
     loc.path = args.front();
 
     ContextServer &srv = ctx_servers_.back();
@@ -329,9 +329,9 @@ void Parser::add_listen(const std::vector<std::string> &args, std::stack<Context
         throw SyntaxError("config: duplicate listen");
     }
     ctx_servers_.back().host_ports.push_back(std::make_pair(host, port));
-    if (args.size() == 2) {
-        ctx_servers_.back().default_server = (args.back() == "default_server");
-    }
+
+    const bool flag = (args.back() == "default_server");
+    ctx_servers_.back().is_default_servers.push_back(flag);
     ctx_servers_.back().defined_["listen"] = true;
 }
 
@@ -369,6 +369,7 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             srv.root             = path;
             srv.defined_["root"] = true;
+            break;
         case LOCATION: {
             ContextLocation *p = get_current_location(ctx);
             if (p->defined_["root"]) {
@@ -376,6 +377,7 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             p->root             = path;
             p->defined_["root"] = true;
+            break;
         }
         default:;
     }
@@ -442,8 +444,8 @@ void Parser::inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &
     child.root         = child.defined_["root"] ? child.root : parent.root;
     child.indexes      = child.defined_["index"] ? child.indexes : parent.indexes;
     child.error_pages  = child.defined_["error_page"] ? child.error_pages : parent.error_pages;
-    child.redirect     = child.defined_["redirect"] ? child.redirect : parent.redirect;
     child.upload_store = child.defined_["upload_store"] ? child.upload_store : parent.upload_store;
+    child.redirect     = parent.redirect;
 }
 
 void Parser::inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs) {
