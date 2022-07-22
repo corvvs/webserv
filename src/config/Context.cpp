@@ -8,10 +8,10 @@ ContextMain::ContextMain(void) {
 }
 ContextMain::~ContextMain(void) {}
 
-ContextServer::ContextServer(void) : redirect(std::make_pair(-1, "")) {}
+ContextServer::ContextServer(void) : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")) {}
 ContextServer::~ContextServer(void) {}
 
-ContextLocation::ContextLocation(void) : redirect(std::make_pair(-1, "")) {}
+ContextLocation::ContextLocation(void) : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")) {}
 ContextLocation::ContextLocation(const ContextServer &server) {
     client_max_body_size = server.client_max_body_size;
     autoindex            = server.autoindex;

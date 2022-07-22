@@ -10,6 +10,7 @@ namespace config {
 typedef std::string host_type;
 typedef int port_type;
 typedef std::pair<host_type, port_type> host_port_pair;
+static const int REDIRECT_INITIAL_VALUE = -1;
 
 class ContextMain {
 public:

@@ -445,7 +445,7 @@ void Parser::inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &
     child.indexes      = child.defined_["index"] ? child.indexes : parent.indexes;
     child.error_pages  = child.defined_["error_page"] ? child.error_pages : parent.error_pages;
     child.upload_store = child.defined_["upload_store"] ? child.upload_store : parent.upload_store;
-    child.redirect     = parent.redirect;
+    child.redirect     = (parent.redirect.first == REDIRECT_INITIAL_VALUE) ? child.redirect : parent.redirect;
 }
 
 void Parser::inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs) {
