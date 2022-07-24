@@ -14,6 +14,10 @@ t_fd Channel::get_fd() const {
     return sock->get_fd();
 }
 
+t_port Channel::get_port() const {
+    return sock->get_port();
+}
+
 void Channel::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     (void)epoch;
     // Channelがnotifyを受ける
@@ -34,6 +38,7 @@ void Channel::notify(IObserver &observer, IObserver::observation_category cat, t
             observer.reserve_set(con, IObserver::OT_READ);
         }
     } catch (...) {
+        QVOUT(strerror(errno));
         DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd());
     }
 }

@@ -29,6 +29,7 @@ public:
     ~Channel();
 
     t_fd get_fd() const;
+    t_port get_port() const;
     void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
 
     t_channel_id get_id() const;

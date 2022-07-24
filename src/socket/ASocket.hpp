@@ -1,5 +1,6 @@
 #ifndef ASOCKET_HPP
 #define ASOCKET_HPP
+#include "../utils/test_common.hpp"
 #include "SocketType.hpp"
 
 // [抽象ソケットクラス]
