@@ -38,7 +38,6 @@ void Channel::notify(IObserver &observer, IObserver::observation_category cat, t
             observer.reserve_set(con, IObserver::OT_READ);
         }
     } catch (...) {
-        QVOUT(strerror(errno));
         DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd());
     }
 }

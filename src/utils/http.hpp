@@ -6,7 +6,6 @@
 #include <map>
 #include <string>
 #include <vector>
-#define MAX_REQLINE_END 8192
 
 // 全体で共通して使うenum, 型, 定数, フリー関数など
 
@@ -78,6 +77,7 @@ typedef std::map<header_key_type, header_val_type> header_dict_type;
 
 // サーバのデフォルトのHTTPバージョン
 extern const t_version DEFAULT_HTTP_VERSION;
+extern const size_t MAX_REQLINE_END;
 const byte_string method_str(t_method method);
 const byte_string version_str(t_version version);
 const byte_string reason(t_status status);

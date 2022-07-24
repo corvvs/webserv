@@ -60,7 +60,6 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
         }
     } catch (const http_error &err) { // 受信中のHTTPエラー
         DXOUT("error occurred");
-        VOUT(rt.is_responding());
         if (phase == CONNECTION_SHUTTING_DOWN || rt.is_responding()) {
             // レスポンス送信中のHTTPエラー
             // -> 全てを諦めて終了
@@ -71,14 +70,12 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
             rt.respond_error(err);
             observer.reserve_set(this, IObserver::OT_WRITE);
         }
-        VOUT(rt.is_responding());
     }
 }
 
 void Connection::perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     switch (cat) {
         case IObserver::OT_TIMEOUT:
-            // 仮実装
             if (epoch >= attr.timeout + latest_operated_at) {
                 throw http_error("connection timed out", HTTP::STATUS_TIMEOUT);
             }
@@ -107,8 +104,9 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-    u8t buf[MAX_REQLINE_END];
-    const ssize_t received_size = sock->receive(&buf, MAX_REQLINE_END, 0);
+    const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
+    u8t buf[read_buffer_size];
+    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
     if (received_size == 0) {
         DXOUT("sock closed?");
     }
@@ -151,7 +149,6 @@ void Connection::detect_update(IObserver &observer) {
             rt.respond();
             observer.reserve_set(this, IObserver::OT_WRITE);
         } else if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
-            DXOUT("terminating.");
             rt.wipeout();
             if (rt.req()->should_keep_in_touch()) {
                 DXOUT("KEEP");
@@ -187,8 +184,9 @@ void Connection::perform_sending(IObserver &observer) {
 }
 
 void Connection::perform_shutting_down(IObserver &observer) {
-    u8t buf[MAX_REQLINE_END];
-    const ssize_t received_size = sock->receive(&buf, MAX_REQLINE_END, 0);
+    const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
+    u8t buf[read_buffer_size];
+    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
     if (received_size > 0) {
         return;
     }

@@ -6,7 +6,7 @@ typedef HTTP::light_string light_string;
 
 void HTTP::Term::TransferCoding::store_list_item(const parameter_key_type &key, const parameter_value_type &val) {
     parameters[key] = val;
-    // DXOUT("\"" << key << "\" << \"" << parameters[key] << "\"");
+    DXOUT("\"" << key << "\" << \"" << parameters[key] << "\"");
 }
 
 HTTP::Term::TransferCoding HTTP::Term::TransferCoding::init() {
