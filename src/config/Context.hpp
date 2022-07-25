@@ -10,6 +10,7 @@ namespace config {
 typedef std::string host_type;
 typedef int port_type;
 typedef std::pair<host_type, port_type> host_port_pair;
+static const int REDIRECT_INITIAL_VALUE = -1;
 
 class ContextMain {
 public:
@@ -27,7 +28,7 @@ public:
 
 class ContextServer {
 public:
-    ContextServer(const ContextMain &main);
+    ContextServer(void);
     ~ContextServer(void);
 
     // 継承する
@@ -43,7 +44,7 @@ public:
     std::vector<class ContextLocation> locations;
     std::pair<int, std::string> redirect;
     std::string upload_store;
-    bool default_server;
+    std::vector<bool> is_default_servers;
 
     // 継承するか判定するときに使用する
     std::map<std::string, bool> defined_;
@@ -61,6 +62,7 @@ public:
 class ContextLocation {
 public:
     ContextLocation(const ContextServer &server);
+    ContextLocation(void);
     ~ContextLocation(void);
 
     /// 継承する
