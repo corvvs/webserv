@@ -361,7 +361,6 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             ctx_main_.root             = path;
             ctx_main_.defined_["root"] = true;
-
             break;
         case SERVER:
             if (srv.defined_["root"]) {
