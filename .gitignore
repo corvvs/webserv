@@ -1,3 +1,9 @@
 *.o
 *.d
 a.out
+
+dps
+obj
+
+.idea
+CMakeLists.txt
