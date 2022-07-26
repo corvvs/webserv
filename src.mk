@@ -30,13 +30,6 @@ $(OBJ_DIRS):
 $(DPS_DIRS):
 	mkdir -p $(DPS_DIRS)
 
-$(TESTER):
-
-
-.PHONY: run_test
-run_test:
-	make -f ./tester.mk
-
 .PHONY: clean
 clean:
 	rm -rf $(OBJ_DIR) $(DPS_DIR)
