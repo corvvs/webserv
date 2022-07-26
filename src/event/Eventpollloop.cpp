@@ -30,14 +30,10 @@ void EventPollLoop::loop() {
                 }
             }
         } else {
-            DXOUT("[in]");
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
                 index_map::mapped_type i = indexmap[it->first];
                 if (fds[i].fd >= 0 && fds[i].revents) {
-                    DXOUT("[S] FD-" << it->first << ": revents: " << fds[i].revents);
-                    if (fds[i].revents == 32) {
-                        exit(1);
-                    }
+                    DXOUT("[S]FD-" << it->first << ": revents: " << fds[i].revents);
                     if (mask(IObserver::OT_READ) & fds[i].revents) {
                         it->second->notify(*this, OT_READ, 0);
                     }
@@ -49,7 +45,6 @@ void EventPollLoop::loop() {
                     }
                 }
             }
-            DXOUT("[out]");
         }
     }
 }
