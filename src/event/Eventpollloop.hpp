@@ -35,6 +35,7 @@ private:
     update_queue unholdqueue;
     update_queue movequeue;
     update_queue holdqueue;
+    t_time_epoch_ms latest_timeout_checked;
 
     t_poll_eventmask mask(observation_category t);
 
@@ -44,6 +45,8 @@ private:
 public:
     EventPollLoop();
     ~EventPollLoop();
+
+    const static t_time_epoch_ms timeout_interval;
 
     void loop();
     void reserve_hold(ISocketLike *socket);

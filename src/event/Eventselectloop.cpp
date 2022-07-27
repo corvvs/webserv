@@ -1,13 +1,15 @@
 #include "Eventselectloop.hpp"
 #include "../utils/test_common.hpp"
 
+const t_time_epoch_ms EventSelectLoop::timeout_interval = 1 * 1000;
+
 void EventSelectLoop::destroy_all(EventSelectLoop::socket_map &m) {
     for (EventSelectLoop::socket_map::iterator it = m.begin(); it != m.end(); ++it) {
         delete it->second;
     }
 }
 
-EventSelectLoop::EventSelectLoop() {}
+EventSelectLoop::EventSelectLoop() : latest_timeout_checked(WSTime::get_epoch_ms()) {}
 
 EventSelectLoop::~EventSelectLoop() {
     destroy_all(read_map);
@@ -100,16 +102,19 @@ void EventSelectLoop::loop() {
         if (count < 0) {
             VOUT(strerror(errno));
             throw std::runtime_error("select error");
-        } else if (count == 0) {
-            t_time_epoch_ms now = WSTime::get_epoch_ms();
+        }
+        t_time_epoch_ms now = WSTime::get_epoch_ms();
+        if (count == 0 || now - latest_timeout_checked > timeout_interval) {
             DXOUT("timeout?: " << now);
             scan_fd_set(read_map, &read_set, now, OT_TIMEOUT);
             scan_fd_set(write_map, &write_set, now, OT_TIMEOUT);
             scan_fd_set(exception_map, &exception_set, now, OT_TIMEOUT);
-        } else {
-            scan_fd_set(read_map, &read_set, 0, OT_READ);
-            scan_fd_set(write_map, &write_set, 0, OT_WRITE);
-            scan_fd_set(exception_map, &exception_set, 0, OT_EXCEPTION);
+            latest_timeout_checked = now;
+        }
+        if (count > 0) {
+            scan_fd_set(read_map, &read_set, now, OT_READ);
+            scan_fd_set(write_map, &write_set, now, OT_WRITE);
+            scan_fd_set(exception_map, &exception_set, now, OT_EXCEPTION);
         }
     }
 }

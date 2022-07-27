@@ -32,6 +32,10 @@ t_fd Connection::get_fd() const {
     return sock->get_fd();
 }
 
+t_port Connection::get_port() const {
+    return sock->get_port();
+}
+
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     if (dying) {
         return;

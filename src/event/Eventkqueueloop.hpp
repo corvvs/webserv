@@ -32,6 +32,7 @@ private:
     event_list evlist;
     static const int nev;
     t_kqueue kq;
+    t_time_epoch_ms latest_timeout_checked;
 
     t_kfilter filter(observation_category t);
     observation_category filter_to_cat(t_kfilter f);
@@ -43,6 +44,7 @@ public:
     EventKqueueLoop();
     ~EventKqueueLoop();
 
+    const static t_time_epoch_ms timeout_interval;
     void loop();
     void reserve_hold(ISocketLike *socket);
     void reserve_unhold(ISocketLike *socket);
