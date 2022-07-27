@@ -437,7 +437,7 @@ TEST(substr, empty) {
     LightString<char> ls(bs);
 
     for (size_t i = 0; i < 10; i++) {
-        EXPECT_EQ(ls.substr(i), s.substr(i));
+        EXPECT_EQ(ls.substr(i), "");
     }
 }
 
