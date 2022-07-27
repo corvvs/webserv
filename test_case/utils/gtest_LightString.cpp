@@ -427,7 +427,7 @@ TEST(substr, over_pos) {
     size_t pos = s.size() * 2;
 
     for (size_t i = 0; i < s.size(); i++) {
-        EXPECT_EQ(ls.substr(pos, i), s.substr(pos, i));
+        EXPECT_EQ(ls.substr(pos, i), "");
     }
 }
 
