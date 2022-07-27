@@ -1,7 +1,9 @@
 #include "Eventpollloop.hpp"
 #include "../utils/test_common.hpp"
 
-EventPollLoop::EventPollLoop() : nfds(0) {}
+const t_time_epoch_ms EventPollLoop::timeout_interval = 1 * 1000;
+
+EventPollLoop::EventPollLoop() : nfds(0), latest_timeout_checked(WSTime::get_epoch_ms()) {}
 
 EventPollLoop::~EventPollLoop() {
     DXOUT("destroying... " << sockmap.size());
@@ -21,27 +23,30 @@ void EventPollLoop::loop() {
 
         if (count < 0) {
             throw std::runtime_error("poll error");
-        } else if (count == 0) {
-            t_time_epoch_ms now = WSTime::get_epoch_ms();
+        }
+        t_time_epoch_ms now = WSTime::get_epoch_ms();
+        if (count == 0 || now - latest_timeout_checked > timeout_interval) {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
                 index_map::mapped_type i = indexmap[it->first];
                 if (fds[i].fd >= 0) {
                     it->second->notify(*this, OT_TIMEOUT, now);
                 }
             }
-        } else {
+            latest_timeout_checked = now;
+        }
+        if (count > 0) {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
                 index_map::mapped_type i = indexmap[it->first];
                 if (fds[i].fd >= 0 && fds[i].revents) {
                     DXOUT("[S]FD-" << it->first << ": revents: " << fds[i].revents);
                     if (mask(IObserver::OT_READ) & fds[i].revents) {
-                        it->second->notify(*this, OT_READ, 0);
+                        it->second->notify(*this, OT_READ, now);
                     }
                     if (mask(IObserver::OT_WRITE) & fds[i].revents) {
-                        it->second->notify(*this, OT_WRITE, 0);
+                        it->second->notify(*this, OT_WRITE, now);
                     }
                     if (mask(IObserver::OT_EXCEPTION) & fds[i].revents) {
-                        it->second->notify(*this, OT_EXCEPTION, 0);
+                        it->second->notify(*this, OT_EXCEPTION, now);
                     }
                 }
             }
