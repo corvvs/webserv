@@ -397,6 +397,11 @@ bool operator==(const LightString<T> &lhs, const std::basic_string<T> &rhs) {
 }
 
 template <class T>
+bool operator!=(const LightString<T> &lhs, const std::basic_string<T> &rhs) {
+    return !(lhs == rhs);
+}
+
+template <class T>
 bool operator==(const LightString<T> &lhs, const char *rhs) {
     for (typename LightString<T>::size_type i = 0; i < lhs.size(); ++i) {
         if (!rhs[i] || lhs[i] != rhs[i]) {
@@ -404,6 +409,11 @@ bool operator==(const LightString<T> &lhs, const char *rhs) {
         }
     }
     return true;
+}
+
+template <class T>
+bool operator!=(const LightString<T> &lhs, const char *rhs) {
+    return !(lhs == rhs);
 }
 
 #endif

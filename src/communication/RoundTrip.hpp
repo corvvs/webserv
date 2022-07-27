@@ -30,6 +30,9 @@ private:
     // 通常は1で終わるが, 再ルーティングが起きると増えていく
     unsigned int reroute_count;
 
+    // エラーレスポンス中かどうか
+    bool in_error_responding;
+
     void destroy_request();
     void destroy_originator();
     void destroy_response();

@@ -61,10 +61,12 @@ void EventPollLoop::reserve(ISocketLike *socket, observation_category cat, bool 
 }
 
 void EventPollLoop::reserve_hold(ISocketLike *socket) {
+    DXOUT("reserve_hold: " << socket->get_fd());
     reserve(socket, OT_NONE, true);
 }
 
 void EventPollLoop::reserve_unhold(ISocketLike *socket) {
+    DXOUT("reserve_unhold: " << socket->get_fd());
     reserve(socket, OT_NONE, false);
 }
 
@@ -96,7 +98,6 @@ t_poll_eventmask EventPollLoop::mask(observation_category t) {
 // ソケットの監視状態変更予約を実施する
 void EventPollLoop::update() {
     // exec unhold
-
     for (EventPollLoop::update_queue::size_type i = 0; i < unholdqueue.size(); ++i) {
         const t_fd fd                    = unholdqueue[i].fd;
         const index_map::mapped_type idx = indexmap[fd];
@@ -107,6 +108,7 @@ void EventPollLoop::update() {
         gapset.insert(idx);
         delete unholdqueue[i].sock;
         nfds--;
+        DXOUT("unholding: " << fd);
     }
     // exec hold
     for (EventPollLoop::update_queue::size_type i = 0; i < holdqueue.size(); ++i) {
@@ -125,6 +127,7 @@ void EventPollLoop::update() {
         fds[idx].events = 0;
         sockmap[fd]     = holdqueue[i].sock;
         indexmap[fd]    = idx;
+        DXOUT("holding: " << fd);
         nfds++;
     }
     // exec set / unset
@@ -139,6 +142,4 @@ void EventPollLoop::update() {
     unholdqueue.clear();
     movequeue.clear();
     holdqueue.clear();
-
-    // exec unhold
 }

@@ -45,8 +45,10 @@ bool RoundTrip::inject_data(const u8t *received_buffer, ssize_t received_size, e
 
 bool RoundTrip::is_routable() const {
     // [ルーティング可能]
-    // リクエストが is_routable で, オリジネータが存在しない時
-    return request_ != NULL && request_->is_routable() && originator_ == NULL;
+    // レスポンスが存在しない
+    // リクエストが is_routable
+    // オリジネータが存在しない
+    return response_ == NULL && request_ != NULL && request_->is_routable() && originator_ == NULL;
 }
 
 void RoundTrip::notify_originator(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
@@ -56,17 +58,20 @@ void RoundTrip::notify_originator(IObserver &observer, IObserver::observation_ca
 
 void RoundTrip::route(Connection &connection) {
     DXOUT("[route]");
+    assert(request_ != NULL);
     reroute_count += 1;
-    originator_ = router.route_origin(request_);
+    originator_ = router.route(*request_);
     originator_->inject_socketlike(&connection);
 }
 
 bool RoundTrip::is_originatable() const {
     // [オリジネーション可能]
+    // レスポンスが存在しない
     // オリジネータが存在して,
     // オリジネーション開始可能(is_originatable)で
     // オリジネーションがまだ開始されていない(!is_origination_started)
-    return originator_ != NULL && originator_->is_originatable() && !originator_->is_origination_started();
+    return response_ == NULL && originator_ != NULL && originator_->is_originatable()
+           && !originator_->is_origination_started();
 }
 
 void RoundTrip::originate(IObserver &observer) {
@@ -86,7 +91,8 @@ bool RoundTrip::is_freezed() const {
     // [インバウンド閉鎖]
     // リクエストが存在して
     // 完結している(is_complete)
-    return request_ != NULL && request_->is_complete();
+    // TODO: または, エラーレスポンスが存在する
+    return request_ != NULL && (request_->is_complete() || (response_ && response_->is_error()));
 }
 
 bool RoundTrip::is_reroutable() const {
@@ -103,7 +109,7 @@ void RoundTrip::reroute(Connection &connection) {
     }
 
     // TODO: 古いオリジネータの内容を考慮する
-    IOriginator *reoriginator = router.route_origin(request_);
+    IOriginator *reoriginator = router.route(*request_);
 
     originator_->leave();
     originator_ = reoriginator;
@@ -121,13 +127,13 @@ bool RoundTrip::is_responsive() const {
 bool RoundTrip::is_responding() const {
     // [レスポンス送信中]
     // レスポンスが存在している
+    // (レスポンスは存在 = 送信中なので)
     return response_ != NULL;
 }
 
 void RoundTrip::respond() {
     DXOUT("[respond]");
-    response_ = router.route(request_);
-    response_->feed_body(originator_->draw_data());
+    response_ = originator_->respond(*request_);
     response_->render();
 }
 
@@ -135,7 +141,11 @@ void RoundTrip::respond_error(const http_error &err) {
     DXOUT("[respond_error]");
     DXOUT(err.get_status() << ":" << err.what());
     destroy_response();
-    response_ = router.respond_error(request_, err);
+    in_error_responding = true;
+    ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err);
+    res->render();
+    BVOUT(res->get_message_text());
+    response_ = res;
 }
 
 bool RoundTrip::is_terminatable() const {
