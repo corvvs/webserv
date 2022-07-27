@@ -234,7 +234,7 @@ public:
         if (pos != npos && pos + 1 < i) {
             i = pos + 1;
         }
-        for (;0 < i;) {
+        for (; 0 < i;) {
             --i;
             size_type j = 0;
             for (; j < str.size() && (*this)[i + j] == str[j]; ++j) {}
