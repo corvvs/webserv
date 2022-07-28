@@ -65,7 +65,7 @@ CGI::~CGI() {
 void CGI::inject_socketlike(ISocketLike *socket_like) {
     VOUT(socket_like);
     attr.master                = socket_like;
-    metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port(), 10);
+    metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port());
 }
 
 void CGI::check_executable() const {
