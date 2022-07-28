@@ -80,6 +80,16 @@ bool Config::get_default_server(const std::string &target) const {
     return is_default_server_;
 }
 
+bool Config::get_exec_cgi(const std::string &target) const {
+    const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
+    return loc.exec_cgi;
+}
+
+bool Config::get_exec_delete(const std::string &target) const {
+    const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
+    return loc.exec_delete;
+}
+
 /**
  * サーバーコンテキストの中で最長前方一致するロケーションを返す
  * 一致しない場合はサーバーコンテキストの情報をそのまま継承したロケーションを返す

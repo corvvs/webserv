@@ -20,6 +20,8 @@ ContextLocation::ContextLocation(const ContextServer &server) {
     error_pages          = server.error_pages;
     redirect             = server.redirect;
     upload_store         = server.upload_store;
+    exec_cgi             = false;
+    exec_delete          = false;
 }
 ContextLocation::~ContextLocation(void) {}
 

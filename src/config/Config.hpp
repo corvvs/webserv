@@ -19,6 +19,8 @@
  * server_name          vector<string>
  * upload_store         string
  * limit_except         set<enum> method
+ * exec_cgi             bool
+ * exec_delete          bool
  */
 
 namespace config {
@@ -45,6 +47,8 @@ public:
     std::string get_upload_store(const std::string &target) const;
     bool get_default_server(const std::string &target) const;
     std::set<enum Methods> get_limit_except(const std::string &target) const;
+    bool get_exec_cgi(const std::string &target) const;
+    bool get_exec_delete(const std::string &target) const;
 
 private:
     ContextServer ctx_server_;
