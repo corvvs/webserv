@@ -1,6 +1,7 @@
 #include "Connection.hpp"
 #include "Channel.hpp"
 #include "RoundTrip.hpp"
+#include <cassert>
 
 // [[Attribute]]
 
