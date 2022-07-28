@@ -1,5 +1,6 @@
 #include "RoundTrip.hpp"
 #include "Connection.hpp"
+#include <cassert>
 
 RoundTrip::RoundTrip(IRouter &router)
     : router(router), request_(NULL), originator_(NULL), response_(NULL), reroute_count(0) {}
