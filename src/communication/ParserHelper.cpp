@@ -257,7 +257,7 @@ unsigned int ParserHelper::quality_to_u(HTTP::light_string &quality) {
 
 ParserHelper::light_string ParserHelper::extract_quoted_or_token(const light_string &str) {
     if (str.size() == 0) {
-        return light_string(str);
+        return light_string(str, 0, str.size());
     }
     //                  [key]            [value]
     // parameter      = token "=" ( token / quoted-string )
