@@ -257,7 +257,7 @@ unsigned int ParserHelper::quality_to_u(HTTP::light_string &quality) {
 
 ParserHelper::light_string ParserHelper::extract_quoted_or_token(const light_string &str) {
     if (str.size() == 0) {
-        return str;
+        return light_string(str);
     }
     //                  [key]            [value]
     // parameter      = token "=" ( token / quoted-string )
@@ -295,7 +295,7 @@ ParserHelper::light_string ParserHelper::extract_quoted_or_token(const light_str
         return str.substr(0, i + 1);
     } else {
         // token          = 1*tchar
-        const light_string just_value_str = str.substr_while(HTTP::CharFilter::tchar);
+        light_string just_value_str = str.substr_while(HTTP::CharFilter::tchar);
         return just_value_str;
     }
 }
