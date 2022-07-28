@@ -1,6 +1,6 @@
 #include "SocketConnected.hpp"
 #include "SocketListening.hpp"
-#include "strings.h"
+#include <cstring>
 
 SocketConnected::SocketConnected(t_socket_domain sdomain, t_socket_type stype) : ASocket(sdomain, stype) {}
 

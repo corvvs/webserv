@@ -1,4 +1,6 @@
 #include "CharFilter.hpp"
+#include <cstring>
+
 #define BITS_IN_ELEM (sizeof(u64t) * 8) // 64
 #define ELEMS (256 / BITS_IN_ELEM)      // 4
 #define OCTETS (sizeof(u64t) * ELEMS)   // 32
@@ -184,11 +186,11 @@ const HTTP::CharFilter HTTP::CharFilter::bslash     = HTTP::strfy("\\");
 const HTTP::CharFilter HTTP::CharFilter::obs_text   = HTTP::CharFilter(0x80, 0xff);
 const HTTP::CharFilter HTTP::CharFilter::vchar      = HTTP::CharFilter(0x21, 0x7e);
 const HTTP::CharFilter HTTP::CharFilter::qdtext
-    = HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text - "\"\\";
+    = (HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text) - "\"\\";
 const HTTP::CharFilter HTTP::CharFilter::qdright
     = HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text;
 const HTTP::CharFilter HTTP::CharFilter::ctext
-    = HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text - "()\\";
+    = (HTTP::CharFilter::vchar | HTTP::CharFilter::sp | HTTP::CharFilter::htab | HTTP::CharFilter::obs_text) - "()\\";
 
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE

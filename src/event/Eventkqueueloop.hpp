@@ -1,6 +1,8 @@
 #ifndef EVENT_KQUEUE_LOOP_HPP
 #define EVENT_KQUEUE_LOOP_HPP
 
+#ifdef __APPLE__
+
 #include "../interface/IObserver.hpp"
 #include "../interface/ISocketLike.hpp"
 #include <cerrno>
@@ -49,5 +51,7 @@ public:
     void reserve_unset(ISocketLike *socket, observation_category cat);
     void reserve_set(ISocketLike *socket, observation_category to);
 };
+
+#endif
 
 #endif
