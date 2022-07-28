@@ -295,7 +295,6 @@ ParserHelper::light_string ParserHelper::extract_quoted_or_token(const light_str
         return str.substr(0, i + 1);
     } else {
         // token          = 1*tchar
-        light_string just_value_str = str.substr_while(HTTP::CharFilter::tchar);
-        return just_value_str;
+        return str.substr_while(HTTP::CharFilter::tchar);
     }
 }
