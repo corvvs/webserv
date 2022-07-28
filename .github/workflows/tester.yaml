@@ -2,7 +2,7 @@ name: Run tester
 on: [ push ]
 jobs:
   tester:
-    runs-on: ubuntu-latest
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - run: |
