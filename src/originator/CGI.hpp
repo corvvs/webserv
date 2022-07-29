@@ -118,7 +118,7 @@ private:
     static char **flatten_argv(const byte_string &script_path);
     static char **flatten_metavar(const metavar_dict_type &metavar);
 
-    IResponseDataProducer& response_data_producer();
+    IResponseDataProducer &response_data_producer();
 
     void perform_receiving(IObserver &observer);
     void perform_sending(IObserver &observer);
