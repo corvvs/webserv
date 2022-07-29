@@ -15,7 +15,7 @@ public:
     // 長さ n のバイト列を注入する
     virtual void inject(const char *src, size_t n, bool is_completed) = 0;
     // データ注入完了
-    virtual bool is_injection_closed() const   = 0;
+    virtual bool is_injection_closed() const = 0;
 };
 
 // レスポンスデータを供給するオブジェクトのインターフェース

@@ -181,7 +181,7 @@ char **CGI::flatten_metavar(const metavar_dict_type &metavar) {
     return frame;
 }
 
-IResponseDataProducer& CGI::response_data_producer() {
+IResponseDataProducer &CGI::response_data_producer() {
     return status.response_data;
 }
 
@@ -333,8 +333,8 @@ bool CGI::is_reroutable() const {
 }
 
 bool CGI::is_responsive() const {
-    // オリジネーションが完了しており, CGIレスポンスタイプが確定していてローカルリダイレクトでない
-    return status.is_complete && rp.get_response_type() != CGIRES_UNKNOWN
+    // レスポンス可能であり, CGIレスポンスタイプが確定していてローカルリダイレクトでない
+    return status.is_responsive && rp.get_response_type() != CGIRES_UNKNOWN
            && rp.get_response_type() != CGIRES_REDIRECT_LOCAL;
 }
 
@@ -368,10 +368,12 @@ CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {
     // あたり: ヘッダの終わりが見つかった
     analyze_headers(res);
 
-    // bytebuffer のあまった部分を移動
+    // bytebuffer のあまった部分(本文と思われる部分)をProducerに注入
     const size_t rest_size = bytebuffer.size() - this->mid;
-    const char *rest_head  = &(bytebuffer.front()) + this->mid;
-    response_data_producer().inject(rest_head, rest_size, is_disconnected);
+    if (rest_size > 0 || is_disconnected) {
+        const char *rest_head = &(bytebuffer.front()) + this->mid;
+        response_data_producer().inject(rest_head, rest_size, is_disconnected);
+    }
     return PP_BODY;
 }
 
@@ -403,7 +405,7 @@ void CGI::after_injection(bool is_disconnected) {
                 }
                 // ローカルリダイレクトでなければこの時点で送信可能
                 // ※「chunked が使用可能」という条件が本来は必要.
-                // なぜなら chunked は最初のtransfer-encodingでなければならないからだが, 
+                // なぜなら chunked は最初のtransfer-encodingでなければならないからだが,
                 // ここではオリジネーションをしているので必然的に最後になる.
                 if (rp.get_response_type() != CGIRES_REDIRECT_LOCAL) {
                     status.is_responsive = true;
