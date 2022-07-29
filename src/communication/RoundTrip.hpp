@@ -23,6 +23,8 @@ private:
     IRouter &router;
 
     RequestHTTP *request_;
+    // 注意:
+    // オリジネーションが終わっても, ラウンドトリップが終わるまでオリジネータを破棄しないこと.
     IOriginator *originator_;
     ResponseHTTP *response_;
 
