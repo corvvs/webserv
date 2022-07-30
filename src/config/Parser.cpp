@@ -38,7 +38,7 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     return directives;
 }
 
-std::vector<Config> Parser::parse(const std::string &file_data) {
+std::map<host_port_pair, std::vector<Config> > Parser::parse(const std::string &file_data) {
     lexer_.tokenize(file_data);
 
     ErrorMsg err;
@@ -57,8 +57,8 @@ std::vector<Config> Parser::parse(const std::string &file_data) {
     return create_configs(server_configs);
 }
 
-std::vector<Config> Parser::create_configs(const std::vector<ContextServer> &ctx_servers) {
-    std::vector<Config> configs;
+std::map<host_port_pair, std::vector<Config> > Parser::create_configs(const std::vector<ContextServer> &ctx_servers) {
+    std::map<host_port_pair, std::vector<Config> > configs;
     std::vector<ContextServer>::const_iterator it = ctx_servers.begin();
     for (; it != ctx_servers.end(); ++it) {
 #ifdef NDEBUG
@@ -68,7 +68,7 @@ std::vector<Config> Parser::create_configs(const std::vector<ContextServer> &ctx
             Config conf(*it);
             conf.set_host_port(it->host_ports[i]);
             conf.set_is_default_server(it->is_default_servers[i]);
-            configs.push_back(conf);
+            configs[it->host_ports[i]].push_back(conf);
         }
     }
     return configs;
