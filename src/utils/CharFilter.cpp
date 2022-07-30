@@ -198,7 +198,6 @@ const HTTP::CharFilter HTTP::CharFilter::cgi_extra         = HTTP::strfy(":@&=+$
 const HTTP::CharFilter HTTP::CharFilter::pchar_without_pct = unreserved | sub_delims | ":@";
 const HTTP::CharFilter HTTP::CharFilter::uri_scheme        = alpha | digit | "+-.";
 
-
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
 // qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
