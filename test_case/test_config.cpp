@@ -23,7 +23,7 @@ protected:
 
 /// 01_default.conf
 TEST_F(ConfigTest, GetAutoIndex) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     const bool autoindex     = false;
@@ -31,7 +31,7 @@ TEST_F(ConfigTest, GetAutoIndex) {
 }
 
 TEST_F(ConfigTest, GetErrorPage) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     std::map<int, std::string> error_page;
@@ -40,7 +40,7 @@ TEST_F(ConfigTest, GetErrorPage) {
 }
 
 TEST_F(ConfigTest, GetIndex) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     std::vector<std::string> index;
@@ -50,7 +50,7 @@ TEST_F(ConfigTest, GetIndex) {
 }
 
 TEST_F(ConfigTest, GetRoot) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     const std::string root   = "/data/server1/";
@@ -58,7 +58,7 @@ TEST_F(ConfigTest, GetRoot) {
 }
 
 TEST_F(ConfigTest, GetClientMaxBodySize) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf             = configs.front();
     const std::string target        = "/";
     const long client_max_body_size = 1024;
@@ -66,7 +66,7 @@ TEST_F(ConfigTest, GetClientMaxBodySize) {
 }
 
 TEST_F(ConfigTest, GetHost) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     const std::string host   = "0.0.0.0";
@@ -74,7 +74,7 @@ TEST_F(ConfigTest, GetHost) {
 }
 
 TEST_F(ConfigTest, GetPort) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     const int port           = 80;
@@ -82,7 +82,7 @@ TEST_F(ConfigTest, GetPort) {
 }
 
 TEST_F(ConfigTest, GetRedirect) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf                  = configs.front();
     const std::string target             = "/";
     std::pair<int, std::string> redirect = std::make_pair(-1, "");
@@ -90,7 +90,7 @@ TEST_F(ConfigTest, GetRedirect) {
 }
 
 TEST_F(ConfigTest, GetServerName) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     std::vector<std::string> server_name;
@@ -99,7 +99,7 @@ TEST_F(ConfigTest, GetServerName) {
 }
 
 TEST_F(ConfigTest, GetUploadStore) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     const std::string upload_store;
@@ -107,7 +107,7 @@ TEST_F(ConfigTest, GetUploadStore) {
 }
 
 TEST_F(ConfigTest, GetDefaultServer) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf       = configs.front();
     const std::string target  = "/";
     const bool default_server = false;
@@ -115,7 +115,7 @@ TEST_F(ConfigTest, GetDefaultServer) {
 }
 
 TEST_F(ConfigTest, GetLimitExcept) {
-    SetUp("../conf/valid/01_default.conf");
+    SetUp("./conf/valid/01_default.conf");
     config::Config conf      = configs.front();
     const std::string target = "/";
     std::set<enum config::Methods> limit_except;
@@ -125,7 +125,7 @@ TEST_F(ConfigTest, GetLimitExcept) {
 
 /// 11_mix.conf
 TEST_F(ConfigTest, GetAutoIndexFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     EXPECT_EQ(true, conf.get_autoindex("/"));
     EXPECT_EQ(true, conf.get_autoindex("/dir1"));
@@ -134,7 +134,7 @@ TEST_F(ConfigTest, GetAutoIndexFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetErrorPageFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     std::map<int, std::string> error_page;
     error_page[400] = "error.html";
@@ -151,7 +151,7 @@ TEST_F(ConfigTest, GetErrorPageFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetIndexFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     std::vector<std::string> index;
     index.push_back("index.html");
@@ -168,7 +168,7 @@ TEST_F(ConfigTest, GetIndexFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetRootFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     EXPECT_EQ("/root1", conf.get_root("/dir1"));
     EXPECT_EQ("/root2", conf.get_root("/dir2/"));
@@ -176,7 +176,7 @@ TEST_F(ConfigTest, GetRootFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetClientMaxBodySizeFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     EXPECT_EQ(4242, conf.get_client_max_body_size("/"));
     EXPECT_EQ(1, conf.get_client_max_body_size("/dir1"));
@@ -185,7 +185,7 @@ TEST_F(ConfigTest, GetClientMaxBodySizeFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetHostFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf1     = configs.front();
     config::Config conf2     = configs.back();
     const std::string target = "/";
@@ -194,7 +194,7 @@ TEST_F(ConfigTest, GetHostFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetPortFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     const std::string target = "/";
     config::Config conf1     = configs.front();
     config::Config conf2     = configs.back();
@@ -203,7 +203,7 @@ TEST_F(ConfigTest, GetPortFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetRedirectFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/"));
     EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir1"));
@@ -212,7 +212,7 @@ TEST_F(ConfigTest, GetRedirectFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetServerNameFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     std::vector<std::string> server_name;
     server_name.push_back("server");
@@ -221,7 +221,7 @@ TEST_F(ConfigTest, GetServerNameFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetUploadStoreFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     EXPECT_EQ("/upload", conf.get_upload_store("/"));
     EXPECT_EQ("/upload1", conf.get_upload_store("/dir1"));
@@ -230,7 +230,7 @@ TEST_F(ConfigTest, GetUploadStoreFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetDefaultServerFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf1     = configs.front();
     config::Config conf2     = configs.back();
     const std::string target = "/";
@@ -239,7 +239,7 @@ TEST_F(ConfigTest, GetDefaultServerFromMixContext) {
 }
 
 TEST_F(ConfigTest, GetLimitExceptFromMixContext) {
-    SetUp("../conf/valid/11_mix.conf");
+    SetUp("./conf/valid/11_mix.conf");
     config::Config conf = configs.front();
     std::set<enum config::Methods> limit_except;
     EXPECT_EQ(limit_except, conf.get_limit_except("/"));
