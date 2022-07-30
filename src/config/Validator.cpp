@@ -153,6 +153,10 @@ std::map<std::string, int> setting_directives(void) {
     directives["return"]               = (HTTP_SRV | HTTP_LOC | TAKE12);
     directives["upload_store"]         = (HTTP_SRV | HTTP_LOC | TAKE1);
 
+    /// Original
+    directives["exec_cgi"]    = (HTTP_LOC | FLAG);
+    directives["exec_delete"] = (HTTP_LOC | FLAG);
+
     return directives;
 }
 
