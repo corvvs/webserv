@@ -35,6 +35,11 @@ void EventSelectLoop::watch(t_fd fd, ISocketLike *socket, observation_category m
 
 void EventSelectLoop::unwatch(t_fd fd, observation_category map_type) {
     switch (map_type) {
+        case OT_NONE:
+            read_map.erase(fd);
+            write_map.erase(fd);
+            exception_map.erase(fd);
+            break;
         case OT_READ:
             read_map.erase(fd);
             break;
@@ -167,6 +172,7 @@ void EventSelectLoop::update() {
     // exec unhold
     for (update_queue::size_type i = 0; i < up_queue.size(); ++i) {
         if (up_queue[i].cat == OT_NONE && !up_queue[i].in) {
+            unwatch(up_queue[i].fd, OT_NONE);
             holding_map.erase(up_queue[i].fd);
             delete up_queue[i].sock;
         }
