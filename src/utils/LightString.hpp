@@ -54,6 +54,10 @@ public:
     LightString(const LightString &lstr, size_type fi, size_type li = npos)
         : base(lstr.base), first(lstr.first + fi), last(std::max(first, lstr.first + std::min(lstr.size(), li))) {}
 
+    LightString(const LightString &other) {
+        *this = other;
+    }
+
     LightString &operator=(const LightString &rhs) {
         base  = rhs.base;
         first = rhs.first;

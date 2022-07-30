@@ -1,3 +1,13 @@
 *.o
 *.d
 a.out
+
+.idea/
+
+googletest/
+obj
+dps
+test_case_obj
+test_case_dps
+webserv
+unit_tester

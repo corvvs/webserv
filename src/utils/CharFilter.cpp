@@ -1,4 +1,6 @@
 #include "CharFilter.hpp"
+#include <cstring>
+
 #define BITS_IN_ELEM (sizeof(u64t) * 8) // 64
 #define ELEMS (256 / BITS_IN_ELEM)      // 4
 #define OCTETS (sizeof(u64t) * ELEMS)   // 32
@@ -184,9 +186,9 @@ const HTTP::CharFilter HTTP::CharFilter::bslash            = HTTP::strfy("\\");
 const HTTP::CharFilter HTTP::CharFilter::obs_text          = HTTP::CharFilter(0x80, 0xff);
 const HTTP::CharFilter HTTP::CharFilter::vchar             = HTTP::CharFilter(0x21, 0x7e);
 const HTTP::CharFilter HTTP::CharFilter::printables        = HTTP::CharFilter(0x20, 0x7e);
-const HTTP::CharFilter HTTP::CharFilter::qdtext            = vchar | sp | htab | obs_text - "\"\\";
+const HTTP::CharFilter HTTP::CharFilter::qdtext            = (vchar | sp | htab | obs_text) - "\"\\";
 const HTTP::CharFilter HTTP::CharFilter::qdright           = vchar | sp | htab | obs_text;
-const HTTP::CharFilter HTTP::CharFilter::ctext             = vchar | sp | htab | obs_text - "()\\";
+const HTTP::CharFilter HTTP::CharFilter::ctext             = (vchar | sp | htab | obs_text) - "()\\";
 const HTTP::CharFilter HTTP::CharFilter::reserved          = gen_delims | sub_delims;
 const HTTP::CharFilter HTTP::CharFilter::cgi_mark          = "-_.!~*'()";
 const HTTP::CharFilter HTTP::CharFilter::cgi_reserved      = ";/?:@&=+$,[]";

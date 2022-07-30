@@ -105,7 +105,7 @@ void EventSelectLoop::loop() {
         timeval tv = {10, 0};
         int count  = select(max_fd + 1, &read_set, &write_set, &exception_set, &tv);
         if (count < 0) {
-            VOUT(strerror(errno));
+            //            VOUT(strerror(errno));
             throw std::runtime_error("select error");
         }
         t_time_epoch_ms now = WSTime::get_epoch_ms();
