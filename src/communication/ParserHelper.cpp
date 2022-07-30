@@ -233,10 +233,11 @@ unsigned int ParserHelper::stou(const HTTP::light_string &str) {
 }
 
 ParserHelper::byte_string ParserHelper::utos(unsigned int u, unsigned int base) {
-    assert(base > 1);
+    // std::setbase の引数は 8, 10, 16のみ
+    assert(base == 8 || base == 10 || base == 16);
     std::stringstream ss;
     if (base != 10) {
-        ss << std::setbase(16);
+        ss << std::setbase(base);
     }
     ss << u;
     return HTTP::strfy(ss.str());
