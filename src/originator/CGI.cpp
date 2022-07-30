@@ -2,6 +2,7 @@
 #include "../communication/RoundTrip.hpp"
 #include <cstring>
 #include <signal.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #define MAX_SEND_SIZE 1024
 #define MAX_RECEIVE_SIZE 1024
@@ -25,24 +26,38 @@ CGI::Status::Status() : is_started(false), to_script_content_sent_(0), is_respon
 CGI::Attribute::Attribute(const CGI::byte_string &script_path, const CGI::byte_string &query_string)
     : script_path_(script_path), query_string_(query_string), observer(NULL), master(NULL), cgi_pid(0), sock(NULL) {}
 
+const CGI::byte_string CGI::META_GATEWAY_INTERFACE = HTTP::strfy("GATEWAY_INTERFACE");
+const CGI::byte_string CGI::META_REQUEST_METHOD    = HTTP::strfy("REQUEST_METHOD");
+const CGI::byte_string CGI::META_SERVER_PROTOCOL   = HTTP::strfy("SERVER_PROTOCOL");
+const CGI::byte_string CGI::META_CONTENT_TYPE      = HTTP::strfy("CONTENT_TYPE");
+const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
+const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
+
 CGI::CGI(const byte_string &script_path, const byte_string &query_string, const RequestHTTP &request)
     : attr(Attribute(script_path, query_string))
     , metavar_(request.get_cgi_http_vars())
     , to_script_content_length_(0)
     , mid(0) {
-    ps.start_of_header                       = 0;
-    metavar_[HTTP::strfy("REQUEST_METHOD")]  = HTTP::method_str(request.get_method());
-    metavar_[HTTP::strfy("SERVER_PROTOCOL")] = HTTP::version_str(request.get_http_version());
-    metavar_[HTTP::strfy("CONTENT_TYPE")]    = request.get_content_type();
+    ps.start_of_header               = 0;
+    metavar_[META_GATEWAY_INTERFACE] = HTTP::strfy("CGI/1.1");
+    metavar_[META_REQUEST_METHOD]    = HTTP::method_str(request.get_method());
+    metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(request.get_http_version());
+    metavar_[META_CONTENT_TYPE]      = request.get_content_type();
     set_content(request.get_plain_message());
 }
 
 CGI::~CGI() {
-    // TODO: 関数化; 異常終了したことを検知できるように
     if (attr.cgi_pid != 0) {
         // TODO: 条件付き?
         ::kill(attr.cgi_pid, SIGKILL);
-        waitpid(attr.cgi_pid, NULL, 0);
+        int wstatus;
+        pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
+        VOUT(pid);
+        assert(pid > 0);
+        VOUT(WIFEXITED(wstatus));
+        VOUT(WEXITSTATUS(wstatus));
+        VOUT(WIFSIGNALED(wstatus));
+        VOUT(WTERMSIG(wstatus));
         attr.cgi_pid = 0;
     }
     delete attr.sock;
@@ -51,27 +66,51 @@ CGI::~CGI() {
 
 void CGI::inject_socketlike(ISocketLike *socket_like) {
     VOUT(socket_like);
-    attr.master = socket_like;
+    attr.master                = socket_like;
+    metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port(), 10);
+}
+
+void CGI::check_executable() const {
+    // 存在 -> stat のエラー
+    // 通常ファイルか -> stat S_ISREF
+    // 実行権限 -> stat
+    struct stat st;
+    errno            = 0;
+    const int result = stat(HTTP::restrfy(attr.script_path_).c_str(), &st);
+    if (result != 0) {
+        switch (errno) {
+            case ENOENT:
+                throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+            case EACCES:
+                throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
+            default:
+                throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+    const bool is_regular_file = S_ISREG(st.st_mode);
+    if (!is_regular_file) {
+        throw http_error("is not normal file", HTTP::STATUS_FORBIDDEN);
+    }
+    const bool is_executable = (st.st_mode & S_IXUSR);
+    if (!is_executable) {
+        throw http_error("is not executable", HTTP::STATUS_FORBIDDEN);
+    }
 }
 
 void CGI::start_origination(IObserver &observer) {
-    // TODO: CGIが起動できるかどうかチェックする
+    check_executable();
 
     std::pair<SocketUNIX *, t_fd> socks = SocketUNIX::socket_pair();
     socks.first->set_nonblock();
 
-    {
-        metavar_[HTTP::strfy("GATEWAY_INTERFACE")] = HTTP::strfy("CGI/1.1");
-        metavar_[HTTP::strfy("CONTENT_LENGTH")]
-            = to_script_content_length_ > 0 ? ParserHelper::utos(to_script_content_length_) : HTTP::strfy("");
-        status.to_script_content_sent_       = 0;
-        metavar_[HTTP::strfy("SERVER_PORT")] = ParserHelper::utos(attr.master->get_port());
-    }
-
     pid_t pid = fork();
     VOUT(pid);
     if (pid < 0) {
-        throw std::runtime_error("failed to fork");
+        // 500出しとく
+        // この時点ではUNIXソケットはholdされていないので, ここで消して良い
+        delete socks.first;
+        close(socks.second);
+        throw http_error("failed to fork", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
     if (pid == 0) {
         // child: CGI process
@@ -92,16 +131,18 @@ void CGI::start_origination(IObserver &observer) {
         if (redirect_fd(socks.second, STDOUT_FILENO) < 0) {
             exit(1);
         }
+        // TODO: CGIのstderrをどこに向けるか
         // if (redirect_fd(socks.second, STDERR_FILENO) < 0) {
         //     exit(1);
         // }
+
         // 起動
         errno  = 0;
         int rv = execve(HTTP::restrfy(attr.script_path_).c_str(), argv, mvs);
         VOUT(rv);
         VOUT(errno);
         QVOUT(strerror(errno));
-        exit(0);
+        exit(rv);
     }
     // parent: server process
     attr.cgi_pid = pid;
@@ -114,6 +155,31 @@ void CGI::start_origination(IObserver &observer) {
     observer.reserve_set(this, IObserver::OT_READ);
     observer.reserve_set(this, IObserver::OT_WRITE);
     status.is_started = true;
+}
+
+void CGI::capture_script_termination() {
+    if (attr.cgi_pid == 0) {
+        return;
+    }
+    int wstatus;
+    const pid_t rv = waitpid(attr.cgi_pid, &wstatus, WNOHANG);
+    if (rv < 0) {
+        VOUT(strerror(errno));
+    } else if (rv > 0) {
+        attr.cgi_pid = 0;
+        // 終了している
+        if (WIFEXITED(wstatus)) {
+            int cstatus = WEXITSTATUS(wstatus);
+            VOUT(cstatus);
+            if (cstatus != 0) {
+                throw http_error("CGI script finished with error", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+            }
+        } else if (WIFSIGNALED(wstatus)) {
+            int signal = WTERMSIG(wstatus);
+            VOUT(signal);
+            // throw http_error("CGI script finished by signal", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
 }
 
 CGI::byte_string CGI::draw_data() const {
@@ -296,11 +362,11 @@ void CGI::perform_sending(IObserver &observer) {
 
 void CGI::perform_receiving(IObserver &observer) {
     DXOUT("CGI on Read");
-    u8t buf[MAX_RECEIVE_SIZE];
+    char buf[MAX_RECEIVE_SIZE];
     const ssize_t received_size = attr.sock->receive(buf, MAX_RECEIVE_SIZE, 0);
     VOUT(received_size);
     if (received_size == 0) {
-        DXOUT("sock closed?");
+        capture_script_termination();
     }
     if (received_size < 0) {
         throw http_error("failed to receive data from CGI script", HTTP::STATUS_INTERNAL_SERVER_ERROR);
@@ -340,7 +406,12 @@ bool CGI::is_responsive() const {
 
 void CGI::leave() {
     DXOUT("leaving.");
-    attr.observer->reserve_unhold(this);
+    if (attr.observer != NULL) {
+        attr.observer->reserve_unhold(this);
+    } else {
+        // Observerに渡される前に leave されることがある
+        delete this;
+    }
 }
 
 CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {

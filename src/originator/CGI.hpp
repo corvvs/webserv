@@ -97,6 +97,13 @@ public:
         CGI::t_cgi_response_type get_response_type() const;
     };
 
+    static const byte_string META_GATEWAY_INTERFACE;
+    static const byte_string META_REQUEST_METHOD;
+    static const byte_string META_SERVER_PROTOCOL;
+    static const byte_string META_CONTENT_TYPE;
+    static const byte_string META_SERVER_PORT;
+    static const byte_string META_CONTENT_LENGTH;
+
 private:
     Attribute attr;
     metavar_dict_type metavar_;
@@ -119,6 +126,15 @@ private:
     static char **flatten_metavar(const metavar_dict_type &metavar);
 
     IResponseDataProducer &response_data_producer();
+    // 「CGIスクリプトが実行可能であること」を確認する
+    // (オリジネーション可能性とは関係ないことに注意)
+    // - スクリプトのパスにファイルが存在すること
+    // - 当該ファイルが実行可能ファイルであること(ディレクトリ等でないこと)
+    // - 実行権限があること
+    void check_executable() const;
+    // もしCGIスクリプトが終了していたら, 子プロセスを waitpid で回収する。
+    // (異常終了している場合は500を投げる)
+    void capture_script_termination();
 
     void perform_receiving(IObserver &observer);
     void perform_sending(IObserver &observer);
