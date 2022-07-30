@@ -12,7 +12,8 @@
 namespace HTTP {
 // ステータスコード
 enum t_status {
-    STATUS_OK = 200,
+    STATUS_UNSPECIFIED = 1,
+    STATUS_OK          = 200,
 
     STATUS_FOUND = 302,
 
@@ -21,8 +22,10 @@ enum t_status {
     STATUS_FORBIDDEN          = 403,
     STATUS_NOT_FOUND          = 404,
     STATUS_METHOD_NOT_ALLOWED = 405,
+    STATUS_TIMEOUT            = 408,
     STATUS_URI_TOO_LONG       = 414,
     STATUS_IM_A_TEAPOT        = 418,
+    STATUS_HEADER_TOO_LARGE   = 431,
 
     STATUS_INTERNAL_SERVER_ERROR = 500,
     STATUS_NOT_IMPLEMENTED       = 501,
@@ -40,6 +43,7 @@ enum t_method {
     METHOD_GET,
     METHOD_POST,
     METHOD_DELETE,
+    METHOD_OPTION,
 
     METHOD_ERROR
 };
@@ -73,6 +77,8 @@ typedef std::map<header_key_type, header_val_type> header_dict_type;
 
 // サーバのデフォルトのHTTPバージョン
 extern const t_version DEFAULT_HTTP_VERSION;
+extern const size_t MAX_REQLINE_END;
+const byte_string method_str(t_method method);
 const byte_string version_str(t_version version);
 const byte_string reason(t_status status);
 

@@ -8,29 +8,32 @@
 #include <string>
 
 namespace HeaderHTTP {
-const HTTP::byte_string host              = HTTP::strfy("host");
-const HTTP::byte_string connection        = HTTP::strfy("connection");
-const HTTP::byte_string cookie            = HTTP::strfy("cookie");
-const HTTP::byte_string set_cookie        = HTTP::strfy("set-cookie");
-const HTTP::byte_string pragma            = HTTP::strfy("pragma");
-const HTTP::byte_string user_agent        = HTTP::strfy("user_agent");
-const HTTP::byte_string cache_control     = HTTP::strfy("cache-control");
-const HTTP::byte_string authorization     = HTTP::strfy("authorization");
-const HTTP::byte_string www_authenticate  = HTTP::strfy("www-authenticate");
-const HTTP::byte_string keep_alive        = HTTP::strfy("keep-alive");
-const HTTP::byte_string content_type      = HTTP::strfy("content-type");
-const HTTP::byte_string content_length    = HTTP::strfy("content-length");
-const HTTP::byte_string transfer_encoding = HTTP::strfy("transfer-encoding");
-const HTTP::byte_string te                = HTTP::strfy("te");
-const HTTP::byte_string vary              = HTTP::strfy("vary");
-const HTTP::byte_string upgrade           = HTTP::strfy("upgrade");
-const HTTP::byte_string via               = HTTP::strfy("via");
+const HTTP::byte_string host              = ParserHelper::normalize_header_key(HTTP::strfy("Host"));
+const HTTP::byte_string connection        = ParserHelper::normalize_header_key(HTTP::strfy("Connection"));
+const HTTP::byte_string cookie            = ParserHelper::normalize_header_key(HTTP::strfy("Cookie"));
+const HTTP::byte_string set_cookie        = ParserHelper::normalize_header_key(HTTP::strfy("Set-Cookie"));
+const HTTP::byte_string pragma            = ParserHelper::normalize_header_key(HTTP::strfy("Pragma"));
+const HTTP::byte_string user_agent        = ParserHelper::normalize_header_key(HTTP::strfy("User-Agent"));
+const HTTP::byte_string cache_control     = ParserHelper::normalize_header_key(HTTP::strfy("Cache-Control"));
+const HTTP::byte_string authorization     = ParserHelper::normalize_header_key(HTTP::strfy("Authorization"));
+const HTTP::byte_string www_authenticate  = ParserHelper::normalize_header_key(HTTP::strfy("www-Authenticate"));
+const HTTP::byte_string keep_alive        = ParserHelper::normalize_header_key(HTTP::strfy("Keep-Alive"));
+const HTTP::byte_string content_type      = ParserHelper::normalize_header_key(HTTP::strfy("Content-Type"));
+const HTTP::byte_string content_length    = ParserHelper::normalize_header_key(HTTP::strfy("Content-Length"));
+const HTTP::byte_string transfer_encoding = ParserHelper::normalize_header_key(HTTP::strfy("Transfer-Encoding"));
+const HTTP::byte_string te                = ParserHelper::normalize_header_key(HTTP::strfy("TE"));
+const HTTP::byte_string vary              = ParserHelper::normalize_header_key(HTTP::strfy("Vary"));
+const HTTP::byte_string upgrade           = ParserHelper::normalize_header_key(HTTP::strfy("Upgrade"));
+const HTTP::byte_string via               = ParserHelper::normalize_header_key(HTTP::strfy("Via"));
+// for CGI
+const HTTP::byte_string status   = HTTP::strfy("status");
+const HTTP::byte_string location = HTTP::strfy("location");
 } // namespace HeaderHTTP
 
 // あるヘッダキーの属性
-struct HeaderHTTPAttribute {
+struct HeaderAttribute {
     typedef HTTP::header_key_type header_key_type;
-    typedef std::map<header_key_type, HeaderHTTPAttribute> attr_dict_type;
+    typedef std::map<header_key_type, HeaderAttribute> attr_dict_type;
 
     // [属性]
 
@@ -49,7 +52,7 @@ struct HeaderHTTPAttribute {
 
 // ヘッダーのkeyとvalue(s)を保持する
 // 再確保が起きないコンテナ(list)で保持し, mapにポインタを保持する
-class HeaderHTTPItem {
+class HeaderItem {
 public:
     typedef HTTP::header_key_type header_key_type;
     typedef HTTP::header_val_type header_val_type;
@@ -59,36 +62,37 @@ public:
 private:
     const header_key_type key;
     value_list_type values;
-    HeaderHTTPAttribute attr;
+    HeaderAttribute attr;
 
 public:
     // キーを与えて構築
-    HeaderHTTPItem(const header_key_type &key);
+    HeaderItem(const header_key_type &key);
 
     // 値を与える
     void add_val(const header_val_type &val);
 
+    const header_key_type &get_key() const;
     const header_val_type *get_val() const;
     const header_val_type *get_back_val() const;
     const value_list_type &get_vals() const;
 };
 
-// HeaderHTTPItem を保持する
-class HeaderHTTPHolder {
+// HeaderItem を保持する
+class AHeaderHolder {
 public:
     typedef HTTP::header_key_type header_key_type;
     typedef HTTP::header_val_type header_val_type;
     typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
-    typedef HeaderHTTPItem header_item_type;
+    typedef HeaderItem header_item_type;
     // なぜ vector などではなく list を使うのかというと, 再確保を防ぐため.
-    // 再確保を防ぐのは, dict で HeaderHTTPItem のポインタを保持するから.
-    typedef std::list<HeaderHTTPItem> list_type;
-    typedef std::map<header_key_type, HeaderHTTPItem *> dict_type;
-    typedef HeaderHTTPItem::value_list_type value_list_type;
+    // 再確保を防ぐのは, dict で HeaderItem のポインタを保持するから.
+    typedef std::list<HeaderItem> list_type;
+    typedef std::map<header_key_type, HeaderItem *> dict_type;
+    typedef HeaderItem::value_list_type value_list_type;
     typedef std::map<byte_string, byte_string> joined_dict_type;
 
-private:
+protected:
     list_type list;
     dict_type dict;
 
@@ -104,9 +108,19 @@ public:
     // 指定したキーの値をすべて取得する
     const value_list_type *get_vals(const header_key_type &normalized_key) const;
 
+    const list_type &get_list() const;
+    list_type::size_type get_list_size() const;
+    dict_type::size_type get_dict_size() const;
+};
+
+class HeaderHolderHTTP : public AHeaderHolder {
+
+public:
     // HTTPヘッダをCGIメタ変数に加工した辞書を返す
     // 同じキーの値はすべて ", " で連結する
     joined_dict_type get_cgi_http_vars() const;
 };
+
+class HeaderHolderCGI : public AHeaderHolder {};
 
 #endif

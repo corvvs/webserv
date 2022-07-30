@@ -19,22 +19,24 @@ public:
 private:
     HTTP::t_version version_;
     HTTP::t_status status_;
-    bool is_error;
+    bool is_error_;
     // 送信済みマーカー
     size_t sent_size;
-
     std::vector<HTTP::header_kvpair_type> header_list;
     header_dict_type header_dict;
     byte_string body;
-
     byte_string message_text;
 
 public:
     // 通常(エラーでない)応答を構築する
     ResponseHTTP(HTTP::t_version version, HTTP::t_status status);
-
     // エラー応答を構築する
     ResponseHTTP(HTTP::t_version version, http_error error);
+
+    // HTTPバージョンを設定
+    void set_version(HTTP::t_version version);
+    // 応答ステータスを設定
+    void set_status(HTTP::t_status status);
 
     // HTTPヘッダを追加する
     void feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val);
@@ -58,7 +60,12 @@ public:
     size_t get_unsent_size() const;
 
     // predicate: メッセージ全体の送信が完了したかどうか
-    bool is_over_sending() const;
+    bool is_complete() const;
+
+    // エラー応答かどうか
+    bool is_error() const;
+
+    static void swap(ResponseHTTP &lhs, ResponseHTTP &rhs);
 };
 
 #endif

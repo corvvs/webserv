@@ -5,7 +5,7 @@ bool HTTP::Validator::is_valid_header_host(const light_string &str) {
     // host = uri-host [ ":" port ]
 
     byte_string::size_type ket = str.find_last_of("]");
-    byte_string::size_type sep = str.find_last_of(":", ket);
+    byte_string::size_type sep = str.find_last_of(":", ket == npos ? 0 : ket);
     if (sep != npos && 0 < sep && str[sep - 1] != ':') {
         // ":"がある -> portとしての妥当性チェック
         if (!is_port(str.substr(sep + 1))) {
@@ -235,6 +235,65 @@ bool HTTP::Validator::is_ls32(const light_string &str) {
         return false;
     }
     return is_h16(str.substr(0, sep)) && is_h16(str.substr(sep + 1));
+}
+
+bool HTTP::Validator::is_uri_authority(const HTTP::light_string &authority) {
+    const light_string tmp      = authority.substr_before("@");
+    const light_string userinfo = tmp.size() < authority.size() ? tmp : HTTP::strfy("");
+    QVOUT(userinfo);
+    {
+        // validate `userinfo`
+        // userinfo = *( unreserved / pct-encoded / sub-delims / ":" )
+        const HTTP::CharFilter ftr_userinfo = HTTP::CharFilter::unreserved | HTTP::CharFilter::sub_delims | ":";
+        if (!HTTP::Validator::is_segment(userinfo, ftr_userinfo)) {
+            return false;
+        }
+        DXOUT("userinfo is valid");
+    }
+    // validate `host` and `port`
+    const light_string host_port = 0 < userinfo.size() ? authority.substr(userinfo.size() + 1) : authority;
+    QVOUT(host_port);
+    if (!HTTP::Validator::is_valid_header_host(host_port)) {
+        return false;
+    }
+    return true;
+}
+
+bool HTTP::Validator::is_uri_path(const HTTP::light_string &str, const HTTP::CharFilter &segment_filter) {
+    light_string tmp = str.size() > 0 && str[0] == '/' ? str.substr(1) : str;
+    for (; tmp.size() > 0;) {
+        // QVOUT(tmp);
+        if (tmp[0] == '/') {
+            tmp = tmp.substr(1);
+            continue;
+        }
+        const light_string segment = tmp.substr_before("/");
+        if (is_segment(segment, segment_filter)) {
+            tmp = tmp.substr(segment.size());
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
+bool HTTP::Validator::is_segment(const HTTP::light_string &str, const HTTP::CharFilter &segment_filter) {
+    light_string tmp = str;
+    for (; tmp.size() > 0;) {
+        // QVOUT(tmp);
+        if (tmp[0] == '%') {
+            if (tmp.size() >= 3 && HTTP::CharFilter::hexdig.includes(tmp[1])
+                && HTTP::CharFilter::hexdig.includes(tmp[2])) {
+                tmp = tmp.substr(3);
+                continue;
+            }
+        } else if (segment_filter.includes(tmp[0])) {
+            tmp = tmp.substr(1);
+            continue;
+        }
+        return false;
+    }
+    return true;
 }
 
 bool HTTP::Validator::is_valid_rank(const light_string &str) {

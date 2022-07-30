@@ -14,11 +14,13 @@
  * root                 string
  * client_max_body_size long
  * host_port            pair<string, int>
+ * default_server       bool
  * redirect             pair<int, string> -> (status, path)
  * server_name          vector<string>
  * upload_store         string
- * default_server       bool
  * limit_except         set<enum> method
+ * exec_cgi             bool
+ * exec_delete          bool
  */
 
 namespace config {
@@ -30,6 +32,7 @@ public:
 
     /// Setter
     void set_host_port(const host_port_pair &hp);
+    void set_is_default_server(const bool &flag);
 
     /// Getter
     bool get_autoindex(const std::string &target) const;
@@ -44,12 +47,13 @@ public:
     std::string get_upload_store(const std::string &target) const;
     bool get_default_server(const std::string &target) const;
     std::set<enum Methods> get_limit_except(const std::string &target) const;
+    bool get_exec_cgi(const std::string &target) const;
+    bool get_exec_delete(const std::string &target) const;
 
 private:
     ContextServer ctx_server_;
-
-    // configに対応するhostとportのペア
     host_port_pair host_port_;
+    bool is_default_server_;
 
     ContextLocation longest_prefix_match_location(const ContextServer &srv, const std::string &path) const;
 };

@@ -1,19 +1,13 @@
 #include "ASocket.hpp"
 
-ASocket::ASocket() {
-    throw std::runtime_error("forbidden");
-}
-
-ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) {
+ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) : port(0) {
     int d = sockdomain(sdomain);
     int t = socktype(stype);
 
-    // DOUT() << "create asocket for: " << d << ", " << t << "..." << std::endl;
     t_fd sock = socket(d, t, 0);
     if (sock == -1) {
         throw std::runtime_error("failed to initialize asocket");
     }
-    // DOUT() << "created asocket." << std::endl;
     fd     = sock;
     domain = sdomain;
     type   = stype;
@@ -22,7 +16,7 @@ ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) {
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
 }
 
-ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) : fd(sock_fd) {
+ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) : fd(sock_fd), port(0) {
     domain = sdomain;
     type   = stype;
 }

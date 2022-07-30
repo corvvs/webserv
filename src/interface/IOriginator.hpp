@@ -1,6 +1,10 @@
 #ifndef IORIGINATOR_HPP
 #define IORIGINATOR_HPP
+#include "../communication/RequestHTTP.hpp"
+#include "../communication/ResponseHTTP.hpp"
 #include "../utils/http.hpp"
+#include "IObserver.hpp"
+#include "ISocketLike.hpp"
 
 // [オリジネータインターフェース]
 // オリジンサーバとしてのタスク = レスポンスをoriginateするクラス
@@ -28,13 +32,31 @@ public:
 
     virtual ~IOriginator(){};
 
-    // オリジネータがデータを引き出すことができるかどうか
-    // = `draw_data()` を呼び出すことができるかどうか
-    virtual bool is_ready_to_draw() const = 0;
+    // 自身がソケットライクでもあるような場合は何かをするが, そうでない場合は呼び出されること自体が誤り
+    virtual void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) = 0;
+    virtual void inject_socketlike(ISocketLike *socket_like)                                             = 0;
+
+    // オリジネーションを開始できるかどうか
+    virtual bool is_originatable() const = 0;
+    // オリジネーション開始済みかどうか
+    virtual bool is_origination_started() const = 0;
+    // 再ルーティングすべきか
+    virtual bool is_reroutable() const = 0;
+    // レスポンスを作成できるかどうか
+    virtual bool is_responsive() const = 0;
+
+    // オリジネーションを開始する
+    virtual void start_origination(IObserver &observer) = 0;
+
+    virtual ResponseHTTP *respond(const RequestHTTP &request) = 0;
 
     // オリジネータからデータを引き出す
     // おそらく送信目的だと思うが, べつにそうでなくてもよい
     virtual byte_string draw_data() const = 0;
+
+    // オリジネータ自身の破壊手続きを行う
+    // 大抵は`delete this;だがソケットライクだったりすると違う
+    virtual void leave() = 0;
 };
 
 #endif

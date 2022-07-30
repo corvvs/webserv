@@ -1,6 +1,21 @@
 #include "http.hpp"
+#include <cstring>
 
 const HTTP::t_version HTTP::DEFAULT_HTTP_VERSION = V_1_1;
+const size_t HTTP::MAX_REQLINE_END               = 8192;
+
+const HTTP::byte_string HTTP::method_str(HTTP::t_method method) {
+    switch (method) {
+        case METHOD_GET:
+            return strfy("GET");
+        case METHOD_POST:
+            return strfy("POST");
+        case METHOD_DELETE:
+            return strfy("DELETE");
+        default:
+            return strfy("");
+    }
+}
 
 const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
     switch (version) {
@@ -31,6 +46,8 @@ const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
             return strfy("Not Found");
         case HTTP::STATUS_METHOD_NOT_ALLOWED:
             return strfy("Method Not Allowed");
+        case HTTP::STATUS_TIMEOUT:
+            return strfy("Connection Timed out");
         case HTTP::STATUS_IM_A_TEAPOT:
             return strfy("I'm a teapot");
         case HTTP::STATUS_INTERNAL_SERVER_ERROR:
@@ -84,8 +101,16 @@ bool operator==(const HTTP::byte_string &lhs, const char *rhs) {
     return true;
 }
 
+bool operator!=(const HTTP::byte_string &lhs, const char *rhs) {
+    return !(lhs == rhs);
+}
+
 bool operator==(const char *lhs, const HTTP::byte_string &rhs) {
     return rhs == lhs;
+}
+
+bool operator!=(const char *lhs, const HTTP::byte_string &rhs) {
+    return rhs != lhs;
 }
 
 HTTP::byte_string operator+(const HTTP::byte_string &lhs, const HTTP::byte_string &rhs) {

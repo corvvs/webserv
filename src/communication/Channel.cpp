@@ -14,10 +14,18 @@ t_fd Channel::get_fd() const {
     return sock->get_fd();
 }
 
-void Channel::notify(IObserver &observer) {
+t_port Channel::get_port() const {
+    return sock->get_port();
+}
+
+void Channel::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
+    (void)epoch;
     // Channelがnotifyを受ける
     // -> accept ready
     // -> Connectionを生成してread監視させる
+    if (cat != IObserver::OT_READ) {
+        return;
+    }
     try {
         for (;;) {
             SocketConnected *connected = sock->accept();
@@ -25,18 +33,13 @@ void Channel::notify(IObserver &observer) {
                 // acceptするものが残っていない場合 NULL が返ってくる
                 break;
             }
-            observer.reserve_set(new Connection(router_, connected), IObserver::OT_READ);
+            Connection *con = new Connection(router_, connected);
+            observer.reserve_hold(con);
+            observer.reserve_set(con, IObserver::OT_READ);
         }
     } catch (...) {
         DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd());
     }
-}
-
-void Channel::timeout(IObserver &observer, t_time_epoch_ms epoch) {
-    // * DO NOTHING *
-    (void)observer;
-    (void)epoch;
-    // DXOUT("* DO NOTHING *: " << get_fd());
 }
 
 Channel::t_channel_id Channel::get_id() const {

@@ -38,6 +38,8 @@ std::string error_message(const ErrorType &type) {
         case UNKNOWN:
             return "Invalid file type";
     }
+    //    コンパイルを通すため
+    return "no reach";
 }
 
 std::string read(const std::string &path) {

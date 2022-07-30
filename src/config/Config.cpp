@@ -10,6 +10,10 @@ void Config::set_host_port(const host_port_pair &hp) {
     host_port_ = hp;
 }
 
+void Config::set_is_default_server(const bool &flag) {
+    is_default_server_ = flag;
+}
+
 bool Config::get_autoindex(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.autoindex;
@@ -73,7 +77,17 @@ std::string Config::get_upload_store(const std::string &target) const {
 
 bool Config::get_default_server(const std::string &target) const {
     (void)target;
-    return ctx_server_.default_server;
+    return is_default_server_;
+}
+
+bool Config::get_exec_cgi(const std::string &target) const {
+    const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
+    return loc.exec_cgi;
+}
+
+bool Config::get_exec_delete(const std::string &target) const {
+    const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
+    return loc.exec_delete;
 }
 
 /**

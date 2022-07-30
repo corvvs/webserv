@@ -71,6 +71,8 @@ private:
     void add_server_name(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
     void add_client_max_body_size(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
     void add_upload_store(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_exec_cgi(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
+    void add_exec_delete(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
 
     bool is_conflicted_server_name(const std::vector<ContextServer> &servers);
     size_t count_nested_locations(const std::stack<ContextType> &ctx) const;

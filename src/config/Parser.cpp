@@ -35,6 +35,8 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     directives["server_name"]          = &Parser::add_server_name;
     directives["client_max_body_size"] = &Parser::add_client_max_body_size;
     directives["upload_store"]         = &Parser::add_upload_store;
+    directives["exec_cgi"]             = &Parser::add_exec_cgi;
+    directives["exec_delete"]          = &Parser::add_exec_delete;
     return directives;
 }
 
@@ -64,10 +66,10 @@ std::vector<Config> Parser::create_configs(const std::vector<ContextServer> &ctx
 #ifdef NDEBUG
         print_server(*it);
 #endif
-        std::vector<host_port_pair>::const_iterator hp_it = it->host_ports.begin();
-        for (; hp_it != it->host_ports.end(); ++hp_it) {
+        for (size_t i = 0; i < it->host_ports.size(); ++i) {
             Config conf(*it);
-            conf.set_host_port(*hp_it);
+            conf.set_host_port(it->host_ports[i]);
+            conf.set_is_default_server(it->is_default_servers[i]);
             configs.push_back(conf);
         }
     }
@@ -179,13 +181,13 @@ void Parser::add_http(const std::vector<std::string> &args, std::stack<ContextTy
 
 void Parser::add_server(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
     (void)args;
-    ContextServer srv(ctx_main_);
+    ContextServer srv;
     ctx_servers_.push_back(srv);
     ctx.push(SERVER);
 }
 
 void Parser::add_location(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
-    ContextLocation loc(ctx_servers_.back());
+    ContextLocation loc;
     loc.path = args.front();
 
     ContextServer &srv = ctx_servers_.back();
@@ -329,9 +331,9 @@ void Parser::add_listen(const std::vector<std::string> &args, std::stack<Context
         throw SyntaxError("config: duplicate listen");
     }
     ctx_servers_.back().host_ports.push_back(std::make_pair(host, port));
-    if (args.size() == 2) {
-        ctx_servers_.back().default_server = (args.back() == "default_server");
-    }
+
+    const bool flag = (args.back() == "default_server");
+    ctx_servers_.back().is_default_servers.push_back(flag);
     ctx_servers_.back().defined_["listen"] = true;
 }
 
@@ -361,7 +363,6 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             ctx_main_.root             = path;
             ctx_main_.defined_["root"] = true;
-
             break;
         case SERVER:
             if (srv.defined_["root"]) {
@@ -369,6 +370,7 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             srv.root             = path;
             srv.defined_["root"] = true;
+            break;
         case LOCATION: {
             ContextLocation *p = get_current_location(ctx);
             if (p->defined_["root"]) {
@@ -376,6 +378,7 @@ void Parser::add_root(const std::vector<std::string> &args, std::stack<ContextTy
             }
             p->root             = path;
             p->defined_["root"] = true;
+            break;
         }
         default:;
     }
@@ -424,6 +427,22 @@ void Parser::add_upload_store(const std::vector<std::string> &args, std::stack<C
     }
 }
 
+void Parser::add_exec_cgi(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
+    const bool flag = (str_tolower(args.front()) == "on");
+
+    ContextLocation *p      = get_current_location(ctx);
+    p->exec_cgi             = flag;
+    p->defined_["exec_cgi"] = true;
+}
+
+void Parser::add_exec_delete(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
+    const bool flag = (str_tolower(args.front()) == "on");
+
+    ContextLocation *p         = get_current_location(ctx);
+    p->exec_delete             = flag;
+    p->defined_["exec_delete"] = true;
+}
+
 /// Inheritance
 
 void Parser::inherit_main_to_srv(const ContextMain &main, ContextServer &srv) {
@@ -442,8 +461,10 @@ void Parser::inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &
     child.root         = child.defined_["root"] ? child.root : parent.root;
     child.indexes      = child.defined_["index"] ? child.indexes : parent.indexes;
     child.error_pages  = child.defined_["error_page"] ? child.error_pages : parent.error_pages;
-    child.redirect     = child.defined_["redirect"] ? child.redirect : parent.redirect;
     child.upload_store = child.defined_["upload_store"] ? child.upload_store : parent.upload_store;
+    child.exec_cgi     = child.defined_["exec_cgi"] ? child.exec_cgi : parent.exec_cgi;
+    child.exec_delete  = child.defined_["exec_delete"] ? child.exec_delete : parent.exec_delete;
+    child.redirect     = (parent.redirect.first == REDIRECT_INITIAL_VALUE) ? child.redirect : parent.redirect;
 }
 
 void Parser::inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs) {
@@ -583,12 +604,14 @@ void Parser::print_location(const std::vector<ContextLocation> &loc) {
         std::cout << "Locations[" << i++ << "]  {" << std::endl;
         print_key_value("location_path", it->path, true);
         print_key_value("client_max_body_size", it->client_max_body_size, true);
-        print_key_value("autoindex", it->autoindex, true);
+        print_key_value("autoindex", (it->autoindex ? "on" : "off"), true);
         print_key_value("root", it->root, true);
         print_key_value("index", vector_to_string(it->indexes), true);
         print_key_value("error_page", map_to_string(it->error_pages), true);
         print_key_value("upload_store", it->upload_store, true);
         print_key_value("redirect", pair_to_string(it->redirect), true);
+        print_key_value("exec_cgi", (it->exec_cgi ? "on" : "off"), true);
+        print_key_value("exec_delete", (it->exec_delete ? "on" : "off"), true);
         print_limit_except(it->limit_except);
         print_location(it->locations);
         std::cout << "}" << std::endl;
@@ -597,7 +620,7 @@ void Parser::print_location(const std::vector<ContextLocation> &loc) {
 
 void Parser::print_server(const ContextServer &srv) {
     print_key_value("client_max_body_size", srv.client_max_body_size);
-    print_key_value("autoindex", srv.autoindex);
+    print_key_value("autoindex", (srv.autoindex ? "on" : "off"));
     print_key_value("root", srv.root);
     print_key_value("indexes", vector_to_string(srv.indexes));
     print_key_value("error_page", map_to_string(srv.error_pages));

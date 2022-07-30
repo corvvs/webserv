@@ -1,201 +1,214 @@
 #include "Connection.hpp"
 #include "Channel.hpp"
+#include "RoundTrip.hpp"
+#include <cassert>
 
-int started  = 0;
-int finished = 0;
+// [[Attribute]]
 
-ConnectionAttribute::ConnectionAttribute() {
+Connection::Attribute::Attribute() {
     http_version  = HTTP::DEFAULT_HTTP_VERSION;
     is_persistent = true;
     timeout       = 60 * 1000;
 }
 
+// [[Connection]]
+
 Connection::Connection(IRouter *router, SocketConnected *sock_given)
-    : router_(router)
-    , attr(ConnectionAttribute())
-    , phase(CONNECTION_RECEIVING)
+    : attr(Attribute())
+    , phase(CONNECTION_ESTABLISHED)
     , dying(false)
     , sock(sock_given)
-    , current_req(NULL)
-    , current_res(NULL)
+    , rt(*router)
     , latest_operated_at(0) {
-    started_ = started++;
-    DXOUT("started_: " << started_);
     touch();
+    DXOUT("[established] " << sock->get_fd());
 }
 
 Connection::~Connection() {
     delete sock;
-    delete current_req;
-    delete current_res;
-    DXOUT("finished: " << finished++ << " - " << started_);
+    DXOUT("DESTROYED: " << this);
 }
 
 t_fd Connection::get_fd() const {
     return sock->get_fd();
 }
 
-void Connection::notify(IObserver &observer) {
+t_port Connection::get_port() const {
+    return sock->get_port();
+}
+
+void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     if (dying) {
         return;
     }
-
-    const size_t read_buffer_size = RequestHTTP::MAX_REQLINE_END;
-    char buf[read_buffer_size];
-
-    switch (phase) {
-        case CONNECTION_RECEIVING: {
-            // [データ受信]
-
-            try {
-
-                ssize_t receipt = sock->receive(&buf, read_buffer_size, 0);
-                if (receipt <= 0) {
-                    // なにも受信できなかったか, 受信エラーが起きた場合
-                    die(observer);
+    VOUT(phase);
+    VOUT(cat);
+    try {
+        switch (phase) {
+            case CONNECTION_ESTABLISHED:
+                perform_reaction(observer, cat, epoch);
+                if (cat == IObserver::OT_TIMEOUT) {
                     return;
                 }
-                touch();
-
-                if (current_req == NULL) {
-                    // リクエストオブジェクトを作成して解析開始
-                    current_req = new RequestHTTP();
-                }
-                current_req->feed_bytestring(buf, receipt);
-                if (!current_req->is_ready_to_respond()) {
-                    return;
-                }
-
-                // リクエストの解析が完了したら応答開始
-                current_res = router_->route(current_req);
-                ready_sending(observer);
-
-            } catch (const http_error &err) {
-
-                // 受信中のHTTPエラー
-                DXOUT(err.get_status() << ":" << err.what());
-                current_res = router_->respond_error(current_req, err);
-                ready_sending(observer);
-            }
-            return;
+                detect_update(observer);
+                break;
+            case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
+                perform_shutting_down(observer);
+                break;
+            default:
+                DXOUT("unexpected phase: " << phase);
+                assert(false);
         }
-
-        case CONNECTION_ERROR_RESPONDING:
-        case CONNECTION_RESPONDING: {
-            // [データ送信]
-
-            try {
-
-                ssize_t sent = sock->send(current_res->get_unsent_head(), current_res->get_unsent_size(), 0);
-
-                // 送信ができなかったか, エラーが起きた場合
-                if (sent <= 0) {
-                    // TODO: とりあえず接続を閉じておくが, 本当はどうするべき？
-                    die(observer);
-                    return;
-                }
-                touch();
-                current_res->mark_sent(sent);
-                if (!current_res->is_over_sending()) {
-                    return;
-                }
-
-                // 送信完了
-                if (current_req->should_keep_in_touch()) {
-                    // 接続を維持する
-                    ready_receiving(observer);
-                    return;
-                } else {
-                    ready_shutting_down(observer);
-                    // die(observer);
-                    return;
-                }
-
-            } catch (const http_error &err) {
-
-                // 送信中のHTTPエラー -> もうだめ
-                DXOUT(err.get_status() << ":" << err.what());
-                die(observer);
-            }
-            return;
-        }
-
-        case CONNECTION_SHUTTING_DOWN: {
-            // [graceful切断]
-
-            try {
-
-                ssize_t receipt = sock->receive(&buf, read_buffer_size, 0);
-                if (receipt > 0) {
-                    return;
-                }
-                die(observer);
-
-            } catch (const http_error &err) {
-
-                DXOUT(err.get_status() << ":" << err.what());
-                die(observer);
-            }
-            return;
-        }
-
-        default: {
-            DXOUT("unexpected phase: " << phase);
-            throw std::runtime_error("????");
+    } catch (const http_error &err) { // 受信中のHTTPエラー
+        DXOUT("error occurred");
+        if (phase == CONNECTION_SHUTTING_DOWN || rt.is_responding()) {
+            // レスポンス送信中のHTTPエラー
+            // -> 全てを諦めて終了
+            shutdown_gracefully(observer);
+        } else {
+            // レスポンス送信前のHTTPmakeエラー
+            // -> エラーレスポンス送信開始
+            rt.respond_error(err);
+            observer.reserve_set(this, IObserver::OT_WRITE);
         }
     }
 }
 
-void Connection::timeout(IObserver &observer, t_time_epoch_ms epoch) {
-    if (dying) {
+void Connection::perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
+    switch (cat) {
+        case IObserver::OT_TIMEOUT:
+            if (epoch >= attr.timeout + latest_operated_at) {
+                throw http_error("connection timed out", HTTP::STATUS_TIMEOUT);
+            }
+            break;
+        // オリジネータへの通知
+        case IObserver::OT_ORIGINATOR_WRITE:
+        case IObserver::OT_ORIGINATOR_READ:
+        case IObserver::OT_ORIGINATOR_EXCEPTION:
+        case IObserver::OT_ORIGINATOR_TIMEOUT:
+            rt.notify_originator(observer, cat, epoch);
+            break;
+
+        case IObserver::OT_READ:
+            perform_receiving(observer);
+            break;
+
+        case IObserver::OT_WRITE:
+            perform_sending(observer);
+            break;
+
+        default:
+            DXOUT("unexpected cat: " << cat);
+            throw std::runtime_error("????");
+    }
+}
+
+void Connection::perform_receiving(IObserver &observer) {
+    // データ受信
+    const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
+    u8t buf[read_buffer_size];
+    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
+    if (received_size == 0) {
+        DXOUT("sock closed?");
+    }
+    if (received_size <= 0) {
+        // なにも受信できなかったか, 受信エラーが起きた場合
+        die(observer);
         return;
     }
-    if (epoch < attr.timeout + latest_operated_at) {
+    if (rt.is_freezed()) {
+        // インバウンド閉鎖中
+        // -> 受信したデータを extra_data_buffer 末尾に追加する
+        extra_data_buffer.insert(extra_data_buffer.end(), buf, buf + received_size);
+    }
+    touch();
+
+    // データ注入
+    // インバウンド許容
+    // -> 受信したデータをリクエストに注入する
+    if (!rt.is_freezed()) {
+        rt.start_if_needed();
+        bool is_disconnected = rt.inject_data(buf, received_size, extra_data_buffer);
+        rt.req()->after_injection(is_disconnected);
+    }
+}
+
+void Connection::detect_update(IObserver &observer) {
+    for (;;) {
+        // 何もなければループは1度だけ走る.
+        // どこかで状態変化が起きた場合はもう1度最初から.
+        if (rt.is_routable()) { // リクエストの解析が完了したら応答開始
+            rt.route(*this);
+        } else if (rt.is_freezable()) { // リクエストが凍結可能なら凍結実施
+            const light_string extra_data = rt.freeze_request();
+            extra_data_buffer.insert(extra_data_buffer.begin(), extra_data.begin(), extra_data.end());
+        } else if (rt.is_originatable()) { // オリジネーション開始
+            rt.originate(observer);
+        } else if (rt.is_reroutable()) { // 再ルーティング
+            rt.reroute(*this);
+        } else if (rt.is_responsive()) { // レスポンス開始
+            rt.respond();
+            observer.reserve_set(this, IObserver::OT_WRITE);
+        } else if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
+            rt.wipeout();
+            if (rt.req()->should_keep_in_touch()) {
+                DXOUT("KEEP");
+                observer.reserve_unset(this, IObserver::OT_WRITE);
+            } else {
+                DXOUT("CLOSE");
+                shutdown_gracefully(observer);
+            }
+        } else {
+            break;
+        }
+    }
+}
+
+void Connection::perform_sending(IObserver &observer) {
+    // レスポンスが存在しない状態でここに来る場合、何かの間違い.
+    assert(rt.res() != NULL);
+
+    if (rt.is_terminatable()) {
         return;
     }
-    // タイムアウト処理
-    DXOUT("timeout!!: " << get_fd());
+    // まだレスポンスを終了できない場合
+    // -> レスポンスから一定量のデータを取って送信する
+    const ssize_t sent = sock->send(rt.res()->get_unsent_head(), rt.res()->get_unsent_size(), 0);
+    // 送信ができなかったか, エラーが起きた場合
+    if (sent <= 0) {
+        // TODO: とりあえず接続を閉じておくが, 本当はどうするべき？
+        die(observer);
+        return;
+    }
+    touch();
+    rt.res()->mark_sent(sent);
+}
+
+void Connection::perform_shutting_down(IObserver &observer) {
+    const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
+    u8t buf[read_buffer_size];
+    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
+    if (received_size > 0) {
+        return;
+    }
     die(observer);
 }
 
 void Connection::touch() {
-    t_time_epoch_ms t = WSTime::get_epoch_ms();
+    const t_time_epoch_ms t = WSTime::get_epoch_ms();
     DXOUT("operated_at: " << latest_operated_at << " -> " << t);
     latest_operated_at = t;
 }
 
-void Connection::ready_receiving(IObserver &observer) {
-    delete current_res;
-    delete current_req;
-    current_res = NULL;
-    current_req = NULL;
-    observer.reserve_transit(this, IObserver::OT_WRITE, IObserver::OT_READ);
-    phase = CONNECTION_RECEIVING;
-}
-
-void Connection::ready_sending(IObserver &observer) {
-    observer.reserve_transit(this, IObserver::OT_READ, IObserver::OT_WRITE);
-    phase = CONNECTION_RESPONDING;
-}
-
-void Connection::ready_shutting_down(IObserver &observer) {
-    observer.reserve_transit(this, IObserver::OT_WRITE, IObserver::OT_READ);
+void Connection::shutdown_gracefully(IObserver &observer) {
+    observer.reserve_unset(this, IObserver::OT_WRITE);
+    observer.reserve_set(this, IObserver::OT_READ);
     sock->shutdown_write();
     phase = CONNECTION_SHUTTING_DOWN;
 }
 
 void Connection::die(IObserver &observer) {
-    switch (phase) {
-        case CONNECTION_RESPONDING:
-        case CONNECTION_ERROR_RESPONDING: {
-            observer.reserve_clear(this, IObserver::OT_WRITE);
-            break;
-        }
-        default: {
-            observer.reserve_clear(this, IObserver::OT_READ);
-            break;
-        }
-    }
+    observer.reserve_unhold(this);
     sock->shutdown();
     dying = true;
 }

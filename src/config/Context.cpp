@@ -8,16 +8,10 @@ ContextMain::ContextMain(void) {
 }
 ContextMain::~ContextMain(void) {}
 
-ContextServer::ContextServer(const ContextMain &main) {
-    client_max_body_size = main.client_max_body_size;
-    autoindex            = main.autoindex;
-    root                 = main.root;
-    indexes              = main.indexes;
-    error_pages          = main.error_pages;
-    redirect             = std::make_pair(-1, "");
-}
+ContextServer::ContextServer(void) : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")) {}
 ContextServer::~ContextServer(void) {}
 
+ContextLocation::ContextLocation(void) : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")) {}
 ContextLocation::ContextLocation(const ContextServer &server) {
     client_max_body_size = server.client_max_body_size;
     autoindex            = server.autoindex;
@@ -25,6 +19,9 @@ ContextLocation::ContextLocation(const ContextServer &server) {
     indexes              = server.indexes;
     error_pages          = server.error_pages;
     redirect             = server.redirect;
+    upload_store         = server.upload_store;
+    exec_cgi             = false;
+    exec_delete          = false;
 }
 ContextLocation::~ContextLocation(void) {}
 

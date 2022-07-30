@@ -1,7 +1,7 @@
 #ifndef EVENT_POLL_LOOP_HPP
 #define EVENT_POLL_LOOP_HPP
 #include "../interface/IObserver.hpp"
-#include "../interface/ISocketlike.hpp"
+#include "../interface/ISocketLike.hpp"
 #include <errno.h>
 #include <map>
 #include <poll.h>
@@ -29,25 +29,30 @@ private:
     socket_map sockmap;
     index_map indexmap;
     gap_set gapset;
+    socket_map holding_map;
     int nfds;
 
-    update_queue clearqueue;
+    update_queue unholdqueue;
     update_queue movequeue;
-    update_queue setqueue;
+    update_queue holdqueue;
+    t_time_epoch_ms latest_timeout_checked;
 
-    t_poll_eventmask mask(t_observation_target t);
+    t_poll_eventmask mask(observation_category t);
 
-    void reserve(ISocketLike *socket, t_observation_target from, t_observation_target to);
+    void reserve(ISocketLike *socket, observation_category cat, bool in);
     void update();
 
 public:
     EventPollLoop();
     ~EventPollLoop();
 
+    const static t_time_epoch_ms timeout_interval;
+
     void loop();
-    void reserve_clear(ISocketLike *socket, t_observation_target from);
-    void reserve_set(ISocketLike *socket, t_observation_target to);
-    void reserve_transit(ISocketLike *socket, t_observation_target from, t_observation_target to);
+    void reserve_hold(ISocketLike *socket);
+    void reserve_unhold(ISocketLike *socket);
+    void reserve_unset(ISocketLike *socket, observation_category cat);
+    void reserve_set(ISocketLike *socket, observation_category to);
 };
 
 #endif

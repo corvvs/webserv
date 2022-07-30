@@ -11,13 +11,7 @@ class IRouter {
 public:
     virtual ~IRouter(){};
 
-    virtual IOriginator *route_origin(RequestHTTP *request) = 0;
-
-    // リクエストからレスポンスを生成する
-    virtual ResponseHTTP *route(RequestHTTP *request) = 0;
-
-    // HTTPエラーからレスポンスを生成する
-    virtual ResponseHTTP *respond_error(RequestHTTP *request, http_error error) = 0;
+    virtual IOriginator *route(const RequestHTTP &request) = 0;
 };
 
 #endif
