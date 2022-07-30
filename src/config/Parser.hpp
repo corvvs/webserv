@@ -27,7 +27,7 @@ class Parser {
 public:
     Parser(void);
     ~Parser(void);
-    std::vector<Config> parse(const std::string &file_data);
+    std::map<host_port_pair, std::vector<Config> > parse(const std::string &file_data);
 
 private:
     enum ContextType {
@@ -48,7 +48,7 @@ private:
     std::map<std::string, Parser::add_directive_functions> adder_maps;
 
     /// Member functions
-    std::vector<Config> create_configs(const std::vector<ContextServer> &ctx_servers);
+    std::map<host_port_pair, std::vector<Config> > create_configs(const std::vector<ContextServer> &ctx_servers);
     DirectiveFunctionsMap setting_directive_functions(void);
     std::string brace_balanced(void);
 
