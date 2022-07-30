@@ -1,5 +1,7 @@
 #ifndef IORIGINATOR_HPP
 #define IORIGINATOR_HPP
+#include "../communication/RequestHTTP.hpp"
+#include "../communication/ResponseHTTP.hpp"
 #include "../utils/http.hpp"
 #include "IObserver.hpp"
 #include "ISocketLike.hpp"
@@ -45,6 +47,8 @@ public:
 
     // オリジネーションを開始する
     virtual void start_origination(IObserver &observer) = 0;
+
+    virtual ResponseHTTP *respond(const RequestHTTP &request) = 0;
 
     // オリジネータからデータを引き出す
     // おそらく送信目的だと思うが, べつにそうでなくてもよい

@@ -31,11 +31,7 @@ public:
     // イベントループ開始
     void run();
 
-    IOriginator *route_origin(const RequestHTTP *request);
-
-    ResponseHTTP *route(const RequestHTTP *request);
-
-    ResponseHTTP *respond_error(const RequestHTTP *request, http_error error);
+    IOriginator *route(const RequestHTTP &request);
 };
 
 #endif

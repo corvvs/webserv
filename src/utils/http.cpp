@@ -4,6 +4,19 @@
 const HTTP::t_version HTTP::DEFAULT_HTTP_VERSION = V_1_1;
 const size_t HTTP::MAX_REQLINE_END               = 8192;
 
+const HTTP::byte_string HTTP::method_str(HTTP::t_method method) {
+    switch (method) {
+        case METHOD_GET:
+            return strfy("GET");
+        case METHOD_POST:
+            return strfy("POST");
+        case METHOD_DELETE:
+            return strfy("DELETE");
+        default:
+            return strfy("");
+    }
+}
+
 const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
     switch (version) {
         case V_0_9:
@@ -88,8 +101,16 @@ bool operator==(const HTTP::byte_string &lhs, const char *rhs) {
     return true;
 }
 
+bool operator!=(const HTTP::byte_string &lhs, const char *rhs) {
+    return !(lhs == rhs);
+}
+
 bool operator==(const char *lhs, const HTTP::byte_string &rhs) {
     return rhs == lhs;
+}
+
+bool operator!=(const char *lhs, const HTTP::byte_string &rhs) {
+    return rhs != lhs;
 }
 
 HTTP::byte_string operator+(const HTTP::byte_string &lhs, const HTTP::byte_string &rhs) {

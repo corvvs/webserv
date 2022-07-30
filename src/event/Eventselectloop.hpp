@@ -23,6 +23,7 @@ private:
     socket_map exception_map;
     socket_map holding_map;
     update_queue up_queue;
+    t_time_epoch_ms latest_timeout_checked;
 
     void prepare_fd_set(socket_map &sockmap, fd_set *sockset);
     void scan_fd_set(socket_map &sockmap, fd_set *sockset, t_time_epoch_ms now, IObserver::observation_category cat);
@@ -37,6 +38,8 @@ private:
 public:
     EventSelectLoop();
     ~EventSelectLoop();
+
+    const static t_time_epoch_ms timeout_interval;
 
     void loop();
     void reserve_hold(ISocketLike *socket);

@@ -3,9 +3,10 @@
 #include "Eventkqueueloop.hpp"
 #include "../utils/test_common.hpp"
 
-const int EventKqueueLoop::nev = 10;
+const int EventKqueueLoop::nev                          = 10;
+const t_time_epoch_ms EventKqueueLoop::timeout_interval = 1 * 1000;
 
-EventKqueueLoop::EventKqueueLoop() {
+EventKqueueLoop::EventKqueueLoop() : latest_timeout_checked(WSTime::get_epoch_ms()) {
     evlist.resize(10);
     t_kqueue q = kqueue();
     if (q < 0) {
@@ -56,13 +57,16 @@ void EventKqueueLoop::loop() {
         VOUT(count);
         if (count < 0) {
             throw std::runtime_error("kevent error");
-        } else if (count == 0) {
-            t_time_epoch_ms now = WSTime::get_epoch_ms();
+        }
+        t_time_epoch_ms now = WSTime::get_epoch_ms();
+        if (count == 0 || now - latest_timeout_checked > timeout_interval) {
             for (int i = 0; i < count; i++) {
                 const t_fd fd = static_cast<int>(evlist[i].ident);
                 holding_map[fd]->notify(*this, OT_TIMEOUT, now);
             }
-        } else {
+            latest_timeout_checked = now;
+        }
+        if (count > 0) {
             for (int i = 0; i < count; i++) {
                 const t_fd fd            = static_cast<int>(evlist[i].ident);
                 observation_category cat = filter_to_cat(evlist[i].filter);
