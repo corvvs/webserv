@@ -174,8 +174,13 @@ bool HTTP::Validator::is_ipv4address(const HTTP::light_string &str) {
             DXOUT("[KO] detectec leading zero in ipv4 addr component: " << spl);
             return false;
         }
-        unsigned int elem = ParserHelper::stou(spl);
-        if (255 < elem) {
+        std::pair<bool, unsigned int> elem = ParserHelper::str_to_u(spl);
+        if (!elem.first) {
+            // [NG] 変換失敗
+            DXOUT("[KO] failed to transform uint: " << spl);
+            return false;
+        }
+        if (255 < elem.second) {
             // [NG] 255よりでかい
             DXOUT("[KO] too large ipv4 addr component: " << spl);
             return false;

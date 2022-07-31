@@ -190,23 +190,6 @@ ParserHelper::byte_string ParserHelper::normalize_header_key(const HTTP::light_s
     return normalize_header_key(key.str());
 }
 
-unsigned int ParserHelper::stou(const byte_string &str) {
-    std::stringstream ss;
-    std::string rr;
-    unsigned int v;
-
-    ss << str;
-    ss >> v;
-    ss.clear();
-    ss << v;
-    ss >> rr;
-    byte_string r(HTTP::strfy(rr));
-    if (str != r) {
-        throw std::runtime_error("failed to convert string to int");
-    }
-    return v;
-}
-
 std::pair<bool, unsigned int> ParserHelper::xtou(const HTTP::light_string &str) {
     unsigned int n             = 0;
     const HTTP::byte_string xs = HTTP::strfy("0123456789abcdef");
@@ -227,14 +210,36 @@ std::pair<bool, unsigned int> ParserHelper::xtou(const HTTP::light_string &str) 
     return std::pair<bool, unsigned int>(true, n);
 }
 
-unsigned int ParserHelper::stou(const HTTP::light_string &str) {
-    return stou(str.str());
-}
-
-ParserHelper::byte_string ParserHelper::utos(unsigned int u) {
+ParserHelper::byte_string ParserHelper::utos(unsigned int u, unsigned int base) {
+    assert(base == 8 || base == 10 || base == 16);
     std::stringstream ss;
+    if (base != 10) {
+        ss << std::setbase(base);
+    }
     ss << u;
     return HTTP::strfy(ss.str());
+}
+
+std::pair<bool, unsigned int> ParserHelper::str_to_u(const byte_string &str) {
+    std::stringstream ss;
+    std::string rr;
+    unsigned int v;
+
+    ss << str;
+    ss >> v;
+    ss.clear();
+    ss << v;
+    ss >> rr;
+    byte_string r(HTTP::strfy(rr));
+    if (str == r) {
+        return std::make_pair(true, v);
+    } else {
+        return std::make_pair(false, 0);
+    }
+}
+
+std::pair<bool, unsigned int> ParserHelper::str_to_u(const HTTP::light_string &str) {
+    return str_to_u(str.str());
 }
 
 unsigned int ParserHelper::quality_to_u(HTTP::light_string &quality) {
