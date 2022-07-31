@@ -2,6 +2,10 @@
 #include <limits>
 
 IndexRange ParserHelper::find_crlf(const byte_string &str, ssize_t from, ssize_t len) {
+    if ((size_t)(from + len) > str.size()) {
+        len = str.size() - from;
+    }
+
     for (ssize_t i = from; i - from < len; i++) {
         // iは絶対インデックス; strの先頭からの位置
         // DSOUT() << from << ", " << i << ", " << len << ": " << str[i] << "-" << int(str[i]) << std::endl;
