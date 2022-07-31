@@ -105,49 +105,6 @@ TEST(parser_helper_str_to_u, is_minus_1) {
     EXPECT_EQ(false, res.first);
 }
 
-// [utos]
-TEST(parser_helper_utos, from_0) {
-    EXPECT_EQ(HTTP::strfy("0"), ParserHelper::utos(0, 8));
-    EXPECT_EQ(HTTP::strfy("0"), ParserHelper::utos(0, 10));
-    EXPECT_EQ(HTTP::strfy("0"), ParserHelper::utos(0, 16));
-}
-
-TEST(parser_helper_utos, from_1) {
-    EXPECT_EQ(HTTP::strfy("1"), ParserHelper::utos(1, 8));
-    EXPECT_EQ(HTTP::strfy("1"), ParserHelper::utos(1, 10));
-    EXPECT_EQ(HTTP::strfy("1"), ParserHelper::utos(1, 16));
-}
-
-TEST(parser_helper_utos, from_8) {
-    EXPECT_EQ(HTTP::strfy("10"), ParserHelper::utos(8, 8));
-    EXPECT_EQ(HTTP::strfy("8"), ParserHelper::utos(8, 10));
-    EXPECT_EQ(HTTP::strfy("8"), ParserHelper::utos(8, 16));
-}
-
-TEST(parser_helper_utos, from_10) {
-    EXPECT_EQ(HTTP::strfy("12"), ParserHelper::utos(10, 8));
-    EXPECT_EQ(HTTP::strfy("10"), ParserHelper::utos(10, 10));
-    EXPECT_EQ(HTTP::strfy("a"), ParserHelper::utos(10, 16));
-}
-
-TEST(parser_helper_utos, from_16) {
-    EXPECT_EQ(HTTP::strfy("20"), ParserHelper::utos(16, 8));
-    EXPECT_EQ(HTTP::strfy("16"), ParserHelper::utos(16, 10));
-    EXPECT_EQ(HTTP::strfy("10"), ParserHelper::utos(16, 16));
-}
-
-TEST(parser_helper_utos, from_UINT_MAX) {
-    EXPECT_EQ(HTTP::strfy("37777777776"), ParserHelper::utos(UINT_MAX - 1, 8));
-    EXPECT_EQ(HTTP::strfy("4294967294"), ParserHelper::utos(UINT_MAX - 1, 10));
-    EXPECT_EQ(HTTP::strfy("fffffffe"), ParserHelper::utos(UINT_MAX - 1, 16));
-}
-
-TEST(parser_helper_utos, from_UINT_MAX_minus_1) {
-    EXPECT_EQ(HTTP::strfy("37777777777"), ParserHelper::utos(UINT_MAX, 8));
-    EXPECT_EQ(HTTP::strfy("4294967295"), ParserHelper::utos(UINT_MAX, 10));
-    EXPECT_EQ(HTTP::strfy("ffffffff"), ParserHelper::utos(UINT_MAX, 16));
-}
-
 // [quality_to_u]
 
 // [extract_quoted_or_token]
