@@ -61,7 +61,7 @@ byte_string normalize_header_key(const byte_string &key);
 byte_string normalize_header_key(const HTTP::light_string &key);
 
 std::pair<bool, unsigned int> xtou(const HTTP::light_string &str);
-byte_string utos(unsigned int u, unsigned int base);
+byte_string utos(unsigned int u);
 
 // string to size_t 変換
 std::pair<bool, unsigned int> str_to_u(const byte_string &str);
