@@ -3,6 +3,7 @@
 #include "../Interfaces.hpp"
 #include "../communication/HeaderHTTP.hpp"
 #include "../communication/RequestHTTP.hpp"
+#include "../communication/ResponseDataList.hpp"
 #include "../communication/RoutingParameters.hpp"
 #include "../socket/SocketUNIX.hpp"
 #include "../utils/http.hpp"
@@ -58,7 +59,13 @@ public:
         bool is_started;
         // 送信済み content_request のバイト数
         size_type to_script_content_sent_;
+        // レスポンス送信可能フラグ
+        bool is_responsive;
+        // オリジネーション完了フラグ
         bool is_complete;
+        ResponseDataList response_data;
+
+        Status();
     };
 
     struct ParserStatus {
@@ -118,6 +125,7 @@ private:
     static char **flatten_argv(const byte_string &script_path);
     static char **flatten_metavar(const metavar_dict_type &metavar);
 
+    IResponseDataProducer &response_data_producer();
     // 「CGIスクリプトが実行可能であること」を確認する
     // (オリジネーション可能性とは関係ないことに注意)
     // - スクリプトのパスにファイルが存在すること

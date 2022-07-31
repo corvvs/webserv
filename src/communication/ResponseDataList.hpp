@@ -1,0 +1,110 @@
+#ifndef RESPONSE_DATA_LIST_HPP
+#define RESPONSE_DATA_LIST_HPP
+#include "../utils/LightString.hpp"
+#include "../utils/http.hpp"
+#include "ParserHelper.hpp"
+#include <assert.h>
+#include <list>
+#include <vector>
+
+// レスポンスデータを生産するオブジェクトのインターフェース
+class IResponseDataProducer {
+public:
+    ~IResponseDataProducer() {}
+
+    // 長さ n のバイト列を注入する
+    virtual void inject(const char *src, size_t n, bool is_completed) = 0;
+    // データ注入完了
+    virtual bool is_injection_closed() const = 0;
+};
+
+// レスポンスデータを供給するオブジェクトのインターフェース
+class IResponseDataConsumer {
+public:
+    enum t_sending_mode { SM_UNKNOWN, SM_CHUNKED, SM_NOT_CHUNKED };
+
+    ~IResponseDataConsumer() {}
+
+    // 初期データ与えて送信開始
+    virtual void start(const HTTP::byte_string &initial_data) = 0;
+
+    // 必要ならシリアライズデータを更新
+    virtual void serialize_if_needed() = 0;
+    // シリアライズデータの未送信部分の先頭を取得
+    virtual const char *serialized_head() const = 0;
+    // シリアライズデータの未送信部分のサイズを取得
+    virtual size_t rest_serialized() const = 0;
+    // 送信したシリアライズデータのバイト数を記録
+    virtual void mark_sent(size_t n) = 0;
+
+    // 現行シリアライズデータ送信中
+    virtual bool is_sending_current() const = 0;
+    // 現行シリアライズデータの送信完了
+    virtual bool is_sent_current() const = 0;
+    // 送信が完了したかどうか
+    virtual bool is_sending_over() const = 0;
+
+    virtual t_sending_mode get_sending_mode() const = 0;
+};
+
+// レスポンスのchunked本文のchunk1つ分
+struct ResponseDataBucket {
+    HTTP::byte_string buffer; // データバッファ
+    bool is_completed;
+
+    ResponseDataBucket();
+};
+
+// レスポンスのchunked本文全体
+class ResponseDataList : public IResponseDataProducer, public IResponseDataConsumer {
+public:
+    typedef std::list<ResponseDataBucket> list_type;
+
+private:
+    list_type list;                    // バケットリスト
+    HTTP::byte_string serialized_data; // サイズ行など込みで展開されたデータ
+    size_t sent_serialized;            // serialized_data のうち送信済みのバイト数
+    t_sending_mode sending_mode;       // 送信モード
+
+    void set_mode(t_sending_mode mode);
+
+    // シリアライズ実行可能
+    bool is_serializable() const;
+    // 全chunkシリアライズ完了
+    bool is_all_serialized() const;
+
+public:
+    ResponseDataList();
+
+    // [状態]
+    // データ注入完了
+    bool is_injection_closed() const;
+    // 現行シリアライズデータ送信中
+    bool is_sending_current() const;
+    // 現行シリアライズデータの送信完了
+    bool is_sent_current() const;
+    // 全データ送信完了
+    bool is_sending_over() const;
+
+    // 長さ n のデータを注入
+    void inject(const char *src, size_t n, bool is_completed);
+
+    // 閉じたバケットをバイト列(HTTPレスポンスとして送信できる形式)にシリアライズ
+private:
+    HTTP::byte_string serialize_bucket(const ResponseDataBucket &bucket);
+
+public:
+    // 可能かつ必要ならバケットを1つ取ってシリアライズする
+    void serialize_if_needed();
+
+    // 送信を開始する
+    void start(const HTTP::byte_string &initial_data);
+
+    const char *serialized_head() const;
+    size_t rest_serialized() const;
+    void mark_sent(size_t n);
+
+    t_sending_mode get_sending_mode() const;
+};
+
+#endif
