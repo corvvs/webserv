@@ -10,6 +10,10 @@ namespace config {
 typedef std::string host_type;
 typedef int port_type;
 typedef std::pair<host_type, port_type> host_port_pair;
+typedef std::string extension_type;
+typedef std::string executer_path_type;
+typedef std::map<extension_type, executer_path_type> cgi_path_map;
+
 static const int REDIRECT_INITIAL_VALUE = -1;
 
 class ContextMain {
@@ -78,6 +82,7 @@ public:
     std::string path;
     std::vector<class ContextLocation> locations;
     ContextLimitExcept limit_except;
+    cgi_path_map cgi_paths;
     bool exec_cgi;
     bool exec_delete;
     // 継承するか判定するときに使用する

@@ -37,6 +37,7 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     directives["upload_store"]         = &Parser::add_upload_store;
     directives["exec_cgi"]             = &Parser::add_exec_cgi;
     directives["exec_delete"]          = &Parser::add_exec_delete;
+    directives["cgi_path"]             = &Parser::add_cgi_path;
     return directives;
 }
 
@@ -443,6 +444,14 @@ void Parser::add_exec_delete(const std::vector<std::string> &args, std::stack<Co
     p->defined_["exec_delete"] = true;
 }
 
+void Parser::add_cgi_path(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
+    ContextLocation *p                     = get_current_location(ctx);
+    const extension_type extension         = args.front();
+    const executer_path_type executer_path = args.back();
+    p->cgi_paths[extension]                = executer_path;
+    p->defined_["cgi_path"]                = true;
+}
+
 /// Inheritance
 
 void Parser::inherit_main_to_srv(const ContextMain &main, ContextServer &srv) {
@@ -464,6 +473,7 @@ void Parser::inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &
     child.upload_store = child.defined_["upload_store"] ? child.upload_store : parent.upload_store;
     child.exec_cgi     = child.defined_["exec_cgi"] ? child.exec_cgi : parent.exec_cgi;
     child.exec_delete  = child.defined_["exec_delete"] ? child.exec_delete : parent.exec_delete;
+    child.cgi_paths    = child.defined_["cgi_path"] ? child.cgi_paths : parent.cgi_paths;
     child.redirect     = (parent.redirect.first == REDIRECT_INITIAL_VALUE) ? child.redirect : parent.redirect;
 }
 
