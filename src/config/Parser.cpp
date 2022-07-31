@@ -37,6 +37,7 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     directives["upload_store"]         = &Parser::add_upload_store;
     directives["exec_cgi"]             = &Parser::add_exec_cgi;
     directives["exec_delete"]          = &Parser::add_exec_delete;
+    directives["cgi_path"]             = &Parser::add_cgi_path;
     return directives;
 }
 
@@ -441,6 +442,14 @@ void Parser::add_exec_delete(const std::vector<std::string> &args, std::stack<Co
     ContextLocation *p         = get_current_location(ctx);
     p->exec_delete             = flag;
     p->defined_["exec_delete"] = true;
+}
+
+void Parser::add_cgi_path(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
+    ContextLocation *p              = get_current_location(ctx);
+    const std::string extension     = args.front();
+    const std::string executer_path = args.back();
+    p->cgi_paths[extension]         = executer_path;
+    p->defined_["cgi_path"]         = true;
 }
 
 /// Inheritance

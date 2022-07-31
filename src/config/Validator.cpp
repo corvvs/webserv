@@ -156,6 +156,7 @@ std::map<std::string, int> setting_directives(void) {
     /// Original
     directives["exec_cgi"]    = (HTTP_LOC | FLAG);
     directives["exec_delete"] = (HTTP_LOC | FLAG);
+    directives["cgi_path"]    = (HTTP_LOC | TAKE2);
 
     return directives;
 }
