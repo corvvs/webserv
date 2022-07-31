@@ -285,11 +285,6 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool
     // `end_of_body` = `start_of_body` + 受信済み本文長 とする.
     // さらにリクエストを不完全マークする.
     this->mid += len;
-    VOUT(this->mid);
-    VOUT(len);
-    VOUT(this->rp.body_size);
-    VOUT(parsed_body_size());
-    VOUT(is_disconnected);
     if (parsed_body_size() >= this->rp.body_size) {
         this->ps.end_of_body = this->ps.start_of_body + this->rp.body_size;
         return PP_OVER;
