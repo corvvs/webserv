@@ -1,4 +1,5 @@
 #include "ParserHelper.hpp"
+#include <iomanip>
 #include <limits>
 
 IndexRange ParserHelper::find_crlf(const byte_string &str, ssize_t from, ssize_t len) {
@@ -214,8 +215,13 @@ std::pair<bool, unsigned int> ParserHelper::xtou(const HTTP::light_string &str) 
     return std::pair<bool, unsigned int>(true, n);
 }
 
-ParserHelper::byte_string ParserHelper::utos(unsigned int u) {
+ParserHelper::byte_string ParserHelper::utos(unsigned int u, unsigned int base) {
+    // std::setbase の引数は 8, 10, 16のみ
+    assert(base == 8 || base == 10 || base == 16);
     std::stringstream ss;
+    if (base != 10) {
+        ss << std::setbase(base);
+    }
     ss << u;
     return HTTP::strfy(ss.str());
 }

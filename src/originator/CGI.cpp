@@ -21,6 +21,8 @@ int redirect_fd(t_fd from, t_fd to) {
 
 CGI::ParserStatus::ParserStatus() : parse_progress(PP_HEADER_SECTION_END), start_of_header(0), is_freezed(false) {}
 
+CGI::Status::Status() : is_started(false), to_script_content_sent_(0), is_responsive(false), is_complete(false) {}
+
 CGI::Attribute::Attribute(const CGI::byte_string &script_path, const CGI::byte_string &query_string)
     : script_path_(script_path), query_string_(query_string), observer(NULL), master(NULL), cgi_pid(0), sock(NULL) {}
 
@@ -65,7 +67,7 @@ CGI::~CGI() {
 void CGI::inject_socketlike(ISocketLike *socket_like) {
     VOUT(socket_like);
     attr.master                = socket_like;
-    metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port());
+    metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port(), 10);
 }
 
 void CGI::check_executable() const {
@@ -245,6 +247,10 @@ char **CGI::flatten_metavar(const metavar_dict_type &metavar) {
     return frame;
 }
 
+IResponseDataProducer &CGI::response_data_producer() {
+    return status.response_data;
+}
+
 void CGI::set_content(const byte_string &content) {
     to_script_content_        = content;
     to_script_content_length_ = content.size();
@@ -356,7 +362,7 @@ void CGI::perform_sending(IObserver &observer) {
 
 void CGI::perform_receiving(IObserver &observer) {
     DXOUT("CGI on Read");
-    u8t buf[MAX_RECEIVE_SIZE];
+    char buf[MAX_RECEIVE_SIZE];
     const ssize_t received_size = attr.sock->receive(buf, MAX_RECEIVE_SIZE, 0);
     VOUT(received_size);
     if (received_size == 0) {
@@ -365,9 +371,12 @@ void CGI::perform_receiving(IObserver &observer) {
     if (received_size < 0) {
         throw http_error("failed to receive data from CGI script", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
-
-    inject_bytestring(buf, buf + received_size);
     const bool is_disconnected = (received_size == 0);
+    if (this->ps.parse_progress < PP_BODY) {
+        inject_bytestring(buf, buf + received_size);
+    } else {
+        response_data_producer().inject(buf, received_size, is_disconnected);
+    }
     if (is_disconnected) {
         // Read側の切断を検知
         observer.reserve_unset(this, IObserver::OT_WRITE);
@@ -390,8 +399,8 @@ bool CGI::is_reroutable() const {
 }
 
 bool CGI::is_responsive() const {
-    // オリジネーションが完了しており, CGIレスポンスタイプが確定していてローカルリダイレクトでない
-    return status.is_complete && rp.get_response_type() != CGIRES_UNKNOWN
+    // レスポンス可能であり, CGIレスポンスタイプが確定していてローカルリダイレクトでない
+    return status.is_responsive && rp.get_response_type() != CGIRES_UNKNOWN
            && rp.get_response_type() != CGIRES_REDIRECT_LOCAL;
 }
 
@@ -416,19 +425,27 @@ CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {
     //     -> はずれ. このCRLFを crlf_in_header として続行.
     // - 見つからなかった
     //   -> もう一度受信する
-    (void)is_disconnected;
     IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
     this->mid      = res.second;
-    if (res.is_invalid()) {
+    if (!is_disconnected && res.is_invalid()) {
+        // はずれ: CRLFが見つからなかった
         return PP_UNREACHED;
     }
-    if (this->ps.crlf_in_header.second != res.first) {
+    if (!is_disconnected && this->ps.crlf_in_header.second != res.first) {
         // はずれ: CRLFとCRLFの間が空いていた
         this->ps.crlf_in_header = res;
         return PP_HEADER_SECTION_END;
     }
+
     // あたり: ヘッダの終わりが見つかった
     analyze_headers(res);
+
+    // bytebuffer のあまった部分(本文と思われる部分)をProducerに注入
+    const size_t rest_size = bytebuffer.size() - this->mid;
+    if (rest_size > 0 || is_disconnected) {
+        const char *rest_head = &(bytebuffer.front()) + this->mid;
+        response_data_producer().inject(rest_head, rest_size, is_disconnected);
+    }
     return PP_BODY;
 }
 
@@ -458,6 +475,13 @@ void CGI::after_injection(bool is_disconnected) {
                 if (flow == PP_UNREACHED) {
                     return;
                 }
+                // ローカルリダイレクトでなければこの時点で送信可能
+                // ※「chunked が使用可能」という条件が本来は必要.
+                // なぜなら chunked は最初のtransfer-encodingでなければならないからだが,
+                // ここではオリジネーションをしているので必然的に最後になる.
+                if (rp.get_response_type() != CGIRES_REDIRECT_LOCAL) {
+                    status.is_responsive = true;
+                }
                 this->ps.parse_progress = flow;
                 continue;
             }
@@ -477,12 +501,14 @@ void CGI::after_injection(bool is_disconnected) {
             case PP_OVER: {
                 DXOUT("CGI PP_OVER");
                 check_cgi_response_consistensy();
-                from_script_content_ = light_string(bytebuffer, ps.start_of_body, ps.end_of_body).str();
-                status.is_complete   = true;
+                // ローカルリダイレクトならこの時点で送信可能
+                if (rp.get_response_type() == CGIRES_REDIRECT_LOCAL) {
+                    status.is_responsive = true;
+                }
+                status.is_complete = true;
                 VOUT(ps.start_of_body);
                 VOUT(ps.end_of_body);
                 BVOUT(bytebuffer);
-                BVOUT(from_script_content_);
                 return;
             }
 
@@ -588,20 +614,13 @@ CGI::t_parse_progress CGI::reach_fixed_body_end(size_t len, bool is_disconnected
     // https://wiki.suikawiki.org/n/CGI%E5%BF%9C%E7%AD%94$18332#header-section-%E5%87%A6%E7%90%86%E3%83%A2%E3%83%87%E3%83%AB
     // > 鯖は CGIスクリプトが提供したデータをすべて、 EOF に到達するまで読まなければなりません。
     // > それをそのまま無変更で送信するべきです。
-    //
-    // ということで, サイズは事前に決められない.
-    // むしろ, CGIヘッダに content-length: がある場合, それを破棄する必要がありそう.
 
     this->mid += len;
-    VOUT(len);
-    VOUT(this->mid);
-    VOUT(is_disconnected);
     if (!is_disconnected) {
         return PP_UNREACHED;
     }
     this->ps.end_of_body = this->mid;
     this->rp.body_size   = this->ps.end_of_body - this->ps.start_of_body;
-    DXOUT("[" << this->ps.start_of_body << "," << this->ps.end_of_body << ")");
     return PP_OVER;
 }
 
@@ -675,10 +694,11 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
-    ResponseHTTP res(request.get_http_version(), HTTP::STATUS_OK);
+    ResponseHTTP res(request.get_http_version(), HTTP::STATUS_OK, &status.response_data);
     CGI::t_cgi_response_type response_type = rp.get_response_type();
     VOUT(response_type);
     VOUT(rp.status.code);
+
     switch (response_type) {
         case CGIRES_DOCUMENT:
             // ドキュメント応答
@@ -687,10 +707,6 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
             } else {
                 res.set_status((HTTP::t_status)rp.status.code);
             }
-            res.feed_body(draw_data());
-            // - CGIヘッダにcontent-lengthがあってもそれを無視する
-            // - HTTPレスポンスの本文サイズはCGIレスポンスの本文サイズから決める
-            res.feed_header(HeaderHTTP::content_length, ParserHelper::utos(from_script_content_.size()));
             break;
         case CGIRES_REDIRECT_CLIENT:
             // クライアントリダイレクト
@@ -699,14 +715,12 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
         case CGIRES_REDIRECT_CLIENT_DOCUMENT:
             // クライアントリダイレクト ドキュメント付き
             res.set_status((HTTP::t_status)rp.status.code);
-            res.feed_body(draw_data());
             break;
         default:
             assert(false);
     }
 
     // 本文がある場合は Transfer-Encoding をセット
-    // -> CGIの場合は普通に送るので何もセットしない
 
     // 本文がある場合は Content-Type をセット
     // (なければ何もセットしない)
@@ -719,9 +733,10 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
             }
         }
     }
+    res.start();
 
     // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK);
+    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL);
     ResponseHTTP::swap(res, *r);
     return r;
 }

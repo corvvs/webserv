@@ -4,6 +4,7 @@
 #include "../utils/http.hpp"
 #include "HeaderHTTP.hpp"
 #include "ParserHelper.hpp"
+#include "ResponseDataList.hpp"
 #include <string>
 #include <vector>
 
@@ -26,12 +27,19 @@ private:
     header_dict_type header_dict;
     byte_string body;
     byte_string message_text;
+    ResponseDataList local_datalist;
+    IResponseDataConsumer *data_consumer_;
+
+    IResponseDataConsumer *consumer();
+    const IResponseDataConsumer *consumer() const;
 
 public:
     // 通常(エラーでない)応答を構築する
-    ResponseHTTP(HTTP::t_version version, HTTP::t_status status);
+    ResponseHTTP(HTTP::t_version version, HTTP::t_status status, IResponseDataConsumer *data_consumer);
     // エラー応答を構築する
     ResponseHTTP(HTTP::t_version version, http_error error);
+
+    ~ResponseHTTP();
 
     // HTTPバージョンを設定
     void set_version(HTTP::t_version version);
@@ -41,19 +49,14 @@ public:
     // HTTPヘッダを追加する
     void feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val);
 
-    // ボディを追加する
-    void feed_body(const byte_string &str);
-    // ボディを追加する
-    void feed_body(const light_string &str);
-
-    // 保持している情報をもとにHTTPメッセージのテキストデータを生成し,
-    // message_text に入れる.
-    void render();
+    // 状態行 + ヘッダ部をバイト列に展開する
+    byte_string serialize_former_part();
+    void start();
 
     // renderされたHTTPメッセージデータ全体を返す
     const byte_string &get_message_text() const;
     // 未送信のHTTPメッセージデータを返す
-    const char *get_unsent_head() const;
+    const char *get_unsent_head();
     // 送信済みバイト数を増やす
     void mark_sent(ssize_t sent);
     // 未送信のHTTPメッセージデータのサイズを返す

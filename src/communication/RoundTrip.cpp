@@ -135,7 +135,6 @@ bool RoundTrip::is_responding() const {
 void RoundTrip::respond() {
     DXOUT("[respond]");
     response_ = originator_->respond(*request_);
-    response_->render();
 }
 
 void RoundTrip::respond_error(const http_error &err) {
@@ -144,8 +143,8 @@ void RoundTrip::respond_error(const http_error &err) {
     destroy_response();
     in_error_responding = true;
     ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err);
-    res->render();
     BVOUT(res->get_message_text());
+    res->start();
     response_ = res;
 }
 
