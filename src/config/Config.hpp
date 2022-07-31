@@ -50,7 +50,7 @@ public:
     std::set<enum Methods> get_limit_except(const std::string &target) const;
     bool get_exec_cgi(const std::string &target) const;
     bool get_exec_delete(const std::string &target) const;
-    std::map<extension, executer_path> get_cgi_path(const std::string &target) const;
+    cgi_path_map get_cgi_path(const std::string &target) const;
 
 private:
     ContextServer ctx_server_;

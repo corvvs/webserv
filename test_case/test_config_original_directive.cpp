@@ -85,23 +85,23 @@ http { \
     const config::Config conf       = configs[hp].front();
 
     {
-        const std::map<config::extension, config::executer_path> expected;
-        const std::map<config::extension, config::executer_path> actual = conf.get_cgi_path("/");
+        const config::cgi_path_map expected;
+        const config::cgi_path_map actual = conf.get_cgi_path("/");
         EXPECT_EQ(expected.empty(), actual.empty());
     }
     {
-        std::map<config::extension, config::executer_path> expected;
-        const std::string extension                               = ".rb";
-        expected[".rb"]                                           = "/usr/bin/ruby";
-        std::map<config::extension, config::executer_path> actual = conf.get_cgi_path("/ruby/");
+        config::cgi_path_map expected;
+        const std::string extension = ".rb";
+        expected[".rb"]             = "/usr/bin/ruby";
+        config::cgi_path_map actual = conf.get_cgi_path("/ruby/");
         EXPECT_EQ(expected.size(), actual.size());
         EXPECT_EQ(expected[extension], actual[extension]);
     }
     {
-        std::map<config::extension, config::executer_path> expected;
-        const std::string extension                               = ".py";
-        expected[extension]                                       = "/usr/bin/python";
-        std::map<config::extension, config::executer_path> actual = conf.get_cgi_path("/python/");
+        config::cgi_path_map expected;
+        const std::string extension = ".py";
+        expected[extension]         = "/usr/bin/python";
+        config::cgi_path_map actual = conf.get_cgi_path("/python/");
         EXPECT_EQ(expected.size(), actual.size());
         EXPECT_EQ(expected[extension], actual[extension]);
     }

@@ -445,11 +445,11 @@ void Parser::add_exec_delete(const std::vector<std::string> &args, std::stack<Co
 }
 
 void Parser::add_cgi_path(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
-    ContextLocation *p              = get_current_location(ctx);
-    const std::string extension     = args.front();
-    const std::string executer_path = args.back();
-    p->cgi_paths[extension]         = executer_path;
-    p->defined_["cgi_path"]         = true;
+    ContextLocation *p                     = get_current_location(ctx);
+    const extension_type extension         = args.front();
+    const executer_path_type executer_path = args.back();
+    p->cgi_paths[extension]                = executer_path;
+    p->defined_["cgi_path"]                = true;
 }
 
 /// Inheritance

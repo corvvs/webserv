@@ -90,7 +90,7 @@ bool Config::get_exec_delete(const std::string &target) const {
     return loc.exec_delete;
 }
 
-std::map<extension, executer_path> Config::get_cgi_path(const std::string &target) const {
+cgi_path_map Config::get_cgi_path(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.cgi_paths;
 }
