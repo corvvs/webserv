@@ -78,7 +78,8 @@ public:
     std::string path;
     std::vector<class ContextLocation> locations;
     ContextLimitExcept limit_except;
-
+    bool exec_cgi;
+    bool exec_delete;
     // 継承するか判定するときに使用する
     std::map<std::string, bool> defined_;
 };

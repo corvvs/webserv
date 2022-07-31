@@ -35,6 +35,11 @@ void EventSelectLoop::watch(t_fd fd, ISocketLike *socket, observation_category m
 
 void EventSelectLoop::unwatch(t_fd fd, observation_category map_type) {
     switch (map_type) {
+        case OT_NONE:
+            read_map.erase(fd);
+            write_map.erase(fd);
+            exception_map.erase(fd);
+            break;
         case OT_READ:
             read_map.erase(fd);
             break;
@@ -100,7 +105,7 @@ void EventSelectLoop::loop() {
         timeval tv = {10, 0};
         int count  = select(max_fd + 1, &read_set, &write_set, &exception_set, &tv);
         if (count < 0) {
-            VOUT(strerror(errno));
+            //            VOUT(strerror(errno));
             throw std::runtime_error("select error");
         }
         t_time_epoch_ms now = WSTime::get_epoch_ms();
@@ -167,6 +172,7 @@ void EventSelectLoop::update() {
     // exec unhold
     for (update_queue::size_type i = 0; i < up_queue.size(); ++i) {
         if (up_queue[i].cat == OT_NONE && !up_queue[i].in) {
+            unwatch(up_queue[i].fd, OT_NONE);
             holding_map.erase(up_queue[i].fd);
             delete up_queue[i].sock;
         }

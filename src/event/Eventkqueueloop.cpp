@@ -1,3 +1,5 @@
+#ifdef __APPLE__
+
 #include "Eventkqueueloop.hpp"
 #include "../utils/test_common.hpp"
 
@@ -184,3 +186,5 @@ void EventKqueueLoop::update() {
     }
     upqueue.clear();
 }
+
+#endif
