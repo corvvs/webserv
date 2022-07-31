@@ -425,17 +425,18 @@ CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {
     //     -> はずれ. このCRLFを crlf_in_header として続行.
     // - 見つからなかった
     //   -> もう一度受信する
-    (void)is_disconnected;
     IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
     this->mid      = res.second;
-    if (res.is_invalid()) {
+    if (!is_disconnected && res.is_invalid()) {
+        // はずれ: CRLFが見つからなかった
         return PP_UNREACHED;
     }
-    if (this->ps.crlf_in_header.second != res.first) {
+    if (!is_disconnected && this->ps.crlf_in_header.second != res.first) {
         // はずれ: CRLFとCRLFの間が空いていた
         this->ps.crlf_in_header = res;
         return PP_HEADER_SECTION_END;
     }
+
     // あたり: ヘッダの終わりが見つかった
     analyze_headers(res);
 
