@@ -272,21 +272,33 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is
 }
 
 RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool is_disconnected) {
-    // - 接続が切れていたら
-    //   -> ここまでをbodyとする
-    // - content-lengthが不定なら
-    //   -> 続行
-    // - 受信済みサイズが content-length を下回っていたら
-    //   -> 続行
-    // - (else) 受信済みサイズが content-length 以上なら
-    //   -> 受信済みサイズ = this->mid - start_of_body が content-length になるよう調整
+    // 前提: 本文長は chunked では決まらない
+    //
+    // 1. 受信済み本文長が想定される本文長以上になった
+    // 2. 接続が切れた
+    // のいずれかが成り立つ場合は, 本文の最後に到達したものとする.
+    //
+    // [1.が成り立っている場合]
+    // 想定される本文長から`end_of_body`を逆算する.
+    // [1.が成り立っていない場合]
+    // (-> 2.は成り立っているはず)
+    // `end_of_body` = `start_of_body` + 受信済み本文長 とする.
+    // さらにリクエストを不完全マークする.
     this->mid += len;
-    if (!is_disconnected && parsed_body_size() < this->rp.body_size) {
-        return PP_UNREACHED;
+    VOUT(this->mid);
+    VOUT(len);
+    VOUT(this->rp.body_size);
+    VOUT(parsed_body_size());
+    VOUT(is_disconnected);
+    if (parsed_body_size() >= this->rp.body_size) {
+        this->ps.end_of_body = this->ps.start_of_body + this->rp.body_size;
+        return PP_OVER;
     }
-    this->ps.end_of_body = this->rp.body_size + this->ps.start_of_body;
-    this->mid            = this->ps.end_of_body;
-    return PP_OVER;
+    if (is_disconnected) {
+        this->ps.end_of_body = this->ps.start_of_body + parsed_body_size();
+        return PP_OVER;
+    }
+    return PP_UNREACHED;
 }
 
 RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_size_line(size_t len, bool is_disconnected) {
@@ -583,22 +595,61 @@ void RequestHTTP::extract_control_headers() {
 }
 
 void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_type &holder) {
-    // https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3
+    // https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length
+
+    // メッセージが Transfer-Encoding: と Content-Length: をどちらも持っている場合,
+    // Transfer-Encoding: のみがある扱いとする.
+    // --
+    // If a message is received with both a Transfer-Encoding and a Content-Length header field,
+    // the Transfer-Encoding overrides the Content-Length.
 
     if (transfer_encoding.currently_chunked) {
-        // メッセージのヘッダにTransfer-Encodingが存在し, かつ一番最後のcodingがchunkedである場合
-        // -> chunkによって長さが決まる
+        // メッセージが Transfer-Encoding: を持ち, かつ最後の encoding が chunked である場合,
+        // 本文長は chunked で決定される.
+        // --
+        // If a Transfer-Encoding header field is present
+        // and the chunked transfer coding (Section 7.1) is the final encoding,
+        // the message body length is determined by reading
+        // and decoding the chunked data until the transfer coding indicates the data is complete.
+
+        // HTTPリクエストに Transfer-Encoding: があり, かつ chunked が最後の encoding でない場合,
+        // ボディの長さを確実に決定することができないので 400 とすべき.
+        // (ボディの長さを決定できないので持続的接続もできなくなる -> 接続を閉じるべき)
+        // --
+        // If a Transfer-Encoding header field is present in a request
+        // and the chunked transfer coding is not the final encoding,
+        // the message body length cannot be determined reliably;
+        // the server MUST respond with the 400 (Bad Request) status code and then close the connection.
         DXOUT("by chunk");
         is_body_chunked = true;
         return;
     }
 
     if (transfer_encoding.empty()) {
-        // Transfer-Encodingがなく, Content-Lengthが不正である時
-        // -> 回復不可能なエラー
+        // HTTPメッセージが Transfer-Encoding: を持たず Content-Length: もおかしい場合,
+        // これを受信者は回復不能なエラーとしなければならない
+        // (Content-Length: がリストであり, その値が全て同じかつ有効だった場合は「おかしい」とは呼ばない.)
+        // リクエストで回復不能なエラーが起きた場合, 400を返して接続を切る.
+        // --
+        // If a message is received without Transfer-Encoding and with an invalid Content-Length header field,
+        // then the message framing is invalid and the recipient MUST treat it as an unrecoverable error,
+        // unless the field value can be successfully parsed as a comma-separated list (Section 5.6.1 of [HTTP]),
+        // all values in the list are valid, and all values in the list are the same
+        // (in which case, the message is processed with that single value used as the Content-Length field value).
+        // If the unrecoverable error is in a request message, the server MUST respond with a 400 (Bad Request) status
+        // code and then close the connection. If it is in a response message received by a proxy, the proxy MUST close
+        // the connection to the server, discard the received response, and send a 502 (Bad Gateway) response to the
+        // client. If it is in a response message received by a user agent, the user agent MUST close the connection to
+        // the server and discard the received response.
         const byte_string *cl = holder.get_val(HeaderHTTP::content_length);
-        // Transfer-Encodingがなく, Content-Lengthが正当である場合
-        // -> Content-Length の値がボディの長さとなる.
+
+        // Transfer-Encoding: がなく, valid な Content-Length: がある場合, その(10進の)値が本文長となる.
+        // 本文長に達する前に接続が閉じられた場合, メッセージは「不完全」となる.
+        // --
+        // If a valid Content-Length header field is present without Transfer-Encoding, its decimal value defines the
+        // expected message body length in octets. If the sender closes the connection or the recipient times out before
+        // the indicated number of octets are received, the recipient MUST consider the message to be incomplete and
+        // close the connection.
         if (cl) {
             body_size       = ParserHelper::stou(*cl);
             is_body_chunked = false;
@@ -607,11 +658,18 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
             return;
         }
     }
-
-    // ボディの長さは0.
+    // これまでの全てが当てはまらないHTTPリクエストは, 本文長は0となる.
+    // --
+    // If this is a request message and none of the above are true,
+    // then the message body length is zero (no message body is present).
     body_size       = 0;
     is_body_chunked = false;
     DXOUT("body_size is zero.");
+
+    // Note: Request messages are never close-delimited because
+    // they are always explicitly framed by length or transfer coding,
+    // with the absence of both implying the request ends
+    // immediately after the header section.
 }
 
 void RequestHTTP::RoutingParameters::determine_host(const header_holder_type &holder) {
