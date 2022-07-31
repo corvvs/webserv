@@ -473,6 +473,7 @@ void Parser::inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &
     child.upload_store = child.defined_["upload_store"] ? child.upload_store : parent.upload_store;
     child.exec_cgi     = child.defined_["exec_cgi"] ? child.exec_cgi : parent.exec_cgi;
     child.exec_delete  = child.defined_["exec_delete"] ? child.exec_delete : parent.exec_delete;
+    child.cgi_paths    = child.defined_["cgi_path"] ? child.cgi_paths : parent.cgi_paths;
     child.redirect     = (parent.redirect.first == REDIRECT_INITIAL_VALUE) ? child.redirect : parent.redirect;
 }
 

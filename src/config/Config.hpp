@@ -21,6 +21,7 @@
  * limit_except         set<enum> method
  * exec_cgi             bool
  * exec_delete          bool
+ * cgi_paths           map<string, string> -> extension, executer_path
  */
 
 namespace config {
@@ -49,6 +50,7 @@ public:
     std::set<enum Methods> get_limit_except(const std::string &target) const;
     bool get_exec_cgi(const std::string &target) const;
     bool get_exec_delete(const std::string &target) const;
+    std::map<extension, executer_path> get_cgi_path(const std::string &target) const;
 
 private:
     ContextServer ctx_server_;
