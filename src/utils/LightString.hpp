@@ -137,7 +137,7 @@ public:
     }
 
     // `str` に含まれる文字が(LightString内で)最初に出現する位置を返す
-    // `pos`が指定された場合, 位置`pos`以降のみを検索する
+    // `pos`が指定された場合, 位置`pos`以降のみを検索する(inclusive)
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
     size_type find_first_of(const filter_type &filter, size_type pos = 0) const {
         size_type d = length();
@@ -153,24 +153,24 @@ public:
     }
 
     // `str` に含まれる文字が(LightString内で)最後に出現する位置を返す
-    // `pos`が指定された場合, 位置`pos`以降のみを検索する
+    // `pos`が指定された場合, 位置`pos`以前のみを検索する(exclusive)
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    size_type find_last_of(const filter_type &filter, size_type pos = 0) const {
-        size_type d = length();
-        if (pos >= d) {
-            return npos;
+    size_type find_last_of(const filter_type &filter, size_type pos = npos) const {
+        size_type i = size();
+        if (pos != npos && pos + 1 <= i) {
+            i = pos + 1;
         }
-        for (typename string_class::size_type i = last; first + pos < i;) {
+        for (; 0 < i;) {
             --i;
-            if (filter.includes((*base)[i])) {
-                return i - first;
+            if (filter.includes((*this)[i])) {
+                return i;
             }
         }
         return npos;
     }
 
     // `str` に含まれない文字が(LightString内で)最初に出現する位置を返す
-    // `pos`が指定された場合, 位置`pos`以降のみを検索する
+    // `pos`が指定された場合, 位置`pos`以降のみを検索する(inclusive)
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
     size_type find_first_not_of(const filter_type &filter, size_type pos = 0) const {
         size_type d = length();
@@ -188,18 +188,15 @@ public:
         return npos;
     }
 
-    // `str` に含まれる文字が(LightString内で)最後に出現する位置を返す
-    // `pos`が指定された場合, 位置`pos`以降のみを検索する
+    // `str` に含まれない文字が(LightString内で)最後に出現する位置を返す
+    // `pos`が指定された場合, 位置`pos`以前のみを検索する(exclusive)
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    size_type find_last_not_of(const filter_type &filter, size_type pos = 0) const {
-        size_type d = length();
-        if (pos >= d) {
-            return npos;
+    size_type find_last_not_of(const filter_type &filter, size_type pos = npos) const {
+        size_type i = size();
+        if (pos != npos && pos + 1 < i) {
+            i = pos + 1;
         }
-        if (first == last) {
-            return npos;
-        }
-        for (size_type i = size(); 0 + pos < i;) {
+        for (; 0 < i;) {
             --i;
             if (!filter.includes((*this)[i])) {
                 return i;
@@ -212,6 +209,9 @@ public:
     // `pos`が指定された場合, 位置`pos`以降のみを検索する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
     size_type find(const string_class &str, size_type pos = 0) const {
+        if (str.size() > size()) {
+            return npos;
+        }
         for (size_type i = pos; i + str.size() <= size(); ++i) {
             size_type j = 0;
             for (; j < str.size() && (*this)[i + j] == str[j]; ++j) {}
@@ -227,34 +227,40 @@ public:
     }
 
     // `str`が最後に出現する位置(= 先頭文字のインデックス)を返す
-    // `pos`が指定された場合, 位置`pos`以降のみを検索する
+    // `pos`が指定された場合, 位置`pos`までのみを検索する(exclusive)
+    // strnstrと異なり, `pos`は「`str`の開始位置」に対する制限であることに注意
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    size_type rfind(const string_class &str, size_type pos = 0) const {
-        for (size_type i = size() - str.size(); pos <= i; --i) {
+    size_type rfind(const string_class &str, size_type pos = npos) const {
+        if (str.size() > size()) {
+            return npos;
+        }
+        size_type i = size() - str.size() + 1;
+        if (pos != npos && pos + 1 < i) {
+            i = pos + 1;
+        }
+        for (; 0 < i;) {
+            --i;
             size_type j = 0;
             for (; j < str.size() && (*this)[i + j] == str[j]; ++j) {}
             if (j == str.size()) {
                 return i;
             }
-            if (pos == i) {
-                break;
-            }
         }
         return npos;
     }
 
-    size_type rfind(const char *str, size_type pos = 0) const {
+    size_type rfind(const char *str, size_type pos = npos) const {
         return rfind(HTTP::strfy(str), pos);
     }
 
     // 指定した位置`pos`から始まる(最大)長さ`n`の区間を参照する LightString を生成して返す
     // `n`を指定しなかった場合, 新たな LightString の終端は現在の終端と一致する
     // 位置は参照先文字列ではなく LightString 先頭からの相対位置
-    LightString substr(size_type pos = 0, size_type n = std::string::npos) const {
-        if (pos == std::string::npos) {
+    LightString substr(size_type pos = 0, size_type n = npos) const {
+        if (pos == npos) {
             return LightString(*this, size(), size());
         }
-        if (n == std::string::npos) {
+        if (n == npos) {
             return LightString(*this, pos, size());
         }
         size_type rlen = size() - pos;

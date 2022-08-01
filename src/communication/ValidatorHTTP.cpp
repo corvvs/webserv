@@ -4,8 +4,9 @@
 bool HTTP::Validator::is_valid_header_host(const light_string &str) {
     // host = uri-host [ ":" port ]
 
-    byte_string::size_type ket = str.find_last_of("]");
-    byte_string::size_type sep = str.find_last_of(":", ket == npos ? 0 : ket);
+    const light_string::size_type ket = str.find_last_of("]");
+    const light_string port_part      = (ket == npos) ? str : str.substr(ket + 1);
+    light_string::size_type sep       = port_part.find_last_of(":");
     if (sep != npos && 0 < sep && str[sep - 1] != ':') {
         // ":"がある -> portとしての妥当性チェック
         if (!is_port(str.substr(sep + 1))) {
@@ -174,8 +175,13 @@ bool HTTP::Validator::is_ipv4address(const HTTP::light_string &str) {
             DXOUT("[KO] detectec leading zero in ipv4 addr component: " << spl);
             return false;
         }
-        unsigned int elem = ParserHelper::stou(spl);
-        if (255 < elem) {
+        std::pair<bool, unsigned int> elem = ParserHelper::str_to_u(spl);
+        if (!elem.first) {
+            // [NG] 変換失敗
+            DXOUT("[KO] failed to transform uint: " << spl);
+            return false;
+        }
+        if (255 < elem.second) {
             // [NG] 255よりでかい
             DXOUT("[KO] too large ipv4 addr component: " << spl);
             return false;
