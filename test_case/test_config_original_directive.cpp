@@ -7,11 +7,11 @@
 #include <vector>
 
 namespace {
-class ConfigTest : public testing::Test {
+class ConfigBasedOnStr : public testing::Test {
 protected:
-    ConfigTest() {}
-    virtual ~ConfigTest() {}
-    virtual void SetUp(const std::string &data) {
+    ConfigBasedOnStr() {}
+    virtual ~ConfigBasedOnStr() {}
+    void SetUpBasedOnStr(const std::string &data) {
         configs = parser.parse(data);
     }
 
@@ -19,7 +19,7 @@ protected:
     std::map<config::host_port_pair, std::vector<config::Config> > configs;
 };
 
-TEST_F(ConfigTest, GetExecCgi) {
+TEST_F(ConfigBasedOnStr, GetExecCgi) {
     const std::string config_data = "\
 http { \
     server { \
@@ -33,7 +33,7 @@ http { \
     } \
 } \
 ";
-    SetUp(config_data);
+    SetUpBasedOnStr(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
@@ -42,7 +42,7 @@ http { \
     EXPECT_EQ(false, conf.get_exec_cgi("/off/"));
 }
 
-TEST_F(ConfigTest, GetExecDelete) {
+TEST_F(ConfigBasedOnStr, GetExecDelete) {
     const std::string config_data = "\
 http { \
     server { \
@@ -56,7 +56,7 @@ http { \
     } \
 } \
 ";
-    SetUp(config_data);
+    SetUpBasedOnStr(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
     EXPECT_EQ(false, conf.get_exec_delete("/"));
@@ -64,7 +64,7 @@ http { \
     EXPECT_EQ(false, conf.get_exec_delete("/off/"));
 }
 
-TEST_F(ConfigTest, GetCgiPath) {
+TEST_F(ConfigBasedOnStr, GetCgiPath) {
     const std::string config_data = "\
 http { \
     server { \
@@ -80,7 +80,7 @@ http { \
     } \
 } \
 ";
-    SetUp(config_data);
+    SetUpBasedOnStr(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
