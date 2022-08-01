@@ -66,9 +66,10 @@ bool HTTP::Validator::is_ipv6address(const light_string &str) {
     light_string::size_type last_coroncoron  = str.rfind("::");
     // DXOUT(first_coroncoron << " - " << last_coroncoron);
     if (first_coroncoron != last_coroncoron) {
-        DXOUT("[KO] multiple \"::\"");
+        // DXOUT("[KO] multiple \"::\"");
         return false;
     }
+    bool has_dcoron = first_coroncoron != light_string::npos;
     // 2. ":" で(空文字列ありで)分割
     std::vector<light_string> splitted = ParserHelper::split(str, ":");
     // DXOUT("splitted.size() = " << splitted.size());
@@ -103,12 +104,17 @@ bool HTTP::Validator::is_ipv6address(const light_string &str) {
     //       - h16の数が1個以上5個以下であることを確認
     //     - "::"がない
     //       - h16の数が6個であることを確認
-    if (is_ls32(splitted.back())) {
+    if (splitted.back().size() == 0) {
+        if (!has_dcoron) {
+            return false;
+        }
+        octets += 0;
+    } else if (is_ls32(splitted.back())) {
         octets += 4;
     } else if (is_h16(splitted.back())) {
         octets += 2;
     } else {
-        // DXOUT("it's not a ls32 or h16: " << splitted[i]);
+        // DXOUT("it's not a ls32 or h16: " << splitted.back());
         return false;
     }
     // DXOUT("octets: " << octets);
@@ -169,7 +175,7 @@ bool HTTP::Validator::is_ipv4address(const HTTP::light_string &str) {
             DXOUT("[KO] non digit char in ipv4 addr component: " << spl);
             return false;
         }
-        if (spl[0] == '0') {
+        if (spl.size() > 1 && spl[0] == '0') {
             // [NG] leading zeroがある
             DXOUT("[KO] detectec leading zero in ipv4 addr component: " << spl);
             return false;
