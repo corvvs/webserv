@@ -20,6 +20,10 @@ TEST(is_ip_literal, basic) {
     EXPECT_EQ(true, HTTP::Validator::is_ip_literal(LS("[2001:db8::3456:0000:0000:0]")));
     EXPECT_EQ(true, HTTP::Validator::is_ip_literal(LS("[2001:db8::3456:0:0:0]")));
     // --
+    EXPECT_EQ(false, HTTP::Validator::is_ip_literal(LS("[]")));
+    EXPECT_EQ(false, HTTP::Validator::is_ip_literal(LS("[aaaa]")));
+    EXPECT_EQ(false, HTTP::Validator::is_ip_literal(LS("[a]")));
+    EXPECT_EQ(false, HTTP::Validator::is_ip_literal(LS("[127.0.0.1]")));
     EXPECT_EQ(false, HTTP::Validator::is_ip_literal(LS("2001:0db8:1234:5678:90ab:cdef:0000:0000")));
     EXPECT_EQ(false, HTTP::Validator::is_ip_literal(LS("2001:0db8:0000:0000:3456:0000:0000:0000")));
     EXPECT_EQ(false, HTTP::Validator::is_ip_literal(LS("2001:0db8:0:0:3456:0:0:0")));
