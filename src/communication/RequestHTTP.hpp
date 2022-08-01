@@ -57,6 +57,16 @@ struct RequestTarget {
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f);
 
+class IRequestMatchingParam {
+public:
+    virtual ~IRequestMatchingParam() {}
+
+    virtual const RequestTarget &get_request_target() const = 0;
+    virtual HTTP::t_method get_http_method() const          = 0;
+    virtual HTTP::t_version get_http_version() const        = 0;
+    virtual const HTTP::CH::Host &get_host() const          = 0;
+};
+
 // [HTTPリクエストクラス]
 // [責務]
 // - 順次供給されるバイト列をHTTPリクエストとして解釈すること
@@ -118,15 +128,16 @@ public:
     };
 
     // リクエストの制御, ルーティングにかかわるパラメータ
-    struct RoutingParameters : public ARoutingParameters {
-        RequestTarget given_request_target;
+    struct RoutingParameters : public ARoutingParameters, public IRequestMatchingParam {
+        // TODO: リクエストマッチングに必要なものを外部に公開する
+        RequestTarget given_request_target; // リクエストマッチングに必要
 
-        HTTP::t_method http_method;
+        HTTP::t_method http_method; // リクエストマッチングに必要
         HTTP::t_version http_version;
 
         bool is_body_chunked;
 
-        HTTP::CH::Host header_host;
+        HTTP::CH::Host header_host; // リクエストマッチングに必要
         HTTP::CH::ContentType content_type;
         HTTP::CH::TransferEncoding transfer_encoding;
         HTTP::CH::Connection connection;
@@ -140,6 +151,11 @@ public:
         void determine_host(const header_holder_type &holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
         void determine_body_size(const header_holder_type &holder);
+
+        const RequestTarget &get_request_target() const;
+        HTTP::t_method get_http_method() const;
+        HTTP::t_version get_http_version() const;
+        const HTTP::CH::Host &get_host() const;
     };
 
 private:
@@ -231,6 +247,7 @@ public:
     bool should_keep_in_touch() const;
 
     header_holder_type::joined_dict_type get_cgi_http_vars() const;
+    const IRequestMatchingParam &get_request_mathing_param() const;
 };
 
 #endif

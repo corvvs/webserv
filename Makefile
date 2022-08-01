@@ -18,7 +18,7 @@ TEST_CASE_SRC_DIR		=	./test_case
 TEST_CASE_OBJ_DIR		=	./test_case_obj
 TEST_CASE_DPS_DIR		=	./test_case_dps
 GOOGLE_TEST				=	./googletest
-GTEST_FLAGS				=	-isystem ./googletest/include -I./googletest -Wall -Wextra
+GTEST_FLAGS				=	-isystem ./googletest/include -I./googletest -Wall -Wextra -pthread
 GTEST_LIB				=	./gtest_main.a
 
 TEST_CASE_OBJ_DIRS		=	$(shell find  $(TEST_CASE_SRC_DIR) -type d | xargs -I{} echo $(TEST_CASE_OBJ_DIR)/{})

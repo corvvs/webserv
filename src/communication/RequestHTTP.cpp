@@ -600,7 +600,9 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
         // Transfer-Encodingがなく, Content-Lengthが正当である場合
         // -> Content-Length の値がボディの長さとなる.
         if (cl) {
-            body_size       = ParserHelper::stou(*cl);
+            std::pair<bool, unsigned int> res = ParserHelper::str_to_u(*cl);
+            VOUT(res.first);
+            body_size       = res.second;
             is_body_chunked = false;
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
             DXOUT("body_size = " << body_size);
@@ -634,6 +636,22 @@ void RequestHTTP::RoutingParameters::determine_host(const header_holder_type &ho
         throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
     }
     pack_host(header_host, lhost);
+}
+
+const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const {
+    return given_request_target;
+}
+
+HTTP::t_method RequestHTTP::RoutingParameters::get_http_method() const {
+    return http_method;
+}
+
+HTTP::t_version RequestHTTP::RoutingParameters::get_http_version() const {
+    return http_version;
+}
+
+const HTTP::CH::Host &RequestHTTP::RoutingParameters::get_host() const {
+    return header_host;
 }
 
 bool RequestHTTP::is_routable() const {
@@ -699,4 +717,8 @@ bool RequestHTTP::should_keep_in_touch() const {
 
 RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_http_vars() const {
     return header_holder.get_cgi_http_vars();
+}
+
+const IRequestMatchingParam &RequestHTTP::get_request_mathing_param() const {
+    return rp;
 }
