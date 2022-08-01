@@ -600,7 +600,9 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
         // Transfer-Encodingがなく, Content-Lengthが正当である場合
         // -> Content-Length の値がボディの長さとなる.
         if (cl) {
-            body_size       = ParserHelper::stou(*cl);
+            std::pair<bool, unsigned int> res = ParserHelper::str_to_u(*cl);
+            VOUT(res.first);
+            body_size       = res.second;
             is_body_chunked = false;
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
             DXOUT("body_size = " << body_size);
