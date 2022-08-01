@@ -636,6 +636,22 @@ void RequestHTTP::RoutingParameters::determine_host(const header_holder_type &ho
     pack_host(header_host, lhost);
 }
 
+const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const {
+    return given_request_target;
+}
+
+HTTP::t_method RequestHTTP::RoutingParameters::get_http_method() const {
+    return http_method;
+}
+
+HTTP::t_version RequestHTTP::RoutingParameters::get_http_version() const {
+    return http_version;
+}
+
+const HTTP::CH::Host &RequestHTTP::RoutingParameters::get_host() const {
+    return header_host;
+}
+
 bool RequestHTTP::is_routable() const {
     return this->ps.parse_progress >= PP_BODY;
 }
@@ -699,4 +715,8 @@ bool RequestHTTP::should_keep_in_touch() const {
 
 RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_http_vars() const {
     return header_holder.get_cgi_http_vars();
+}
+
+const IRequestMatchingParam &RequestHTTP::get_request_mathing_param() const {
+    return rp;
 }
