@@ -7,10 +7,10 @@
 #include <vector>
 
 namespace {
-class ConfigBasedOnStr : public testing::Test {
+class config_original : public testing::Test {
 protected:
-    ConfigBasedOnStr() {}
-    virtual ~ConfigBasedOnStr() {}
+    config_original() {}
+    virtual ~config_original() {}
     void SetUpBasedOnStr(const std::string &data) {
         configs = parser.parse(data);
     }
@@ -19,7 +19,7 @@ protected:
     std::map<config::host_port_pair, std::vector<config::Config> > configs;
 };
 
-TEST_F(ConfigBasedOnStr, GetExecCgi) {
+TEST_F(config_original, get_exec_cgi) {
     const std::string config_data = "\
 http { \
     server { \
@@ -42,7 +42,7 @@ http { \
     EXPECT_EQ(false, conf.get_exec_cgi("/off/"));
 }
 
-TEST_F(ConfigBasedOnStr, GetExecDelete) {
+TEST_F(config_original, get_exec_delete) {
     const std::string config_data = "\
 http { \
     server { \
@@ -64,7 +64,7 @@ http { \
     EXPECT_EQ(false, conf.get_exec_delete("/off/"));
 }
 
-TEST_F(ConfigBasedOnStr, GetCgiPath) {
+TEST_F(config_original, get_cgi_path) {
     const std::string config_data = "\
 http { \
     server { \
