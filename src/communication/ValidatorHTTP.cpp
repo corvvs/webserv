@@ -118,7 +118,7 @@ bool HTTP::Validator::is_ipv6address(const light_string &str) {
         return false;
     }
     // DXOUT("octets: " << octets);
-    return octets <= 16;
+    return octets == 16 || (octets < 16 && has_dcoron);
 }
 
 bool HTTP::Validator::is_ipvfuture(const light_string &str) {
