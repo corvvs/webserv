@@ -3,6 +3,10 @@
 #include <limits>
 
 IndexRange ParserHelper::find_crlf(const byte_string &str, ssize_t from, ssize_t len) {
+    if ((size_t)(from + len) > str.size()) {
+        len = str.size() - from;
+    }
+
     for (ssize_t i = from; i - from < len; i++) {
         // iは絶対インデックス; strの先頭からの位置
         // DSOUT() << from << ", " << i << ", " << len << ": " << str[i] << "-" << int(str[i]) << std::endl;
@@ -191,23 +195,6 @@ ParserHelper::byte_string ParserHelper::normalize_header_key(const HTTP::light_s
     return normalize_header_key(key.str());
 }
 
-unsigned int ParserHelper::stou(const byte_string &str) {
-    std::stringstream ss;
-    std::string rr;
-    unsigned int v;
-
-    ss << str;
-    ss >> v;
-    ss.clear();
-    ss << v;
-    ss >> rr;
-    byte_string r(HTTP::strfy(rr));
-    if (str != r) {
-        throw std::runtime_error("failed to convert string to int");
-    }
-    return v;
-}
-
 std::pair<bool, unsigned int> ParserHelper::xtou(const HTTP::light_string &str) {
     unsigned int n             = 0;
     const HTTP::byte_string xs = HTTP::strfy("0123456789abcdef");
@@ -228,10 +215,6 @@ std::pair<bool, unsigned int> ParserHelper::xtou(const HTTP::light_string &str) 
     return std::pair<bool, unsigned int>(true, n);
 }
 
-unsigned int ParserHelper::stou(const HTTP::light_string &str) {
-    return stou(str.str());
-}
-
 ParserHelper::byte_string ParserHelper::utos(unsigned int u, unsigned int base) {
     // std::setbase の引数は 8, 10, 16のみ
     assert(base == 8 || base == 10 || base == 16);
@@ -241,6 +224,28 @@ ParserHelper::byte_string ParserHelper::utos(unsigned int u, unsigned int base) 
     }
     ss << u;
     return HTTP::strfy(ss.str());
+}
+
+std::pair<bool, unsigned int> ParserHelper::str_to_u(const byte_string &str) {
+    std::stringstream ss;
+    std::string rr;
+    unsigned int v;
+
+    ss << str;
+    ss >> v;
+    ss.clear();
+    ss << v;
+    ss >> rr;
+    byte_string r(HTTP::strfy(rr));
+    if (str == r) {
+        return std::make_pair(true, v);
+    } else {
+        return std::make_pair(false, 0);
+    }
+}
+
+std::pair<bool, unsigned int> ParserHelper::str_to_u(const HTTP::light_string &str) {
+    return str_to_u(str.str());
 }
 
 unsigned int ParserHelper::quality_to_u(HTTP::light_string &quality) {
