@@ -719,6 +719,6 @@ RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_http_vars
     return header_holder.get_cgi_http_vars();
 }
 
-const IRequestMatchingParam &RequestHTTP::get_request_mathing_param() const {
+const IRequestMatchingParam &RequestHTTP::get_request_matching_param() const {
     return rp;
 }
