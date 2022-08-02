@@ -171,7 +171,6 @@ public:
     bool is_responsive() const;
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
-    byte_string draw_data() const;
     void leave();
     ResponseHTTP *respond(const RequestHTTP &request);
 

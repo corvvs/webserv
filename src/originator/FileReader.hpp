@@ -18,7 +18,6 @@ public:
 
 private:
     char_string file_path_;
-    byte_string data_;
     bool originated_;
     ResponseDataList response_data;
     int fd_;

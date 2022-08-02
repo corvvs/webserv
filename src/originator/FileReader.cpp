@@ -37,14 +37,12 @@ void FileReader::read_from_file() {
     fd_ = fd;
     char read_buf[READ_SIZE];
     ssize_t read_size;
-    data_.clear();
     for (;;) {
         read_size = read(fd, read_buf, READ_SIZE);
         if (read_size < 0) {
             throw http_error("read error", HTTP::STATUS_FORBIDDEN);
         }
         response_data.inject(read_buf, read_size, read_size == 0);
-        data_.insert(data_.end(), read_buf, read_buf + read_size);
         if (read_size == 0) {
             break;
         }

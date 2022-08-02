@@ -182,10 +182,6 @@ void CGI::capture_script_termination() {
     }
 }
 
-CGI::byte_string CGI::draw_data() const {
-    return from_script_content_;
-}
-
 char **CGI::flatten_argv(const byte_string &script_path) {
     size_t n     = 2;
     char **frame = (char **)malloc(sizeof(char *) * n);
