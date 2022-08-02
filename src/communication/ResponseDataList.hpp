@@ -25,6 +25,7 @@ public:
 
     ~IResponseDataConsumer() {}
 
+    virtual t_sending_mode determine_sending_mode() = 0;
     // 初期データ与えて送信開始
     virtual void start(const HTTP::byte_string &initial_data) = 0;
 
@@ -97,6 +98,7 @@ public:
     // 可能かつ必要ならバケットを1つ取ってシリアライズする
     void serialize_if_needed();
 
+    t_sending_mode determine_sending_mode();
     // 送信を開始する
     void start(const HTTP::byte_string &initial_data);
 

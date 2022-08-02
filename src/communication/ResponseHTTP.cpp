@@ -45,10 +45,10 @@ HTTP::byte_string ResponseHTTP::serialize_former_part() {
 }
 
 void ResponseHTTP::start() {
-    if (consumer()->get_sending_mode() == ResponseDataList::SM_CHUNKED) {
+    const ResponseDataList::t_sending_mode mode = consumer()->determine_sending_mode();
+    if (mode == ResponseDataList::SM_CHUNKED) {
         feed_header(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked"));
     }
-
     consumer()->start(serialize_former_part());
 }
 
