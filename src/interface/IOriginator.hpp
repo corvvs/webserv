@@ -50,10 +50,6 @@ public:
 
     virtual ResponseHTTP *respond(const RequestHTTP &request) = 0;
 
-    // オリジネータからデータを引き出す
-    // おそらく送信目的だと思うが, べつにそうでなくてもよい
-    virtual byte_string draw_data() const = 0;
-
     // オリジネータ自身の破壊手続きを行う
     // 大抵は`delete this;だがソケットライクだったりすると違う
     virtual void leave() = 0;
