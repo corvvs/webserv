@@ -7,10 +7,10 @@
 #include <vector>
 
 namespace {
-class ConfigBasedOnFile : public testing::Test {
+class config_test : public testing::Test {
 protected:
-    ConfigBasedOnFile() {}
-    virtual ~ConfigBasedOnFile() {}
+    config_test() {}
+    virtual ~config_test() {}
     void SetUpBasedOnFile(const std::string &path) {
         assert(file::check(path) == file::NONE);
         configs = parser.parse(file::read(path));
@@ -22,7 +22,7 @@ protected:
 };
 
 /// 01_default.conf
-TEST_F(ConfigBasedOnFile, GetAutoIndex) {
+TEST_F(config_test, get_auto_index) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -32,7 +32,7 @@ TEST_F(ConfigBasedOnFile, GetAutoIndex) {
     EXPECT_EQ(autoindex, conf.get_autoindex(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetErrorPage) {
+TEST_F(config_test, get_error_page) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -43,7 +43,7 @@ TEST_F(ConfigBasedOnFile, GetErrorPage) {
     EXPECT_EQ(error_page, conf.get_error_page(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetIndex) {
+TEST_F(config_test, get_index) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -55,7 +55,7 @@ TEST_F(ConfigBasedOnFile, GetIndex) {
     EXPECT_EQ(index, conf.get_index(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetRoot) {
+TEST_F(config_test, get_root) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -65,7 +65,7 @@ TEST_F(ConfigBasedOnFile, GetRoot) {
     EXPECT_EQ(root, conf.get_root(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetClientMaxBodySize) {
+TEST_F(config_test, get_client_max_body_size) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -75,7 +75,7 @@ TEST_F(ConfigBasedOnFile, GetClientMaxBodySize) {
     EXPECT_EQ(client_max_body_size, conf.get_client_max_body_size(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetHost) {
+TEST_F(config_test, get_host) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -85,7 +85,7 @@ TEST_F(ConfigBasedOnFile, GetHost) {
     EXPECT_EQ(host, conf.get_host(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetPort) {
+TEST_F(config_test, get_port) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -95,7 +95,7 @@ TEST_F(ConfigBasedOnFile, GetPort) {
     EXPECT_EQ(port, conf.get_port(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetRedirect) {
+TEST_F(config_test, get_redirect) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -105,7 +105,7 @@ TEST_F(ConfigBasedOnFile, GetRedirect) {
     EXPECT_EQ(redirect, conf.get_redirect(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetServerName) {
+TEST_F(config_test, get_server_name) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -116,7 +116,7 @@ TEST_F(ConfigBasedOnFile, GetServerName) {
     EXPECT_EQ(server_name, conf.get_server_name(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetUploadStore) {
+TEST_F(config_test, get_upload_store) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -126,7 +126,7 @@ TEST_F(ConfigBasedOnFile, GetUploadStore) {
     EXPECT_EQ(upload_store, conf.get_upload_store(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetDefaultServer) {
+TEST_F(config_test, get_default_server) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -136,7 +136,7 @@ TEST_F(ConfigBasedOnFile, GetDefaultServer) {
     EXPECT_EQ(default_server, conf.get_default_server(target));
 }
 
-TEST_F(ConfigBasedOnFile, GetLimitExcept) {
+TEST_F(config_test, get_limit_except) {
     SetUpBasedOnFile("./conf/valid/01_default.conf");
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
@@ -148,7 +148,7 @@ TEST_F(ConfigBasedOnFile, GetLimitExcept) {
 }
 
 /// 11_mix.conf
-TEST_F(ConfigBasedOnFile, GetAutoIndexFromMixContext) {
+TEST_F(config_test, get_auto_index_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -159,7 +159,7 @@ TEST_F(ConfigBasedOnFile, GetAutoIndexFromMixContext) {
     EXPECT_EQ(false, conf.get_autoindex("/dir2/dir3"));
 }
 
-TEST_F(ConfigBasedOnFile, GetErrorPageFromMixContext) {
+TEST_F(config_test, get_error_page_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -178,7 +178,7 @@ TEST_F(ConfigBasedOnFile, GetErrorPageFromMixContext) {
     EXPECT_EQ(error_page, conf.get_error_page("/dir2/dir3"));
 }
 
-TEST_F(ConfigBasedOnFile, GetIndexFromMixContext) {
+TEST_F(config_test, get_index_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -197,7 +197,7 @@ TEST_F(ConfigBasedOnFile, GetIndexFromMixContext) {
     EXPECT_EQ(index, conf.get_index("/dir2/dir3"));
 }
 
-TEST_F(ConfigBasedOnFile, GetRootFromMixContext) {
+TEST_F(config_test, get_root_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -207,7 +207,7 @@ TEST_F(ConfigBasedOnFile, GetRootFromMixContext) {
     EXPECT_EQ("/root3", conf.get_root("/dir2/dir3"));
 }
 
-TEST_F(ConfigBasedOnFile, GetClientMaxBodySizeFromMixContext) {
+TEST_F(config_test, get_client_max_body_size_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -218,7 +218,7 @@ TEST_F(ConfigBasedOnFile, GetClientMaxBodySizeFromMixContext) {
     EXPECT_EQ(3, conf.get_client_max_body_size("/dir2/dir3"));
 }
 
-TEST_F(ConfigBasedOnFile, GetHostFromMixContext) {
+TEST_F(config_test, get_host_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const std::string target = "/";
     {
@@ -233,7 +233,7 @@ TEST_F(ConfigBasedOnFile, GetHostFromMixContext) {
     }
 }
 
-TEST_F(ConfigBasedOnFile, GetPortFromMixContext) {
+TEST_F(config_test, get_port_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const std::string target = "/";
     {
@@ -248,7 +248,7 @@ TEST_F(ConfigBasedOnFile, GetPortFromMixContext) {
     }
 }
 
-TEST_F(ConfigBasedOnFile, GetRedirectFromMixContext) {
+TEST_F(config_test, get_redirect_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -259,7 +259,7 @@ TEST_F(ConfigBasedOnFile, GetRedirectFromMixContext) {
     EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir2/dir3"));
 }
 
-TEST_F(ConfigBasedOnFile, GetServerNameFromMixContext) {
+TEST_F(config_test, get_server_name_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -270,7 +270,7 @@ TEST_F(ConfigBasedOnFile, GetServerNameFromMixContext) {
     EXPECT_EQ(server_name, conf.get_server_name("/dir1"));
 }
 
-TEST_F(ConfigBasedOnFile, GetUploadStoreFromMixContext) {
+TEST_F(config_test, get_upload_store_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
@@ -281,7 +281,7 @@ TEST_F(ConfigBasedOnFile, GetUploadStoreFromMixContext) {
     EXPECT_EQ("/upload3", conf.get_upload_store("/dir2/dir3"));
 }
 
-TEST_F(ConfigBasedOnFile, GetDefaultServerFromMixContext) {
+TEST_F(config_test, get_default_server_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const std::string target = "/";
     {
@@ -297,7 +297,7 @@ TEST_F(ConfigBasedOnFile, GetDefaultServerFromMixContext) {
     }
 }
 
-TEST_F(ConfigBasedOnFile, GetLimitExceptFromMixContext) {
+TEST_F(config_test, get_limit_except_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
