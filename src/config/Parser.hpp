@@ -30,13 +30,7 @@ public:
     std::map<host_port_pair, std::vector<Config> > parse(const std::string &file_data);
 
 private:
-    enum ContextType {
-        GLOBAL,
-        MAIN,
-        SERVER,
-        LOCATION,
-        LIMIT_EXCEPT,
-    };
+    enum ContextType { GLOBAL, MAIN, SERVER, LOCATION, LIMIT_EXCEPT };
 
     typedef void (Parser::*add_directive_functions)(const std::vector<std::string> &args, std::stack<ContextType> &ctx);
     typedef std::map<std::string, add_directive_functions> DirectiveFunctionsMap;
