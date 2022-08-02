@@ -12,7 +12,7 @@ ResponseDataList::ResponseDataList() : sent_serialized(0), sending_mode(SM_UNKNO
 void ResponseDataList::inject(const char *src, size_t n, bool is_completed) {
     assert(list.size() > 0);
     VOUT(n);
-    BVOUT(HTTP::byte_string(src, src + n));
+    // BVOUT(HTTP::byte_string(src, src + n));
 
     ResponseDataBucket &bucket = list.back();
     bucket.buffer.reserve(n);
