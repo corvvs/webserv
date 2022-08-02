@@ -4,6 +4,6 @@
 #include "originator/CGI.hpp"
 #include "originator/Echoer.hpp"
 #include "originator/FileReader.hpp"
-// #include "originator/FileWriter.hpp"
+#include "originator/FileWriter.hpp"
 
 #endif
