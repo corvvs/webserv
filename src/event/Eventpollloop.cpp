@@ -19,7 +19,7 @@ void EventPollLoop::loop() {
     while (true) {
         update();
 
-        const int count = poll(&*fds.begin(), fds.size(), 10 * 1000);
+        const int count = poll(&*fds.begin(), fds.size(), 1 * 1000);
 
         if (count < 0) {
             throw std::runtime_error("poll error");
@@ -27,7 +27,11 @@ void EventPollLoop::loop() {
         t_time_epoch_ms now = WSTime::get_epoch_ms();
         if (count == 0 || now - latest_timeout_checked > timeout_interval) {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
-                index_map::mapped_type i = indexmap[it->first];
+                const index_map::iterator fit = indexmap.find(it->first);
+                if (fit == indexmap.end()) {
+                    continue;
+                }
+                index_map::mapped_type i = fit->second;
                 if (fds[i].fd >= 0) {
                     it->second->notify(*this, OT_TIMEOUT, now);
                 }
@@ -36,9 +40,12 @@ void EventPollLoop::loop() {
         }
         if (count > 0) {
             for (socket_map::iterator it = sockmap.begin(); it != sockmap.end(); ++it) {
-                index_map::mapped_type i = indexmap[it->first];
+                const index_map::iterator fit = indexmap.find(it->first);
+                if (fit == indexmap.end()) {
+                    continue;
+                }
+                index_map::mapped_type i = fit->second;
                 if (fds[i].fd >= 0 && fds[i].revents) {
-                    DXOUT("[S]FD-" << it->first << ": revents: " << fds[i].revents);
                     if (mask(IObserver::OT_READ) & fds[i].revents) {
                         it->second->notify(*this, OT_READ, now);
                     }
@@ -66,12 +73,12 @@ void EventPollLoop::reserve(ISocketLike *socket, observation_category cat, bool 
 }
 
 void EventPollLoop::reserve_hold(ISocketLike *socket) {
-    DXOUT("reserve_hold: " << socket->get_fd());
+    // DXOUT("reserve_hold: " << socket->get_fd());
     reserve(socket, OT_NONE, true);
 }
 
 void EventPollLoop::reserve_unhold(ISocketLike *socket) {
-    DXOUT("reserve_unhold: " << socket->get_fd());
+    // DXOUT("reserve_unhold: " << socket->get_fd());
     reserve(socket, OT_NONE, false);
 }
 
@@ -104,8 +111,12 @@ t_poll_eventmask EventPollLoop::mask(observation_category t) {
 void EventPollLoop::update() {
     // exec unhold
     for (EventPollLoop::update_queue::size_type i = 0; i < unholdqueue.size(); ++i) {
-        const t_fd fd                    = unholdqueue[i].fd;
-        const index_map::mapped_type idx = indexmap[fd];
+        const t_fd fd                 = unholdqueue[i].fd;
+        const index_map::iterator fit = indexmap.find(fd);
+        if (fit == indexmap.end()) {
+            continue;
+        }
+        const index_map::mapped_type idx = fit->second;
 
         fds[idx].fd = -1;
         sockmap.erase(fd);
@@ -113,11 +124,15 @@ void EventPollLoop::update() {
         gapset.insert(idx);
         delete unholdqueue[i].sock;
         nfds--;
-        DXOUT("unholding: " << fd);
+        DXOUT("unholded: " << fd << " " << idx);
     }
     // exec hold
     for (EventPollLoop::update_queue::size_type i = 0; i < holdqueue.size(); ++i) {
-        const t_fd fd = holdqueue[i].fd;
+        const t_fd fd                 = holdqueue[i].fd;
+        const index_map::iterator fit = indexmap.find(fd);
+        if (fit != indexmap.end()) {
+            continue;
+        }
         index_map::mapped_type idx;
         if (gapset.empty()) {
             pollfd p = {};
@@ -132,16 +147,24 @@ void EventPollLoop::update() {
         fds[idx].events = 0;
         sockmap[fd]     = holdqueue[i].sock;
         indexmap[fd]    = idx;
-        DXOUT("holding: " << fd);
+        DXOUT("holding: " << fd << " " << idx);
         nfds++;
     }
     // exec set / unset
     for (EventPollLoop::update_queue::size_type i = 0; i < movequeue.size(); ++i) {
-        const t_fd fd                    = movequeue[i].fd;
-        const index_map::mapped_type idx = indexmap[fd];
-        fds[idx].events                  = fds[idx].events | mask(movequeue[i].cat);
-        if (!movequeue[i].in) {
+        const t_fd fd                 = movequeue[i].fd;
+        const index_map::iterator fit = indexmap.find(fd);
+        if (fit == indexmap.end()) {
+            continue;
+        }
+        const index_map::mapped_type idx = fit->second;
+        if (movequeue[i].in) {
+            fds[idx].events = fds[idx].events | mask(movequeue[i].cat);
+            DXOUT("set: " << fd << " " << idx << " " << movequeue[i].cat);
+        } else {
+            fds[idx].events = fds[idx].events | mask(movequeue[i].cat);
             fds[idx].events = fds[idx].events ^ mask(movequeue[i].cat);
+            DXOUT("unset: " << fd << " " << idx << " " << movequeue[i].cat);
         }
     }
     unholdqueue.clear();
