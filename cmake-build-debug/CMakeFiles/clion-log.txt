@@ -1,0 +1,9 @@
+"/Users/yokotanaoki/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/221.5787.29/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=/Users/yokotanaoki/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/221.5787.29/CLion.app/Contents/bin/ninja/mac/ninja" -G Ninja -S /Users/yokotanaoki/dev/42cursus/lv.5/webserv -B /Users/yokotanaoki/dev/42cursus/lv.5/webserv/cmake-build-debug
+CMake Error at CMakeLists.txt:3 (add_subdirectory):
+  add_subdirectory given source "googletest" which is not an existing
+  directory.
+
+
+-- Configuring incomplete, errors occurred!
+See also "/Users/yokotanaoki/dev/42cursus/lv.5/webserv/cmake-build-debug/CMakeFiles/CMakeOutput.log".
+See also "/Users/yokotanaoki/dev/42cursus/lv.5/webserv/cmake-build-debug/CMakeFiles/CMakeError.log".
