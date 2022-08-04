@@ -130,9 +130,6 @@ public:
     }
 
     element operator[](size_type pos) {
-        VOUT(base);
-        VOUT(first);
-        VOUT(pos);
         return (*base)[first + pos];
     }
 

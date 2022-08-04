@@ -10,7 +10,7 @@ bool HTTP::Validator::is_valid_header_host(const light_string &str) {
     if (sep != npos && 0 < sep && str[sep - 1] != ':') {
         // ":"がある -> portとしての妥当性チェック
         if (!is_port(str.substr(sep + 1))) {
-            DXOUT("non digit char in port part");
+            // DXOUT("non digit char in port part");
             // throw http_error("invalid char in port part of host", HTTP::STATUS_BAD_REQUEST);
             return false;
         }
@@ -160,36 +160,36 @@ bool HTTP::Validator::is_ipv4address(const HTTP::light_string &str) {
     std::vector<light_string> splitted = ParserHelper::split(str, ".");
     if (splitted.size() != 4) {
         // [NG] dotが３つではない
-        DXOUT("[KO] splitted size is unexpected: " << splitted.size());
+        // DXOUT("[KO] splitted size is unexpected: " << splitted.size());
         return false;
     }
     for (unsigned int i = 0; i < splitted.size(); ++i) {
         const light_string &spl = splitted[i];
         if (spl.length() == 0 || 3 < spl.length()) {
             // [NG] 3文字以上または0文字である
-            DXOUT("[KO] invalid length for ipv4 addr component: " << spl);
+            // DXOUT("[KO] invalid length for ipv4 addr component: " << spl);
             return false;
         }
         light_string::size_type res = spl.find_first_not_of(CharFilter::digit);
         if (res != light_string::npos) {
             // [NG] 数字でない文字がある
-            DXOUT("[KO] non digit char in ipv4 addr component: " << spl);
+            // DXOUT("[KO] non digit char in ipv4 addr component: " << spl);
             return false;
         }
         if (spl.size() > 1 && spl[0] == '0') {
             // [NG] leading zeroがある
-            DXOUT("[KO] detectec leading zero in ipv4 addr component: " << spl);
+            // DXOUT("[KO] detectec leading zero in ipv4 addr component: " << spl);
             return false;
         }
         std::pair<bool, unsigned int> elem = ParserHelper::str_to_u(spl);
         if (!elem.first) {
             // [NG] 変換失敗
-            DXOUT("[KO] failed to transform uint: " << spl);
+            // DXOUT("[KO] failed to transform uint: " << spl);
             return false;
         }
         if (255 < elem.second) {
             // [NG] 255よりでかい
-            DXOUT("[KO] too large ipv4 addr component: " << spl);
+            // DXOUT("[KO] too large ipv4 addr component: " << spl);
             return false;
         }
     }
@@ -260,7 +260,7 @@ bool HTTP::Validator::is_uri_authority(const HTTP::light_string &authority) {
         if (!HTTP::Validator::is_segment(userinfo, ftr_userinfo)) {
             return false;
         }
-        DXOUT("userinfo is valid");
+        // DXOUT("userinfo is valid");
     }
     // validate `host` and `port`
     const light_string host_port = 0 < userinfo.size() ? authority.substr(userinfo.size() + 1) : authority;
@@ -312,23 +312,23 @@ bool HTTP::Validator::is_valid_rank(const light_string &str) {
     const light_string integral = str.substr_before(".");
     if (integral.size() != 1) {
         // 整数部なし
-        DXOUT("[KO] no integral: " << integral);
+        // DXOUT("[KO] no integral: " << integral);
         return false;
     }
     if (!isdigit(integral[0])) {
         // 整数部に数字以外がある
-        DXOUT("[KO] non-digit in integral: " << integral);
+        // DXOUT("[KO] non-digit in integral: " << integral);
         return false;
     }
     const light_string fraction = str.substr_after(".", integral.size());
     if (fraction.size() > 3) {
         // 小数部が長い
-        DXOUT("[KO] long fraction: " << fraction);
+        // DXOUT("[KO] long fraction: " << fraction);
         return false;
     }
     if (fraction.find_first_not_of(HTTP::CharFilter::digit) != light_string::npos) {
         // 小数部に数字以外がある
-        DXOUT("[KO] non-digit in fraction: " << fraction);
+        // DXOUT("[KO] non-digit in fraction: " << fraction);
         return false;
     }
     return true;
