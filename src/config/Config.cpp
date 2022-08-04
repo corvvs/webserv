@@ -3,8 +3,8 @@
 
 namespace config {
 
-Config::Config(const ContextServer &srv) : ctx_server_(srv){};
-Config::~Config(void){};
+Config::Config(const ContextServer &srv) : ctx_server_(srv) {}
+Config::~Config(void) {}
 
 void Config::set_host_port(const host_port_pair &hp) {
     host_port_ = hp;

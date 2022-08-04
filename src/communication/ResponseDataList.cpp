@@ -36,22 +36,21 @@ void ResponseDataList::set_mode(t_sending_mode mode) {
 }
 
 // [As IResponseDataConsumer]
+ResponseDataList::t_sending_mode ResponseDataList::determine_sending_mode() {
+    t_sending_mode mode;
+    if (is_injection_closed()) {
+        // オリジネーションが完了している -> chunked送信しない
+        mode = ResponseDataList::SM_NOT_CHUNKED;
+    } else {
+        // オリジネーションが未完了 -> chunked送信する
+        mode = ResponseDataList::SM_CHUNKED;
+    }
+    set_mode(mode);
+    return mode;
+}
 
 void ResponseDataList::start(const HTTP::byte_string &initial_data) {
     // BVOUT(initial_data);
-
-    {
-        t_sending_mode mode;
-        if (is_injection_closed()) {
-            // オリジネーションが完了している -> chunked送信しない
-            mode = ResponseDataList::SM_NOT_CHUNKED;
-        } else {
-            // オリジネーションが未完了 -> chunked送信する
-            mode = ResponseDataList::SM_CHUNKED;
-        }
-        set_mode(mode);
-    }
-
     VOUT(sent_serialized);
     serialized_data = initial_data;
     sent_serialized = 0;

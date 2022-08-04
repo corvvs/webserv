@@ -2,6 +2,7 @@
 #include "Channel.hpp"
 #include "RoundTrip.hpp"
 #include <cassert>
+#define MAX_REQLINE_END 8192
 
 // [[Attribute]]
 
@@ -105,9 +106,8 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-    const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
-    u8t buf[read_buffer_size];
-    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
+    u8t buf[MAX_REQLINE_END];
+    const ssize_t received_size = sock->receive(&buf, MAX_REQLINE_END, 0);
     if (received_size == 0) {
         DXOUT("sock closed?");
     }
@@ -185,9 +185,8 @@ void Connection::perform_sending(IObserver &observer) {
 }
 
 void Connection::perform_shutting_down(IObserver &observer) {
-    const size_t read_buffer_size = HTTP::MAX_REQLINE_END;
-    u8t buf[read_buffer_size];
-    const ssize_t received_size = sock->receive(&buf, read_buffer_size, 0);
+    u8t buf[MAX_REQLINE_END];
+    const ssize_t received_size = sock->receive(&buf, MAX_REQLINE_END, 0);
     if (received_size > 0) {
         return;
     }
