@@ -6,17 +6,24 @@
 #include <map>
 #include <string>
 #include <vector>
+#define MAX_REQLINE_END 8192
 
 // 全体で共通して使うenum, 型, 定数, フリー関数など
 
 namespace HTTP {
 // ステータスコード
 enum t_status {
+    // 1**
     STATUS_UNSPECIFIED = 1,
-    STATUS_OK          = 200,
-
-    STATUS_FOUND = 302,
-
+    // 2**
+    STATUS_OK = 200,
+    // 3**
+    STATUS_MOVED_PERMANENTLY  = 301,
+    STATUS_FOUND              = 302,
+    STATUS_NOT_MODIFIED       = 304,
+    STATUS_TEMPORARY_REDIRECT = 307,
+    STATUS_PERMANENT_REDIRECT = 308,
+    // 4**
     STATUS_BAD_REQUEST        = 400,
     STATUS_UNAUTHORIZED       = 401,
     STATUS_FORBIDDEN          = 403,
@@ -26,7 +33,7 @@ enum t_status {
     STATUS_URI_TOO_LONG       = 414,
     STATUS_IM_A_TEAPOT        = 418,
     STATUS_HEADER_TOO_LARGE   = 431,
-
+    // 5**
     STATUS_INTERNAL_SERVER_ERROR = 500,
     STATUS_NOT_IMPLEMENTED       = 501,
     STATUS_BAD_GATEWAY           = 502,
@@ -77,7 +84,6 @@ typedef std::map<header_key_type, header_val_type> header_dict_type;
 
 // サーバのデフォルトのHTTPバージョン
 extern const t_version DEFAULT_HTTP_VERSION;
-extern const size_t MAX_REQLINE_END;
 const byte_string method_str(t_method method);
 const byte_string version_str(t_version version);
 const byte_string reason(t_status status);
