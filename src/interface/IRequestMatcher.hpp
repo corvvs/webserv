@@ -5,7 +5,7 @@
 struct RequestMatchingResult {
 
     typedef std::map<HTTP::t_status, HTTP::byte_string> status_dict_type;
-    enum ResultType { RT_FILE, RT_EXTERNAL_REDIRECTION, RT_CGI, RT_AUTO_INDEX };
+    enum ResultType { RT_FILE, RT_EXTERNAL_REDIRECTION, RT_CGI, RT_AUTO_INDEX, RT_ECHO };
 
     const RequestTarget *target;
 
