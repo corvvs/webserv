@@ -118,7 +118,7 @@ class HeaderHolderHTTP : public AHeaderHolder {
 public:
     // HTTPヘッダをCGIメタ変数に加工した辞書を返す
     // 同じキーの値はすべて ", " で連結する
-    joined_dict_type get_cgi_http_vars() const;
+    joined_dict_type get_cgi_meta_vars() const;
 };
 
 class HeaderHolderCGI : public AHeaderHolder {};

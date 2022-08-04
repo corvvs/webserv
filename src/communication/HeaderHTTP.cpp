@@ -73,7 +73,7 @@ const HeaderItem::value_list_type &HeaderItem::get_vals() const {
     return values;
 }
 
-// [HeaderHolderHTTP]
+// [AHeaderHolder]
 
 void AHeaderHolder::add_item(const light_string &key, const light_string &val) {
     // val の obs-foldを除去し, 全体を string に変換する.
@@ -142,7 +142,9 @@ AHeaderHolder::dict_type::size_type AHeaderHolder::get_dict_size() const {
     return dict.size();
 }
 
-HeaderHolderHTTP::joined_dict_type HeaderHolderHTTP::get_cgi_http_vars() const {
+// [HeaderHolderHTTP]
+
+HeaderHolderHTTP::joined_dict_type HeaderHolderHTTP::get_cgi_meta_vars() const {
     HeaderHolderHTTP::joined_dict_type d;
     for (dict_type::const_iterator it = dict.begin(); it != dict.end(); ++it) {
         header_key_type key = HTTP::strfy("HTTP_") + it->first;
