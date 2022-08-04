@@ -24,6 +24,10 @@ bool compare_entry_by_type(const AutoIndexer::Entry &s1, const AutoIndexer::Entr
 HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &requested_path) const {
     HTTP::byte_string str;
     HTTP::char_string s;
+    HTTP::byte_string basename = name;
+    if (is_dir) {
+        basename += HTTP::strfy("/");
+    }
     std::stringstream ss;
     str += HTTP::strfy("\t<tr class=\"file-entry\">\n");
     str += HTTP::strfy("\t\t<td class=\"name\">\n");
@@ -34,16 +38,13 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
         HTTP::byte_string relative_url;
         relative_url += HTTP::strfy("<a href=\"");
         relative_url += HTTP::strfy(requested_path);
-        if (requested_path.size() > 1) {
+        if (requested_path.size() > 1 && requested_path[requested_path.size() - 1] != '/') {
             relative_url += HTTP::strfy("/");
         }
-        relative_url += name;
+        relative_url += basename;
         relative_url += HTTP::strfy("\">");
         str += relative_url;
-        str += name;
-        if (is_dir) {
-            str += HTTP::strfy("/");
-        }
+        str += basename;
         str += HTTP::strfy("</a>");
         str += HTTP::strfy("\n");
         str += HTTP::strfy("\t\t</td>\n");
@@ -57,14 +58,7 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
 
         size_t mlen = 52;
         tm *tms     = localtime(&st_mtim.tv_sec);
-        VOUT(name);
-        VOUT(tms->tm_year);
-        VOUT(tms->tm_mon);
-        VOUT(tms->tm_mday);
-        VOUT(tms->tm_hour);
-        VOUT(tms->tm_min);
-        VOUT(tms->tm_sec);
-        char *tstr = (char *)malloc(sizeof(char) * (mlen + 1));
+        char *tstr  = (char *)malloc(sizeof(char) * (mlen + 1));
         if (tstr != NULL) {
             std::strftime(tstr, mlen, "%d-%m-%Y %H:%M:%S", tms);
             str += HTTP::strfy(tstr);
