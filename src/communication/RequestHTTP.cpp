@@ -752,7 +752,7 @@ RequestHTTP::byte_string RequestHTTP::get_body() const {
 }
 
 RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
-    return bytebuffer;
+    return RequestHTTP::byte_string(bytebuffer.begin(), bytebuffer.begin() + mid);
 }
 
 RequestHTTP::light_string RequestHTTP::freeze() {
@@ -768,8 +768,8 @@ bool RequestHTTP::should_keep_in_touch() const {
     return false;
 }
 
-RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_http_vars() const {
-    return header_holder.get_cgi_http_vars();
+RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars() const {
+    return header_holder.get_cgi_meta_vars();
 }
 
 const IRequestMatchingParam &RequestHTTP::get_request_mathing_param() const {

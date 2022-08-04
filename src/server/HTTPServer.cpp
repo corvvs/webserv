@@ -1,5 +1,15 @@
 #include "HTTPServer.hpp"
 
+RequestMatchingResult MockMatcher::request_match(const RequestHTTP &request) {
+    (void)request;
+    RequestMatchingResult result;
+    result.result_type       = RequestMatchingResult::RT_CGI;
+    result.path_local        = HTTP::strfy("./cgi.rb");
+    result.path_after        = HTTP::strfy("");
+    result.path_cgi_executor = HTTP::strfy("/usr/bin/ruby");
+    return result;
+}
+
 HTTPServer::HTTPServer(IObserver *observer) : socket_observer_(observer) {}
 
 HTTPServer::~HTTPServer() {
@@ -18,17 +28,23 @@ void HTTPServer::run() {
 }
 
 IOriginator *HTTPServer::route(const RequestHTTP &request) {
-    // 1. リクエストを見て, 要求されているリソースがなんなのかを特定する
-    // 2. ↑の特定結果をもとにオリジネータを作る
 
     (void)request;
-    {
-        CGI::byte_string script_path  = HTTP::strfy("./cgi.rb");
-        CGI::byte_string query_string = HTTP::strfy("");
-        CGI *o                        = new CGI(script_path, query_string, request);
-        return o;
-    }
-    // return new FileWriter(HTTP::strfy("./write_test"), request->get_plain_message());
+    // Connectionに紐づくserver群に対し, リクエストを渡してマッチングを要請.
+    // その結果を使ってここでオリジネータを生成する.
+    RequestMatchingResult result = mock_matcher.request_match(request);
+    // switch (result.result_type) {
+    //     case RequestMatchingResult::RT_CGI: {
+    //         CGI::byte_string query_string = HTTP::strfy("");
+    //         CGI *o                        = new CGI(result, request);
+    //         return o;
+    //     }
+    //     default:
+    //         break;
+    // }
+    // return new FileWriter(HTTP::strfy("./write_test"), request.get_plain_message());
     // return new FileReader("./hat.png");
-    // return new Echoer(*request);
+    return new AutoIndexer(HTTP::strfy("./"));
+    // return new Echoer();
+    return NULL;
 }

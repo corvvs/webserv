@@ -5,6 +5,11 @@
 #include "../communication/Channel.hpp"
 #include <map>
 
+class MockMatcher : public IRequestMatcher {
+public:
+    RequestMatchingResult request_match(const RequestHTTP &request);
+};
+
 // [サーバクラス]
 // [責務]
 // - TODO: confファイルを読み取り解釈すること
@@ -18,6 +23,8 @@ public:
 private:
     IObserver *socket_observer_;
     channel_map channels;
+
+    MockMatcher mock_matcher;
 
 public:
     HTTPServer(IObserver *observer);
