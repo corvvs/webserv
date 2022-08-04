@@ -203,17 +203,26 @@ RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const IReques
     return std::make_pair(resource_path, path_info);
 }
 
-RequestMatchingResult::status_dict_type get_error_page(const IRequestMatchingParam &rp,
-                                                       const config::Config &config) const {
+RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(const IRequestMatchingParam &rp,
+                                                                             const config::Config &config) const {
     const RequestTarget &target = rp.get_request_target();
     const std::string &path     = HTTP::restrfy(target.path.str());
 
     const std::map<int, std::string> error_pages = config.get_error_page(path);
     RequestMatchingResult::status_dict_type res;
-    for (const std::map<int, std::string>::const_iterator it = error_pages.begin(); it != error_pages.end(); ++it) {
+    for (std::map<int, std::string>::const_iterator it = error_pages.begin(); it != error_pages.end(); ++it) {
         res[static_cast<HTTP::t_status>(it->first)] = HTTP::strfy(it->second);
     }
     return res;
+}
+
+long RequestMatcher::get_client_max_body_size(const IRequestMatchingParam &rp,
+                                                                                 const config::Config &config) const {
+    const RequestTarget &target = rp.get_request_target();
+    const std::string &path     = HTTP::restrfy(target.path.str());
+
+    const long max_body_size = config.get_client_max_body_size(path);
+    return max_body_size;
 }
 
 // 対応するrootを後ろにくっつける + indexに対応するファイルを探す

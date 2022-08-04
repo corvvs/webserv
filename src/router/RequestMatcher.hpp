@@ -11,7 +11,8 @@ public:
     typedef std::pair<int, HTTP::byte_string> redirect_pair;
 
 public:
-    ~RequestMatcher() {}
+    RequestMatcher();
+    ~RequestMatcher();
 
     virtual RequestMatchingResult request_match(const std::vector<config::Config> &configs, const RequestHTTP &request);
 
