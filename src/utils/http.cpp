@@ -2,7 +2,6 @@
 #include <cstring>
 
 const HTTP::t_version HTTP::DEFAULT_HTTP_VERSION = V_1_1;
-const size_t HTTP::MAX_REQLINE_END               = 8192;
 
 const HTTP::byte_string HTTP::method_str(HTTP::t_method method) {
     switch (method) {
