@@ -7,7 +7,8 @@
 
 class MockMatcher : public IRequestMatcher {
 public:
-    RequestMatchingResult request_match(const RequestHTTP &request);
+    RequestMatchingResult request_match(const std::vector<config::Config> &configs,
+                                        const IRequestMatchingParam &request);
 };
 
 // [サーバクラス]

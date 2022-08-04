@@ -1,14 +1,24 @@
 #include "HTTPServer.hpp"
 
-RequestMatchingResult MockMatcher::request_match(const RequestHTTP &request) {
-    (void)request;
+RequestMatchingResult MockMatcher::request_match(const std::vector<config::Config> &configs,
+                                                 const IRequestMatchingParam &param) {
+    (void)configs;
     RequestMatchingResult result;
-    result.target = &request.get_request_mathing_param().get_request_target();
-    // result.result_type       = RequestMatchingResult::RT_CGI;
-    result.result_type       = RequestMatchingResult::RT_FILE;
-    result.path_local        = HTTP::strfy("./sender");
+    const HTTP::light_string &path  = param.get_request_target().path;
+    HTTP::light_string::size_type i = path.rfind(".rb");
+    if (i != HTTP::light_string::npos && i + strlen(".rb") == path.size()) {
+        result.result_type = RequestMatchingResult::RT_CGI;
+    } else if (path.size() > 0 && path[path.size() - 1] == '/') {
+        result.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+    } else {
+        result.result_type = RequestMatchingResult::RT_FILE;
+    }
+    result.target            = &param.get_request_target();
+    result.path_local        = HTTP::strfy(".") + param.get_request_target().path.str();
     result.path_after        = HTTP::strfy("");
     result.path_cgi_executor = HTTP::strfy("/usr/bin/ruby");
+    result.status_code       = HTTP::STATUS_MOVED_PERMANENTLY;
+    result.redirect_location = HTTP::strfy("/mmmmm");
     return result;
 }
 
@@ -34,19 +44,30 @@ IOriginator *HTTPServer::route(const RequestHTTP &request) {
     (void)request;
     // Connectionに紐づくserver群に対し, リクエストを渡してマッチングを要請.
     // その結果を使ってここでオリジネータを生成する.
-    RequestMatchingResult result = mock_matcher.request_match(request);
-    // switch (result.result_type) {
-    //     case RequestMatchingResult::RT_CGI: {
-    //         CGI::byte_string query_string = HTTP::strfy("");
-    //         CGI *o                        = new CGI(result, request);
-    //         return o;
-    //     }
-    //     default:
-    //         break;
-    // }
+    std::vector<config::Config> confs;
+    RequestMatchingResult result = mock_matcher.request_match(confs, request.get_request_matching_param());
+    switch (result.result_type) {
+        case RequestMatchingResult::RT_CGI: {
+            CGI::byte_string query_string = HTTP::strfy("");
+            CGI *o                        = new CGI(result, request);
+            return o;
+        }
+        case RequestMatchingResult::RT_AUTO_INDEX: {
+            return new AutoIndexer(result);
+        }
+        case RequestMatchingResult::RT_EXTERNAL_REDIRECTION: {
+            return new Redirector(result);
+        }
+        case RequestMatchingResult::RT_ECHO: {
+            return new Echoer(result);
+        }
+        case RequestMatchingResult::RT_FILE: {
+            return new FileReader(result);
+        }
+        default:
+            break;
+    }
     // return new FileWriter(HTTP::strfy("./write_test"), request.get_plain_message());
-    // return new FileReader("./hat.png");
-    return new AutoIndexer(result);
-    // return new Echoer();
+    // return new FileDeleter(result);
     return NULL;
 }

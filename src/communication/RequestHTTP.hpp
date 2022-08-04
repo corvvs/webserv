@@ -73,12 +73,12 @@ public:
 
     virtual ~ICGIConfigurationProvider() {}
 
-    virtual HTTP::t_version get_http_version() const                       = 0;
-    virtual HTTP::t_method get_method() const                              = 0;
-    virtual const IRequestMatchingParam &get_request_mathing_param() const = 0;
-    virtual header_holder_type::joined_dict_type get_cgi_meta_vars() const = 0;
-    virtual HTTP::byte_string get_content_type() const                     = 0;
-    virtual HTTP::byte_string get_body() const                             = 0;
+    virtual HTTP::t_version get_http_version() const                        = 0;
+    virtual HTTP::t_method get_method() const                               = 0;
+    virtual const IRequestMatchingParam &get_request_matching_param() const = 0;
+    virtual header_holder_type::joined_dict_type get_cgi_meta_vars() const  = 0;
+    virtual HTTP::byte_string get_content_type() const                      = 0;
+    virtual HTTP::byte_string get_body() const                              = 0;
 };
 
 // [HTTPリクエストクラス]

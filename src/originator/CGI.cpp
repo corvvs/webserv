@@ -28,7 +28,7 @@ CGI::Attribute::Attribute(const RequestMatchingResult &matching_result,
     : configuration_provider_(configuration_provider)
     , executor_path_(matching_result.path_cgi_executor)
     , script_path_(matching_result.path_local)
-    , query_string_(configuration_provider.get_request_mathing_param().get_request_target().query.str())
+    , query_string_(configuration_provider.get_request_matching_param().get_request_target().query.str())
     , observer(NULL)
     , master(NULL)
     , cgi_pid(0)
