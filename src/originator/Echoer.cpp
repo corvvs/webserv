@@ -1,6 +1,8 @@
 #include "Echoer.hpp"
 
-Echoer::Echoer() : originated_(false) {}
+Echoer::Echoer(const RequestMatchingResult &match_result) : originated_(false) {
+    (void)match_result;
+}
 
 void Echoer::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     (void)observer;

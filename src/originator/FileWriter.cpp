@@ -3,8 +3,11 @@
 #define WRITE_SIZE 1024
 #define NON_FD -1
 
-FileWriter::FileWriter(const byte_string &file_path, const byte_string &content_to_write)
-    : file_path_(HTTP::restrfy(file_path)), content_to_write_(content_to_write), originated_(false), fd_(NON_FD) {}
+FileWriter::FileWriter(const RequestMatchingResult &match_result, const byte_string &content_to_write)
+    : file_path_(HTTP::restrfy(match_result.path_local))
+    , content_to_write_(content_to_write)
+    , originated_(false)
+    , fd_(NON_FD) {}
 
 FileWriter::~FileWriter() {
     close_if_needed();
@@ -92,6 +95,7 @@ void FileWriter::leave() {
 }
 
 ResponseHTTP *FileWriter::respond(const RequestHTTP &request) {
+    response_data.determine_sending_mode();
     ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
     res->start();
     return res;

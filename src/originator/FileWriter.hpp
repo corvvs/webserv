@@ -23,7 +23,7 @@ private:
     void close_if_needed();
 
 public:
-    FileWriter(const byte_string &file_path, const byte_string &content_to_write_);
+    FileWriter(const RequestMatchingResult &match_result, const byte_string &content_to_write_);
     ~FileWriter();
 
     void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);

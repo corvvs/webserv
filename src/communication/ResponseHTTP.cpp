@@ -17,6 +17,7 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
 ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error)
     : version_(version), status_(error.get_status()), is_error_(true), sent_size(0), data_consumer_(NULL) {
     local_datalist.inject("", 0, true);
+    local_datalist.determine_sending_mode();
 }
 
 ResponseHTTP::~ResponseHTTP() {

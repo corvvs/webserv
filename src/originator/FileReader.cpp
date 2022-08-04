@@ -2,7 +2,8 @@
 #include <unistd.h>
 #define READ_SIZE 1024
 
-FileReader::FileReader(const byte_string &path) : file_path_(HTTP::restrfy(path)), originated_(false), fd_(-1) {}
+FileReader::FileReader(const RequestMatchingResult &match_result)
+    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), fd_(-1) {}
 FileReader::FileReader(const char_string &path) : file_path_(path), originated_(false), fd_(-1) {}
 
 FileReader::~FileReader() {

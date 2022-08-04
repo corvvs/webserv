@@ -1,10 +1,7 @@
 #ifndef FILEREADER_HPP
 #define FILEREADER_HPP
+#include "../Interfaces.hpp"
 #include "../communication/RequestHTTP.hpp"
-#include "../interface/IObserver.hpp"
-#include "../interface/IOriginator.hpp"
-#include "../interface/IRouter.hpp"
-#include "../interface/ISocketLike.hpp"
 #include "../utils/http.hpp"
 #include <fstream>
 #include <map>
@@ -27,7 +24,7 @@ private:
     void close_if_needed();
 
 public:
-    FileReader(const byte_string &file_path);
+    FileReader(const RequestMatchingResult &match_result);
     FileReader(const char_string &file_path);
     ~FileReader();
 

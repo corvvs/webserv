@@ -1,10 +1,7 @@
 #ifndef ECHOER_HPP
 #define ECHOER_HPP
+#include "../Interfaces.hpp"
 #include "../communication/RequestHTTP.hpp"
-#include "../interface/IObserver.hpp"
-#include "../interface/IOriginator.hpp"
-#include "../interface/IRouter.hpp"
-#include "../interface/ISocketLike.hpp"
 #include "../socket/SocketUNIX.hpp"
 #include "../utils/http.hpp"
 #include <fstream>
@@ -25,7 +22,7 @@ private:
     ResponseDataList response_data;
 
 public:
-    Echoer();
+    Echoer(const RequestMatchingResult &match_result);
 
     void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
     void inject_socketlike(ISocketLike *socket_like);
