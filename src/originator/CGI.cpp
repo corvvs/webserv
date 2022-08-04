@@ -757,10 +757,10 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
         }
     }
     ResponseHTTP res(request.get_http_version(), response_status, &headers, &status.response_data);
-    res.start();
 
     // 例外安全のための copy and swap
     ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, NULL);
     ResponseHTTP::swap(res, *r);
+    r->start();
     return r;
 }
