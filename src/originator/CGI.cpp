@@ -23,8 +23,16 @@ CGI::ParserStatus::ParserStatus() : parse_progress(PP_HEADER_SECTION_END), start
 
 CGI::Status::Status() : is_started(false), to_script_content_sent_(0), is_responsive(false), is_complete(false) {}
 
-CGI::Attribute::Attribute(const CGI::byte_string &script_path, const CGI::byte_string &query_string)
-    : script_path_(script_path), query_string_(query_string), observer(NULL), master(NULL), cgi_pid(0), sock(NULL) {}
+CGI::Attribute::Attribute(const RequestMatchingResult &matching_result,
+                          const ICGIConfigurationProvider &configuration_provider)
+    : configuration_provider_(configuration_provider)
+    , executor_path_(matching_result.path_cgi_executor)
+    , script_path_(matching_result.path_local)
+    , query_string_(configuration_provider.get_request_mathing_param().get_request_target().query.str())
+    , observer(NULL)
+    , master(NULL)
+    , cgi_pid(0)
+    , sock(NULL) {}
 
 const CGI::byte_string CGI::META_GATEWAY_INTERFACE = HTTP::strfy("GATEWAY_INTERFACE");
 const CGI::byte_string CGI::META_REQUEST_METHOD    = HTTP::strfy("REQUEST_METHOD");
@@ -33,17 +41,16 @@ const CGI::byte_string CGI::META_CONTENT_TYPE      = HTTP::strfy("CONTENT_TYPE")
 const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
 const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
 
-CGI::CGI(const byte_string &script_path, const byte_string &query_string, const RequestHTTP &request)
-    : attr(Attribute(script_path, query_string))
-    , metavar_(request.get_cgi_http_vars())
+CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
+    : attr(Attribute(match_result, request))
+    , metavar_(request.get_cgi_meta_vars())
     , to_script_content_length_(0)
     , mid(0) {
     ps.start_of_header               = 0;
     metavar_[META_GATEWAY_INTERFACE] = HTTP::strfy("CGI/1.1");
-    metavar_[META_REQUEST_METHOD]    = HTTP::method_str(request.get_method());
-    metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(request.get_http_version());
-    metavar_[META_CONTENT_TYPE]      = request.get_content_type();
-    set_content(request.get_plain_message());
+    metavar_[META_REQUEST_METHOD]    = HTTP::method_str(attr.configuration_provider_.get_method());
+    metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(attr.configuration_provider_.get_http_version());
+    metavar_[META_CONTENT_TYPE]      = attr.configuration_provider_.get_content_type();
 }
 
 CGI::~CGI() {
@@ -52,20 +59,19 @@ CGI::~CGI() {
         ::kill(attr.cgi_pid, SIGKILL);
         int wstatus;
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
-        VOUT(pid);
+        // VOUT(pid);
         assert(pid > 0);
-        VOUT(WIFEXITED(wstatus));
-        VOUT(WEXITSTATUS(wstatus));
-        VOUT(WIFSIGNALED(wstatus));
-        VOUT(WTERMSIG(wstatus));
+        // VOUT(WIFEXITED(wstatus));
+        // VOUT(WEXITSTATUS(wstatus));
+        // VOUT(WIFSIGNALED(wstatus));
+        // VOUT(WTERMSIG(wstatus));
         attr.cgi_pid = 0;
     }
     delete attr.sock;
-    DXOUT("DESTROYED: " << this);
+    // DXOUT("DESTROYED: " << this);
 }
 
 void CGI::inject_socketlike(ISocketLike *socket_like) {
-    VOUT(socket_like);
     attr.master                = socket_like;
     metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port(), 10);
 }
@@ -99,6 +105,7 @@ void CGI::check_executable() const {
 
 void CGI::start_origination(IObserver &observer) {
     check_executable();
+    set_content(attr.configuration_provider_.get_body());
 
     std::pair<SocketUNIX *, t_fd> socks = SocketUNIX::socket_pair();
     socks.first->set_nonblock();
@@ -116,7 +123,7 @@ void CGI::start_origination(IObserver &observer) {
         // child: CGI process
         delete socks.first;
         // 引数の準備
-        char **argv = flatten_argv(attr.script_path_);
+        char **argv = flatten_argv(attr.executor_path_, attr.script_path_);
         if (argv == NULL) {
             exit(1);
         }
@@ -250,8 +257,9 @@ IResponseDataProducer &CGI::response_data_producer() {
 void CGI::set_content(const byte_string &content) {
     to_script_content_        = content;
     to_script_content_length_ = content.size();
-    VOUT(to_script_content_length_);
-    BVOUT(to_script_content_);
+    const byte_string val
+        = to_script_content_length_ > 0 ? ParserHelper::utos(to_script_content_length_, 10) : HTTP::strfy("");
+    metavar_[META_CONTENT_LENGTH] = val;
 }
 
 CGI::metavar_dict_type CGI::make_metavars_from_envp(char **envp) {
@@ -627,7 +635,6 @@ void CGI::RoutingParameters::determine_body_size(const header_holder_type &holde
     //
     // ということで, サイズは事前に決められない.
 
-    // むしろ, CGIヘッダに content-length: がある場合, それを破棄する必要がありそう.
     (void)holder;
 }
 

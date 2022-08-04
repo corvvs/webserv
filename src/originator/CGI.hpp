@@ -43,6 +43,8 @@ public:
     typedef HeaderHolderCGI header_holder_type;
 
     struct Attribute {
+        const ICGIConfigurationProvider &configuration_provider_;
+        const byte_string executor_path_;
         const byte_string script_path_;
         const byte_string query_string_;
         IObserver *observer;
@@ -52,7 +54,8 @@ public:
         // CGIスクリプトプロセスとの通信に使うUNIXドメインソケットオブジェクト
         SocketUNIX *sock;
 
-        Attribute(const byte_string &script_path, const byte_string &query_string);
+        Attribute(const RequestMatchingResult &matching_result,
+                  const ICGIConfigurationProvider &configuration_provider);
     };
 
     struct Status {
@@ -121,7 +124,7 @@ private:
     // [CGIヘッダ]
     header_holder_type from_script_header_holder;
 
-    static char **flatten_argv(const byte_string &script_path);
+    static char **flatten_argv(const byte_string &executor_path, const byte_string &script_path);
     static char **flatten_metavar(const metavar_dict_type &metavar);
 
     IResponseDataProducer &response_data_producer();
