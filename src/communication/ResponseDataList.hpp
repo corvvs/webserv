@@ -92,6 +92,8 @@ public:
 
     // 長さ n のデータを注入
     void inject(const char *src, size_t n, bool is_completed);
+    void inject(const HTTP::byte_string &src, bool is_completed);
+    void inject(const HTTP::light_string &src, bool is_completed);
 
     // 閉じたバケットをバイト列(HTTPレスポンスとして送信できる形式)にシリアライズ
 private:

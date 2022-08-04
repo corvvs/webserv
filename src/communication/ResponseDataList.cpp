@@ -26,6 +26,14 @@ void ResponseDataList::inject(const char *src, size_t n, bool is_completed) {
     }
 }
 
+void ResponseDataList::inject(const HTTP::byte_string &src, bool is_completed) {
+    inject(&src.front(), src.size(), is_completed);
+}
+
+void ResponseDataList::inject(const HTTP::light_string &src, bool is_completed) {
+    inject(&src[0], src.size(), is_completed);
+}
+
 bool ResponseDataList::is_injection_closed() const {
     return is_all_serialized() || list.back().is_completed;
 }
