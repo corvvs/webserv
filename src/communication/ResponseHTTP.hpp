@@ -16,6 +16,7 @@ public:
     typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
     typedef HTTP::header_dict_type header_dict_type;
+    typedef std::vector<HTTP::header_kvpair_type> header_list_type;
 
 private:
     HTTP::t_version version_;
@@ -23,7 +24,7 @@ private:
     bool is_error_;
     // 送信済みマーカー
     size_t sent_size;
-    std::vector<HTTP::header_kvpair_type> header_list;
+    header_list_type header_list;
     header_dict_type header_dict;
     byte_string body;
     byte_string message_text;
@@ -35,7 +36,10 @@ private:
 
 public:
     // 通常(エラーでない)応答を構築する
-    ResponseHTTP(HTTP::t_version version, HTTP::t_status status, IResponseDataConsumer *data_consumer);
+    ResponseHTTP(HTTP::t_version version,
+                 HTTP::t_status status,
+                 const header_list_type *headers,
+                 IResponseDataConsumer *data_consumer);
     // エラー応答を構築する
     ResponseHTTP(HTTP::t_version version, http_error error);
 

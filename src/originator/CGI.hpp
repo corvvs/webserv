@@ -109,7 +109,6 @@ private:
     metavar_dict_type metavar_;
     size_type to_script_content_length_;
     byte_string to_script_content_;
-    byte_string from_script_content_;
 
     // bool is_disconnected;
     byte_string bytebuffer;
@@ -155,7 +154,7 @@ private:
     void check_cgi_response_consistensy();
 
 public:
-    CGI(const byte_string &script_path, const byte_string &query_string, const RequestHTTP &request);
+    CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request);
     ~CGI();
 
     // CGIスクリプトに送信するためのデータを投入する

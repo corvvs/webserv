@@ -89,7 +89,20 @@ void FileReader::leave() {
 }
 
 ResponseHTTP *FileReader::respond(const RequestHTTP &request) {
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &response_data);
+    ResponseHTTP::header_list_type headers;
+    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    switch (sm) {
+        case ResponseDataList::SM_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+            break;
+        case ResponseDataList::SM_NOT_CHUNKED:
+            headers.push_back(
+                std::make_pair(HeaderHTTP::content_length, ParserHelper::utos(response_data.current_total_size(), 10)));
+            break;
+        default:
+            break;
+    }
+    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &headers, &response_data);
     res->start();
     return res;
 }

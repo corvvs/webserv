@@ -92,7 +92,7 @@ void FileWriter::leave() {
 }
 
 ResponseHTTP *FileWriter::respond(const RequestHTTP &request) {
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
     res->start();
     return res;
 }

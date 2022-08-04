@@ -690,49 +690,67 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
-    ResponseHTTP res(request.get_http_version(), HTTP::STATUS_OK, &status.response_data);
     CGI::t_cgi_response_type response_type = rp.get_response_type();
+    HTTP::t_status response_status         = HTTP::STATUS_OK;
     VOUT(response_type);
     VOUT(rp.status.code);
-
     switch (response_type) {
         case CGIRES_DOCUMENT:
             // ドキュメント応答
             if (rp.status.code == HTTP::STATUS_UNSPECIFIED) {
-                res.set_status(HTTP::STATUS_OK);
+                response_status = HTTP::STATUS_OK;
             } else {
-                res.set_status((HTTP::t_status)rp.status.code);
+                response_status = (HTTP::t_status)rp.status.code;
             }
             break;
         case CGIRES_REDIRECT_CLIENT:
             // クライアントリダイレクト
-            res.set_status(HTTP::STATUS_FOUND);
+            response_status = HTTP::STATUS_FOUND;
             break;
         case CGIRES_REDIRECT_CLIENT_DOCUMENT:
             // クライアントリダイレクト ドキュメント付き
-            res.set_status((HTTP::t_status)rp.status.code);
+            response_status = (HTTP::t_status)rp.status.code;
             break;
         default:
             assert(false);
     }
 
-    // 本文がある場合は Transfer-Encoding をセット
+    ResponseHTTP::header_list_type headers;
 
-    // 本文がある場合は Content-Type をセット
+    // [伝送に関する決め事]
+    // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
+    // それはそうとして, chunkedで送るか, そうでないかを決める
+    // chunkedでない場合, Content-Length: を与える
+    // 本文がある場合は Content-Type: をセット
     // (なければ何もセットしない)
-    if (response_type == CGIRES_DOCUMENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT) {
-        if (from_script_content_.size() > 0) {
+    IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
+    const bool must_have_body = response_type == CGIRES_DOCUMENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
+    if (must_have_body) {
+        VOUT(status.response_data.current_total_size());
+        if (status.response_data.current_total_size() > 0) {
             const HeaderHolderCGI::header_val_type *val
                 = from_script_header_holder.get_back_val(HeaderHTTP::content_type);
             if (val) {
-                res.feed_header(HeaderHTTP::content_type, *val);
+                headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
             }
         }
+        switch (sm) {
+            case ResponseDataList::SM_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+                break;
+            case ResponseDataList::SM_NOT_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::content_length,
+                                                 ParserHelper::utos(status.response_data.current_total_size(), 10)));
+                break;
+            default:
+                break;
+        }
     }
+    ResponseHTTP res(request.get_http_version(), response_status, &headers, &status.response_data);
     res.start();
 
     // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL);
+    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, NULL);
     ResponseHTTP::swap(res, *r);
     return r;
 }
