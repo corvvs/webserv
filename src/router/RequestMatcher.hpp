@@ -1,8 +1,8 @@
 #ifndef REQUESTMATCHER_HPP
 #define REQUESTMATCHER_HPP
 #include "../config/Config.hpp"
+#include "../interface/IRequestMatcher.hpp"
 #include "../utils/LightString.hpp"
-#include "IRequestMatcher.hpp"
 
 class RequestMatcher : public IRequestMatcher {
 public:
