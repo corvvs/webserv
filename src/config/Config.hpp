@@ -39,6 +39,7 @@ public:
     std::string get_host() const;
     int get_port() const;
     bool get_default_server() const;
+    std::vector<std::string> get_server_name() const;
 
     bool get_autoindex(const std::string &target) const;
     std::map<int, std::string> get_error_page(const std::string &target) const;
@@ -46,7 +47,6 @@ public:
     std::string get_root(const std::string &target) const;
     long get_client_max_body_size(const std::string &target) const;
     std::pair<int, std::string> get_redirect(const std::string &target) const;
-    std::vector<std::string> get_server_name(const std::string &target) const;
     std::string get_upload_store(const std::string &target) const;
     std::set<enum Methods> get_limit_except(const std::string &target) const;
     bool get_exec_cgi(const std::string &target) const;

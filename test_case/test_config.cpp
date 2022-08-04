@@ -80,9 +80,8 @@ TEST_F(ConfigBasedOnFile, GetHost) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target = "/";
-    const std::string host   = "0.0.0.0";
-    EXPECT_EQ(host, conf.get_host(target));
+    const std::string host = "0.0.0.0";
+    EXPECT_EQ(host, conf.get_host());
 }
 
 TEST_F(ConfigBasedOnFile, GetPort) {
@@ -90,9 +89,8 @@ TEST_F(ConfigBasedOnFile, GetPort) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target = "/";
-    const int port           = 80;
-    EXPECT_EQ(port, conf.get_port(target));
+    const int port = 80;
+    EXPECT_EQ(port, conf.get_port());
 }
 
 TEST_F(ConfigBasedOnFile, GetRedirect) {
@@ -110,10 +108,9 @@ TEST_F(ConfigBasedOnFile, GetServerName) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target = "/";
     std::vector<std::string> server_name;
     server_name.push_back("server1");
-    EXPECT_EQ(server_name, conf.get_server_name(target));
+    EXPECT_EQ(server_name, conf.get_server_name());
 }
 
 TEST_F(ConfigBasedOnFile, GetUploadStore) {
@@ -133,7 +130,7 @@ TEST_F(ConfigBasedOnFile, GetDefaultServer) {
 
     const std::string target  = "/";
     const bool default_server = false;
-    EXPECT_EQ(default_server, conf.get_default_server(target));
+    EXPECT_EQ(default_server, conf.get_default_server());
 }
 
 TEST_F(ConfigBasedOnFile, GetLimitExcept) {
@@ -220,31 +217,29 @@ TEST_F(ConfigBasedOnFile, GetClientMaxBodySizeFromMixContext) {
 
 TEST_F(ConfigBasedOnFile, GetHostFromMixContext) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
-    const std::string target = "/";
     {
         const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ("127.0.0.1", conf.get_host(target));
+        EXPECT_EQ("127.0.0.1", conf.get_host());
     }
     {
         const config::host_port_pair hp = std::make_pair("1.1.1.1", 81);
         const config::Config conf       = configs[hp].back();
-        EXPECT_EQ("1.1.1.1", conf.get_host(target));
+        EXPECT_EQ("1.1.1.1", conf.get_host());
     }
 }
 
 TEST_F(ConfigBasedOnFile, GetPortFromMixContext) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
-    const std::string target = "/";
     {
         const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(80, conf.get_port(target));
+        EXPECT_EQ(80, conf.get_port());
     }
     {
         const config::host_port_pair hp = std::make_pair("1.1.1.1", 81);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(81, conf.get_port(target));
+        EXPECT_EQ(81, conf.get_port());
     }
 }
 
@@ -266,8 +261,7 @@ TEST_F(ConfigBasedOnFile, GetServerNameFromMixContext) {
 
     std::vector<std::string> server_name;
     server_name.push_back("server");
-    EXPECT_EQ(server_name, conf.get_server_name("/"));
-    EXPECT_EQ(server_name, conf.get_server_name("/dir1"));
+    EXPECT_EQ(server_name, conf.get_server_name());
 }
 
 TEST_F(ConfigBasedOnFile, GetUploadStoreFromMixContext) {
@@ -283,17 +277,17 @@ TEST_F(ConfigBasedOnFile, GetUploadStoreFromMixContext) {
 
 TEST_F(ConfigBasedOnFile, GetDefaultServerFromMixContext) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
-    const std::string target = "/";
     {
         const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(false, conf.get_default_server(target));
+        EXPECT_EQ(80, conf.get_port());
+        EXPECT_EQ(false, conf.get_default_server());
     }
     {
         const config::host_port_pair hp = std::make_pair("1.1.1.1", 81);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(81, conf.get_port(target));
-        EXPECT_EQ(true, conf.get_default_server(target));
+        EXPECT_EQ(81, conf.get_port());
+        EXPECT_EQ(true, conf.get_default_server());
     }
 }
 

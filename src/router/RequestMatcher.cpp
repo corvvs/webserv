@@ -18,49 +18,67 @@ RequestMatcher::~RequestMatcher() {}
  * - [x] rootを連結して適切なリソースへのパスを生成する
  */
 RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Config> &configs,
-                                                    const RequestHTTP &request) {
+                                                    const IRequestMatchingParam &rp) {
+
+    const config::Config &config = get_config(configs, rp);
+
+    // ルーティングできるかのバリデーションを行う
+    check_routable(rp, config);
+
     RequestMatchingResult res;
-    const config::Config &config = get_config(configs, request.get_request_matching_param());
-
-    // 対応しているschemeか(この課題では `http` のみ)
-    if (!is_valid_scheme(request.get_request_matching_param())) {
-        throw http_error("not valid scheme", HTTP::STATUS_NOT_FOUND);
-    }
-    // 対応しているリクエストメソッドか(locationによっても異なる)
-    if (is_valid_request_method(request.get_request_matching_param(), config)) {
-        throw http_error("not valid scheme", HTTP::STATUS_NOT_FOUND);
-    }
-    // URIターゲットが適切か
-    if (is_valid_path(request.get_request_matching_param())) {
-        throw http_error("not valid scheme", HTTP::STATUS_NOT_FOUND);
-    }
-    res.client_max_body_size = get_client_max_body_size(request.get_request_matching_param(), config);
-    res.status_page_dict     = get_status_page_dict(request.get_request_matching_param(), config);
-
     // リダイレクトが行われるか
-    if (is_redirect(request.get_request_matching_param(), config)) {
-        res.redirect = get_redirect(request.get_request_matching_param(), config);
+    if (is_redirect(rp, config)) {
+        res.redirect = get_redirect(rp, config);
         return res;
     }
+    res.client_max_body_size = get_client_max_body_size(rp, config);
+    res.status_page_dict     = get_status_page_dict(rp, config);
 
-    // CGIか
-    if (is_cgi(request.get_request_matching_param(), config)) {
-        // TODO: 関数にする
-        cgi_resource_pair cgi_resource;
-        cgi_resource          = get_cgi_resource(request.get_request_matching_param());
-        res.path_local        = cgi_resource.first;
-        res.path_after        = cgi_resource.second;
-        res.path_cgi_executor = get_path_cgi_executor(request.get_request_matching_param(), config, res.path_local);
-        res.is_cgi            = true;
-    } else {
-        // 通常の処理
-        // rootをつなげる
-        HTTP::byte_string path = make_resource_path(request.get_request_matching_param(), config);
-        if (path.empty()) {
-            throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
-        }
+    if (is_cgi(rp, config)) {
+        return routing_cgi(res, rp, config);
     }
+    return routing_default(res, rp, config);
+}
+
+RequestMatchingResult
+RequestMatcher::routing_cgi(RequestMatchingResult res, const IRequestMatchingParam &rp, const config::Config &conf) {
+    cgi_resource_pair resource;
+    resource              = get_cgi_resource(rp);
+    res.path_local        = resource.first;
+    res.path_after        = resource.second;
+    res.path_cgi_executor = get_path_cgi_executor(rp, conf, res.path_local);
+    res.is_cgi            = true;
     return res;
+}
+
+RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
+                                                      const IRequestMatchingParam &rp,
+                                                      const config::Config &conf) {
+    // rootをつなげる
+    HTTP::byte_string path = make_resource_path(rp, conf);
+    if (path.empty()) {
+        throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+    }
+    res.path_local    = path;
+    res.is_executable = is_method_executable(rp, conf);
+    return res;
+}
+
+bool RequestMatcher::is_method_executable(const IRequestMatchingParam &rp, const config::Config &conf) {
+    const RequestTarget &target  = rp.get_request_target();
+    const std::string &path      = HTTP::restrfy(target.path.str());
+    const HTTP::t_method &method = rp.get_http_method();
+
+    switch (method) {
+        case HTTP::METHOD_GET:
+            return true;
+        case HTTP::METHOD_POST:
+            return conf.get_upload_store(path) != "";
+        case HTTP::METHOD_DELETE:
+            return conf.get_exec_delete(path);
+        default:;
+    }
+    return false;
 }
 
 // hostから利用するconfigを探す
@@ -86,23 +104,28 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
     return configs.front();
 }
 
-bool RequestMatcher::is_valid_scheme(const IRequestMatchingParam &rp) {
+void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config conf) {
     const RequestTarget &target = rp.get_request_target();
-    const light_string &scheme  = target.scheme;
 
-    return scheme == "http" || scheme == "https";
+    // 対応しているschemeか(この課題では `http` のみ)
+    if (!is_valid_scheme(target)) {
+        throw http_error("invalid scheme", HTTP::STATUS_BAD_REQUEST);
+    }
+    // パスが不正ではないか
+    if (is_valid_path(target)) {
+        throw http_error("invalid url target", HTTP::STATUS_BAD_REQUEST);
+    }
+    // 対応しているリクエストメソッドか
+    if (is_valid_request_method(target, rp.get_http_method(), conf)) {
+        throw http_error("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
+    }
 }
 
-bool RequestMatcher::is_redirect(const IRequestMatchingParam &rp, const config::Config &config) {
-    const RequestTarget &target = rp.get_request_target();
-    const std::string &path     = HTTP::restrfy(target.path.str());
-
-    std::pair<int, std::string> p = config.get_redirect(path);
-    return p.first != -1;
+bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {
+    return target.scheme == "http";
 }
 
-bool RequestMatcher::is_valid_path(const IRequestMatchingParam &rp) {
-    const RequestTarget &target               = rp.get_request_target();
+bool RequestMatcher::is_valid_path(const RequestTarget &target) {
     const std::vector<light_string> &splitted = target.path.split("/");
 
     int depth = 0;
@@ -119,9 +142,9 @@ bool RequestMatcher::is_valid_path(const IRequestMatchingParam &rp) {
     return true;
 }
 
-bool RequestMatcher::is_valid_request_method(const IRequestMatchingParam &rp, const config::Config &config) {
-    const HTTP::t_method &method              = rp.get_http_method();
-    const RequestTarget &target               = rp.get_request_target();
+bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
+                                             const HTTP::t_method &method,
+                                             const config::Config &config) {
     const std::string &path                   = HTTP::restrfy(target.path.str());
     const std::set<enum config::Methods> &lmt = config.get_limit_except(path);
 
@@ -134,9 +157,7 @@ bool RequestMatcher::is_valid_request_method(const IRequestMatchingParam &rp, co
             break;
         case HTTP::METHOD_DELETE:
             if (lmt.find(config::DELETE) != lmt.end()) {
-                if (config.get_exec_delete(path)) {
-                    return true;
-                }
+                return true;
             }
             break;
         case HTTP::METHOD_POST:
@@ -149,6 +170,14 @@ bool RequestMatcher::is_valid_request_method(const IRequestMatchingParam &rp, co
     }
     // メソッドが正しい かつ 制限がかかっていない場合は true を返す
     return lmt.empty();
+}
+
+bool RequestMatcher::is_redirect(const IRequestMatchingParam &rp, const config::Config &config) {
+    const RequestTarget &target = rp.get_request_target();
+    const std::string &path     = HTTP::restrfy(target.path.str());
+
+    std::pair<int, std::string> p = config.get_redirect(path);
+    return p.first != -1;
 }
 
 bool RequestMatcher::is_cgi(const IRequestMatchingParam &rp, const config::Config &config) {
@@ -216,8 +245,7 @@ RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(con
     return res;
 }
 
-long RequestMatcher::get_client_max_body_size(const IRequestMatchingParam &rp,
-                                                                                 const config::Config &config) const {
+long RequestMatcher::get_client_max_body_size(const IRequestMatchingParam &rp, const config::Config &config) const {
     const RequestTarget &target = rp.get_request_target();
     const std::string &path     = HTTP::restrfy(target.path.str());
 
@@ -232,8 +260,8 @@ HTTP::byte_string RequestMatcher::make_resource_path(const IRequestMatchingParam
     const RequestTarget &target = rp.get_request_target();
     const std::string &path     = HTTP::restrfy(target.path.str());
 
-    std::string root                 = config.get_root(path);
-    std::string resource_path        = root + path;
+    const std::string root           = config.get_root(path);
+    const std::string resource_path  = root + path;
     std::vector<std::string> indexes = config.get_index(path);
 
     for (std::vector<std::string>::iterator it = indexes.begin(); it != indexes.end(); ++it) {

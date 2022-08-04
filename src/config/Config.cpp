@@ -53,6 +53,10 @@ int Config::get_port() const {
     return host_port_.second;
 }
 
+std::vector<std::string> Config::get_server_name() const {
+    return ctx_server_.server_names;
+}
+
 std::pair<int, std::string> Config::get_redirect(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.redirect;
@@ -61,11 +65,6 @@ std::pair<int, std::string> Config::get_redirect(const std::string &target) cons
 std::set<enum Methods> Config::get_limit_except(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.limit_except.allowed_methods;
-}
-
-std::vector<std::string> Config::get_server_name(const std::string &target) const {
-    (void)target;
-    return ctx_server_.server_names;
 }
 
 std::string Config::get_upload_store(const std::string &target) const {

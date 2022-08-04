@@ -17,6 +17,9 @@ struct RequestMatchingResult {
     bool is_redirect;
     std::pair<int, HTTP::byte_string> redirect;
 
+    // メソッドが実行できるか(できない場合はgetとして扱う)
+    bool is_executable;
+
     // リクエストターゲットにマッチしたローカルファイルのパス
     // CGIでいう`SCRIPT_NAME`に相当
     HTTP::byte_string path_local;
@@ -38,7 +41,8 @@ class IRequestMatcher {
 public:
     ~IRequestMatcher() {}
 
-    virtual RequestMatchingResult request_match(const std::vector<config::Config> &configs, const RequestHTTP &request)
+    virtual RequestMatchingResult request_match(const std::vector<config::Config> &configs,
+                                                const IRequestMatchingParam &rp)
         = 0;
 };
 
