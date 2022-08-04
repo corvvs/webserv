@@ -261,7 +261,7 @@ public:
     bool should_keep_in_touch() const;
 
     header_holder_type::joined_dict_type get_cgi_meta_vars() const;
-    const IRequestMatchingParam &get_request_mathing_param() const;
+    const IRequestMatchingParam &get_request_matching_param() const;
 };
 
 #endif

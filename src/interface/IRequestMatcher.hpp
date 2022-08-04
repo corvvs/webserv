@@ -1,6 +1,10 @@
 #ifndef IREQUESTMATCHER_HPP
 #define IREQUESTMATCHER_HPP
 #include "../communication/RequestHTTP.hpp"
+#include "../config/Config.hpp"
+#include "../utils/LightString.hpp"
+#include "../utils/http.hpp"
+#include <map>
 
 struct RequestMatchingResult {
 
@@ -11,6 +15,15 @@ struct RequestMatchingResult {
 
     // 種別
     ResultType result_type;
+
+    bool is_cgi;
+    bool is_autoindex;
+    bool is_redirect;
+
+    std::pair<int, HTTP::byte_string> redirect;
+
+    // メソッドが実行できるか(できない場合はgetとして扱う)
+    bool is_executable;
 
     // リクエストターゲットにマッチしたローカルファイルのパス
     // CGIでいう`SCRIPT_NAME`に相当
@@ -35,13 +48,16 @@ struct RequestMatchingResult {
 
     // confから決まる「HTTPリクエストのボディのサイズ上限」
     HTTP::byte_string::size_type max_body_size;
-};
 
+    long client_max_body_size;
+};
 class IRequestMatcher {
 public:
     ~IRequestMatcher() {}
 
-    virtual RequestMatchingResult request_match(const RequestHTTP &request) = 0;
+    virtual RequestMatchingResult request_match(const std::vector<config::Config> &configs,
+                                                const IRequestMatchingParam &rp)
+        = 0;
 };
 
 #endif
