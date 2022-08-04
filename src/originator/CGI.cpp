@@ -189,18 +189,21 @@ void CGI::capture_script_termination() {
     }
 }
 
-char **CGI::flatten_argv(const byte_string &script_path) {
-    size_t n     = 2;
+char **CGI::flatten_argv(const byte_string &executor_path, const byte_string &script_path) {
+    size_t n     = 3;
     char **frame = (char **)malloc(sizeof(char *) * n);
     if (frame == NULL) {
         return frame;
     }
-    frame[0] = strdup(HTTP::restrfy(script_path).c_str());
-    if (frame[0] == NULL) {
+    frame[0] = strdup(HTTP::restrfy(executor_path).c_str());
+    frame[1] = strdup(HTTP::restrfy(script_path).c_str());
+    if (frame[0] == NULL || frame[1] == NULL) {
+        free(frame[0]);
+        free(frame[1]);
         free(frame);
         return NULL;
     }
-    frame[1] = NULL;
+    frame[2] = NULL;
     return frame;
 }
 
