@@ -769,7 +769,7 @@ bool RequestHTTP::should_keep_in_touch() const {
 }
 
 RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars() const {
-    return header_holder.get_cgi_meta_vars();
+    return header_holder.get_cgi_http_vars();
 }
 
 const IRequestMatchingParam &RequestHTTP::get_request_mathing_param() const {

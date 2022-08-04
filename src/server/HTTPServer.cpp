@@ -44,7 +44,7 @@ IOriginator *HTTPServer::route(const RequestHTTP &request) {
     // }
     // return new FileWriter(HTTP::strfy("./write_test"), request.get_plain_message());
     // return new FileReader("./hat.png");
-    return new AutoIndexer(HTTP::strfy("./"));
+    // return new AutoIndexer(HTTP::strfy("./"));
     // return new Echoer();
     return NULL;
 }
