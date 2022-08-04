@@ -3,71 +3,68 @@
 #include "../config/Config.hpp"
 #include "../utils/HTTPError.hpp"
 #include <sys/stat.h>
-#define debug(e)                                                                                                       \
-    { std::cout << #e << " : " << e << std::endl; }
 
 RequestMatcher::RequestMatcher() {}
 RequestMatcher::~RequestMatcher() {}
 
 /**
- * - [x] schemaのバリデーション
- * - [x] 不正なリクエストターゲットのバリデーション
- * - [x] リクエストメソッドのバリデーション
- * - [x] リダイレクトされるかどうかの判定
- * - [x] client_max_body_sizeを変数に入れる
- * - [x] rootを連結して適切なリソースへのパスを生成する
+ * - schemaのバリデーション
+ * - 不正なリクエストターゲットのバリデーション
+ * - リクエストメソッドのバリデーション
+ * - リダイレクトされるかどうかの判定
+ * - CGIか通常のファイルでそれぞれのルーティング処理
  */
 RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Config> &configs,
                                                     const IRequestMatchingParam &rp) {
 
-    const config::Config &config = get_config(configs, rp);
+    const config::Config &conf = get_config(configs, rp);
 
-    // ルーティングできるかのバリデーションを行う
-    check_routable(rp, config);
+    check_routable(rp, conf);
 
     RequestMatchingResult res;
-    // リダイレクトが行われるか
-    if (is_redirect(rp, config)) {
-        res.redirect = get_redirect(rp, config);
+    const RequestTarget &target = rp.get_request_target();
+    if (is_redirect(target, conf)) {
+        res.redirect = get_redirect(target, conf);
         return res;
     }
-    res.client_max_body_size = get_client_max_body_size(rp, config);
-    res.status_page_dict     = get_status_page_dict(rp, config);
+    res.client_max_body_size = get_client_max_body_size(target, conf);
+    res.status_page_dict     = get_status_page_dict(target, conf);
 
-    if (is_cgi(rp, config)) {
-        return routing_cgi(res, rp, config);
+    if (is_cgi(target, conf)) {
+        return routing_cgi(res, target, conf);
     }
-    return routing_default(res, rp, config);
+    return routing_default(res, target, rp.get_http_method(), conf);
 }
 
 RequestMatchingResult
-RequestMatcher::routing_cgi(RequestMatchingResult res, const IRequestMatchingParam &rp, const config::Config &conf) {
+RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf) {
     cgi_resource_pair resource;
-    resource              = get_cgi_resource(rp);
+    resource              = get_cgi_resource(target);
     res.path_local        = resource.first;
     res.path_after        = resource.second;
-    res.path_cgi_executor = get_path_cgi_executor(rp, conf, res.path_local);
+    res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
     res.is_cgi            = true;
     return res;
 }
 
 RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
-                                                      const IRequestMatchingParam &rp,
+                                                      const RequestTarget &target,
+                                                      const HTTP::t_method &method,
                                                       const config::Config &conf) {
-    // rootをつなげる
-    HTTP::byte_string path = make_resource_path(rp, conf);
+    HTTP::byte_string path = make_resource_path(target, conf);
     if (path.empty()) {
         throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
     }
     res.path_local    = path;
-    res.is_executable = is_method_executable(rp, conf);
+    res.is_executable = is_method_executable(target, method, conf);
+    res.is_cgi        = false;
     return res;
 }
 
-bool RequestMatcher::is_method_executable(const IRequestMatchingParam &rp, const config::Config &conf) {
-    const RequestTarget &target  = rp.get_request_target();
-    const std::string &path      = HTTP::restrfy(target.path.str());
-    const HTTP::t_method &method = rp.get_http_method();
+bool RequestMatcher::is_method_executable(const RequestTarget &target,
+                                          const HTTP::t_method &method,
+                                          const config::Config &conf) {
+    const std::string &path = HTTP::restrfy(target.path.str());
 
     switch (method) {
         case HTTP::METHOD_GET:
@@ -81,9 +78,6 @@ bool RequestMatcher::is_method_executable(const IRequestMatchingParam &rp, const
     return false;
 }
 
-// hostから利用するconfigを探す
-// hostがマッチしたらそれを利用する
-// default_serverがあったらそれを利用する
 config::Config RequestMatcher::get_config(const std::vector<config::Config> &configs, const IRequestMatchingParam &rp) {
     const HTTP::CH::Host host_data = rp.get_host();
     const std::string host         = HTTP::restrfy(host_data.host);
@@ -100,22 +94,19 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
             return *it;
         }
     }
-    // どちらも該当しない場合は先頭のconfigを使う
+    // 該当しない場合は先頭のconfigを使う
     return configs.front();
 }
 
 void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config conf) {
     const RequestTarget &target = rp.get_request_target();
 
-    // 対応しているschemeか(この課題では `http` のみ)
     if (!is_valid_scheme(target)) {
         throw http_error("invalid scheme", HTTP::STATUS_BAD_REQUEST);
     }
-    // パスが不正ではないか
     if (is_valid_path(target)) {
         throw http_error("invalid url target", HTTP::STATUS_BAD_REQUEST);
     }
-    // 対応しているリクエストメソッドか
     if (is_valid_request_method(target, rp.get_http_method(), conf)) {
         throw http_error("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
     }
@@ -148,66 +139,47 @@ bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
     const std::string &path                   = HTTP::restrfy(target.path.str());
     const std::set<enum config::Methods> &lmt = config.get_limit_except(path);
 
-    // TODO: parser側でメソッドの定義を `HTTP::` に変更する
     switch (method) {
+        // limit_except自体が定義されていない or limit_exceptに対応するメソッドが定義されていたら対応可能
         case HTTP::METHOD_GET:
-            if (lmt.find(config::GET) != lmt.end()) {
-                return true;
-            }
-            break;
+            return (lmt.empty() || lmt.find(config::GET) != lmt.end());
         case HTTP::METHOD_DELETE:
-            if (lmt.find(config::DELETE) != lmt.end()) {
-                return true;
-            }
-            break;
+            return (lmt.empty() || lmt.find(config::DELETE) != lmt.end());
         case HTTP::METHOD_POST:
-            if (lmt.find(config::POST) != lmt.end()) {
-                return true;
-            }
-            break;
+            return (lmt.empty() || lmt.find(config::POST) != lmt.end());
         default:;
-            return false;
     }
-    // メソッドが正しい かつ 制限がかかっていない場合は true を返す
-    return lmt.empty();
+    return false;
 }
 
-bool RequestMatcher::is_redirect(const IRequestMatchingParam &rp, const config::Config &config) {
-    const RequestTarget &target = rp.get_request_target();
-    const std::string &path     = HTTP::restrfy(target.path.str());
-
-    std::pair<int, std::string> p = config.get_redirect(path);
-    return p.first != -1;
+bool RequestMatcher::is_redirect(const RequestTarget &target, const config::Config &conf) {
+    const std::string &path              = HTTP::restrfy(target.path.str());
+    std::pair<int, std::string> redirect = conf.get_redirect(path);
+    return redirect.first != -1;
 }
 
-bool RequestMatcher::is_cgi(const IRequestMatchingParam &rp, const config::Config &config) {
-    const RequestTarget &target = rp.get_request_target();
-    const std::string &path     = HTTP::restrfy(target.path.str());
-
-    return config.get_exec_cgi(path);
+bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &conf) {
+    const std::string &path = HTTP::restrfy(target.path.str());
+    return conf.get_exec_cgi(path);
 }
 
 bool RequestMatcher::is_regular_file(const std::string &path) const {
     struct stat st;
-
     if (stat(path.c_str(), &st) < 0) {
         return false;
     }
     return S_ISREG(st.st_mode);
 }
 
-RequestMatcher::redirect_pair RequestMatcher::get_redirect(const IRequestMatchingParam &rp,
+RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &target,
                                                            const config::Config &config) const {
-    const RequestTarget &target = rp.get_request_target();
-    const std::string &path     = HTTP::restrfy(target.path.str());
-
-    std::pair<int, std::string> p = config.get_redirect(path);
-    return std::make_pair(p.first, HTTP::strfy(p.second));
+    const std::string &path              = HTTP::restrfy(target.path.str());
+    std::pair<int, std::string> redirect = config.get_redirect(path);
+    return std::make_pair(redirect.first, HTTP::strfy(redirect.second));
 }
 
 // ファイルの権限を順番に見ていき、ファイルが存在した時点で、分割する
-RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const IRequestMatchingParam &rp) const {
-    const RequestTarget &target = rp.get_request_target();
+RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const RequestTarget &target) const {
     HTTP::byte_string resource_path;
     HTTP::byte_string path_info;
 
@@ -232,12 +204,11 @@ RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const IReques
     return std::make_pair(resource_path, path_info);
 }
 
-RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(const IRequestMatchingParam &rp,
-                                                                             const config::Config &config) const {
-    const RequestTarget &target = rp.get_request_target();
-    const std::string &path     = HTTP::restrfy(target.path.str());
+RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(const RequestTarget &target,
+                                                                             const config::Config &conf) const {
+    const std::string &path = HTTP::restrfy(target.path.str());
 
-    const std::map<int, std::string> error_pages = config.get_error_page(path);
+    const std::map<int, std::string> error_pages = conf.get_error_page(path);
     RequestMatchingResult::status_dict_type res;
     for (std::map<int, std::string>::const_iterator it = error_pages.begin(); it != error_pages.end(); ++it) {
         res[static_cast<HTTP::t_status>(it->first)] = HTTP::strfy(it->second);
@@ -245,20 +216,14 @@ RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(con
     return res;
 }
 
-long RequestMatcher::get_client_max_body_size(const IRequestMatchingParam &rp, const config::Config &config) const {
-    const RequestTarget &target = rp.get_request_target();
-    const std::string &path     = HTTP::restrfy(target.path.str());
-
-    const long max_body_size = config.get_client_max_body_size(path);
-    return max_body_size;
+long RequestMatcher::get_client_max_body_size(const RequestTarget &target, const config::Config &config) const {
+    const std::string &path = HTTP::restrfy(target.path.str());
+    return config.get_client_max_body_size(path);
 }
 
-// 対応するrootを後ろにくっつける + indexに対応するファイルを探す
-// exec_deleteもチェック
-HTTP::byte_string RequestMatcher::make_resource_path(const IRequestMatchingParam &rp,
-                                                     const config::Config &config) const {
-    const RequestTarget &target = rp.get_request_target();
-    const std::string &path     = HTTP::restrfy(target.path.str());
+// 対応するrootを連結する + indexに対応するファイルを探す
+HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target, const config::Config &config) const {
+    const std::string &path = HTTP::restrfy(target.path.str());
 
     const std::string root           = config.get_root(path);
     const std::string resource_path  = root + path;
@@ -273,17 +238,15 @@ HTTP::byte_string RequestMatcher::make_resource_path(const IRequestMatchingParam
     return HTTP::strfy("");
 }
 
-HTTP::byte_string RequestMatcher::get_path_cgi_executor(const IRequestMatchingParam &rp,
+HTTP::byte_string RequestMatcher::get_path_cgi_executor(const RequestTarget &target,
                                                         const config::Config &config,
                                                         const HTTP::byte_string &cgi_path) const {
-    std::string s = HTTP::restrfy(cgi_path);
-    size_t pos    = s.rfind(".");
+    const std::string s = HTTP::restrfy(cgi_path);
+    const size_t pos    = s.rfind(".");
     if (pos == std::string::npos) {
         return HTTP::strfy("");
     }
-
     const std::string &extension   = s.substr(pos + 1);
-    const RequestTarget &target    = rp.get_request_target();
     const std::string &path        = HTTP::restrfy(target.path.str());
     config::cgi_path_map cgi_paths = config.get_cgi_path(path);
     return HTTP::strfy(cgi_paths[extension]);

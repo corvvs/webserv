@@ -18,6 +18,13 @@ public:
                                                 const IRequestMatchingParam &rp);
 
 private:
+    RequestMatchingResult
+    routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf);
+    RequestMatchingResult routing_default(RequestMatchingResult res,
+                                          const RequestTarget &target,
+                                          const HTTP::t_method &method,
+                                          const config::Config &conf);
+
     config::Config get_config(const std::vector<config::Config> &configs, const IRequestMatchingParam &rp);
 
     void check_routable(const IRequestMatchingParam &rp, const config::Config conf);
@@ -26,27 +33,21 @@ private:
     bool
     is_valid_request_method(const RequestTarget &target, const HTTP::t_method &method, const config::Config &config);
 
-    bool is_redirect(const IRequestMatchingParam &rp, const config::Config &config);
-    bool is_cgi(const IRequestMatchingParam &rp, const config::Config &config);
-    bool is_method_executable(const IRequestMatchingParam &rp, const config::Config &conf);
+    bool is_redirect(const RequestTarget &target, const config::Config &config);
+    bool is_cgi(const RequestTarget &target, const config::Config &config);
+    bool is_method_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
     bool is_regular_file(const std::string &path) const;
 
-    RequestMatchingResult
-    routing_cgi(RequestMatchingResult res, const IRequestMatchingParam &rp, const config::Config &conf);
-
-    RequestMatchingResult
-    routing_default(RequestMatchingResult res, const IRequestMatchingParam &rp, const config::Config &conf);
-
-    long get_client_max_body_size(const IRequestMatchingParam &rp, const config::Config &config) const;
-    RequestMatchingResult::status_dict_type get_status_page_dict(const IRequestMatchingParam &rp,
+    long get_client_max_body_size(const RequestTarget &target, const config::Config &config) const;
+    redirect_pair get_redirect(const RequestTarget &target, const config::Config &config) const;
+    cgi_resource_pair get_cgi_resource(const RequestTarget &target) const;
+    RequestMatchingResult::status_dict_type get_status_page_dict(const RequestTarget &target,
                                                                  const config::Config &config) const;
-    redirect_pair get_redirect(const IRequestMatchingParam &rp, const config::Config &config) const;
-    cgi_resource_pair get_cgi_resource(const IRequestMatchingParam &rp) const;
-    HTTP::byte_string get_path_cgi_executor(const IRequestMatchingParam &rp,
+    HTTP::byte_string get_path_cgi_executor(const RequestTarget &target,
                                             const config::Config &config,
                                             const HTTP::byte_string &cgi_path) const;
 
-    HTTP::byte_string make_resource_path(const IRequestMatchingParam &rp, const config::Config &config) const;
+    HTTP::byte_string make_resource_path(const RequestTarget &target, const config::Config &config) const;
 };
 
 #endif
