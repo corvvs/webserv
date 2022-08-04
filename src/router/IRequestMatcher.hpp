@@ -10,11 +10,10 @@ struct RequestMatchingResult {
 
     typedef std::map<HTTP::t_status, HTTP::byte_string> status_dict_type;
 
-    // CGIかどうか
     bool is_cgi;
-
-    // リダイレクトかどうか
+    bool is_autoindex;
     bool is_redirect;
+
     std::pair<int, HTTP::byte_string> redirect;
 
     // メソッドが実行できるか(できない場合はgetとして扱う)

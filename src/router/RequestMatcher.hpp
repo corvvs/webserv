@@ -27,27 +27,28 @@ private:
 
     config::Config get_config(const std::vector<config::Config> &configs, const IRequestMatchingParam &rp);
 
-    void check_routable(const IRequestMatchingParam &rp, const config::Config conf);
+    void check_routable(const IRequestMatchingParam &rp, const config::Config &conf);
     bool is_valid_scheme(const RequestTarget &target);
     bool is_valid_path(const RequestTarget &target);
-    bool
-    is_valid_request_method(const RequestTarget &target, const HTTP::t_method &method, const config::Config &config);
+    bool is_valid_request_method(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
 
-    bool is_redirect(const RequestTarget &target, const config::Config &config);
-    bool is_cgi(const RequestTarget &target, const config::Config &config);
-    bool is_method_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
+    bool is_redirect(const RequestTarget &target, const config::Config &conf);
+    bool is_cgi(const RequestTarget &target, const config::Config &conf);
+    bool get_is_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
+    bool get_is_autoindex(const RequestTarget &target, const config::Config &conf);
+
     bool is_regular_file(const std::string &path) const;
 
-    long get_client_max_body_size(const RequestTarget &target, const config::Config &config) const;
-    redirect_pair get_redirect(const RequestTarget &target, const config::Config &config) const;
+    long get_client_max_body_size(const RequestTarget &target, const config::Config &conf) const;
+    redirect_pair get_redirect(const RequestTarget &target, const config::Config &conf) const;
     cgi_resource_pair get_cgi_resource(const RequestTarget &target) const;
     RequestMatchingResult::status_dict_type get_status_page_dict(const RequestTarget &target,
-                                                                 const config::Config &config) const;
+                                                                 const config::Config &conf) const;
     HTTP::byte_string get_path_cgi_executor(const RequestTarget &target,
-                                            const config::Config &config,
+                                            const config::Config &conf,
                                             const HTTP::byte_string &cgi_path) const;
 
-    HTTP::byte_string make_resource_path(const RequestTarget &target, const config::Config &config) const;
+    HTTP::byte_string make_resource_path(const RequestTarget &target, const config::Config &conf) const;
 };
 
 #endif
