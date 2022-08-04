@@ -3,8 +3,10 @@
 RequestMatchingResult MockMatcher::request_match(const RequestHTTP &request) {
     (void)request;
     RequestMatchingResult result;
-    result.result_type       = RequestMatchingResult::RT_CGI;
-    result.path_local        = HTTP::strfy("./cgi.rb");
+    result.target = &request.get_request_mathing_param().get_request_target();
+    // result.result_type       = RequestMatchingResult::RT_CGI;
+    result.result_type       = RequestMatchingResult::RT_FILE;
+    result.path_local        = HTTP::strfy("./sender");
     result.path_after        = HTTP::strfy("");
     result.path_cgi_executor = HTTP::strfy("/usr/bin/ruby");
     return result;
@@ -44,7 +46,7 @@ IOriginator *HTTPServer::route(const RequestHTTP &request) {
     // }
     // return new FileWriter(HTTP::strfy("./write_test"), request.get_plain_message());
     // return new FileReader("./hat.png");
-    // return new AutoIndexer(HTTP::strfy("./"));
+    return new AutoIndexer(result);
     // return new Echoer();
     return NULL;
 }

@@ -1,6 +1,7 @@
 #ifndef ORIGINATORS_HPP
 #define ORIGINATORS_HPP
 
+#include "originator/AutoIndexer.hpp"
 #include "originator/CGI.hpp"
 #include "originator/Echoer.hpp"
 #include "originator/FileReader.hpp"
