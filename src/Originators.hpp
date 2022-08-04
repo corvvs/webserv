@@ -7,5 +7,6 @@
 #include "originator/FileDeleter.hpp"
 #include "originator/FileReader.hpp"
 #include "originator/FileWriter.hpp"
+#include "originator/Redirector.hpp"
 
 #endif
