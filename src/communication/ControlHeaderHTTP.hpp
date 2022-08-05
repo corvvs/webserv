@@ -73,6 +73,7 @@ struct ContentType : public IDictHolder {
 
     HTTP::byte_string value;
     parameter_dict parameters;
+    HTTP::light_string boundary;
 
     // "application/octet-stream"
     // 値がないときはこれに設定するのではなく, この値と**みなす**

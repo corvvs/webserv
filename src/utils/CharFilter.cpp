@@ -201,6 +201,7 @@ const HTTP::CharFilter HTTP::CharFilter::ascii             = HTTP::CharFilter(0,
 const HTTP::CharFilter HTTP::CharFilter::controls          = (HTTP::CharFilter(0, 31) | HTTP::CharFilter(127, 127));
 const HTTP::CharFilter HTTP::CharFilter::cd_separators     = "()<>@,;:\\\"/[]?={} \t";
 const HTTP::CharFilter HTTP::CharFilter::cd_token_char     = (ascii - controls - cd_separators);
+const HTTP::CharFilter HTTP::CharFilter::boundary_char     = (digit | alpha | "'+_-.");
 
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE

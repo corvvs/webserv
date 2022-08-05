@@ -156,14 +156,29 @@ void HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     //     return;
     // }
     this->value = lct.substr(0, subtype_end).str();
-    VOUT(this->value);
+    QVOUT(value);
     // [`parameter`の捕捉]
     // parameter  = 1*tchar "=" ( 1*tchar / quoted-string )
     light_string parameters_str(lct, subtype_end);
-    QVOUT(parameters_str);
-    light_string continuation = ARoutingParameters::decompose_semicoron_separated_kvlist(parameters_str, *this);
-    VOUT(parameters.size());
-    QVOUT(continuation);
+    ARoutingParameters::decompose_semicoron_separated_kvlist(parameters_str, *this);
+
+    // boundary の検出
+    if (value == "multipart/form-data") {
+        HTTP::IDictHolder::parameter_dict::const_iterator res = parameters.find(HTTP::strfy("boundary"));
+        if (res != parameters.end() && res->second.size() > 0) {
+            // マルチパートである?
+            const HTTP::light_string boundary_candidate = res->second;
+            // 文字数が 1 ~ 70かどうか
+            const bool length_is_right = 1 <= boundary_candidate.size() || boundary_candidate.size() <= 70;
+            // 使用可能文字のみかどうか
+            const bool chars_right
+                = boundary_candidate.find_first_not_of(HTTP::CharFilter::boundary_char) == light_string::npos;
+            if (length_is_right && chars_right) {
+                boundary = boundary_candidate;
+            }
+        }
+    }
+    QVOUT(boundary);
 }
 
 // [ContentDisposition]

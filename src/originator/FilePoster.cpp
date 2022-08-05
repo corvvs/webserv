@@ -36,13 +36,7 @@ FilePoster::FilePoster(const RequestMatchingResult &match_result, const IContent
     // リクエストの Content-Type: が "multipart/form-data" でかつ正しい boundary パラメータがあれば,
     // マルチパートとみなして処理する.
     const HTTP::CH::ContentType &ct = content_provider.get_content_type_item();
-    if (ct.value == "multipart/form-data") {
-        HTTP::IDictHolder::parameter_dict::const_iterator res = ct.parameters.find(HTTP::strfy("boundary"));
-        if (res != ct.parameters.end() && res->second.size() > 0) {
-            // マルチパートである
-            boundary = res->second;
-        }
-    }
+    boundary                        = ct.boundary;
 }
 
 FilePoster::~FilePoster() {}
