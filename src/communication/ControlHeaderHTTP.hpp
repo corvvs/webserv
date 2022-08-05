@@ -75,8 +75,17 @@ struct ContentType : public IDictHolder {
     parameter_dict parameters;
 
     // "application/octet-stream"
-    // 値がないときはこれに設定するのではなく, この値を**みなす**
+    // 値がないときはこれに設定するのではなく, この値と**みなす**
     static const HTTP::byte_string default_value;
+
+    void determine(const AHeaderHolder &holder);
+    void store_list_item(const parameter_key_type &key, const parameter_value_type &val);
+};
+
+struct ContentDisposition : public IDictHolder {
+
+    HTTP::byte_string value;
+    parameter_dict parameters;
 
     void determine(const AHeaderHolder &holder);
     void store_list_item(const parameter_key_type &key, const parameter_value_type &val);
@@ -140,5 +149,13 @@ struct Location : public HTTP::CH::Location {};
 
 } // namespace CH
 } // namespace CGIP
+
+namespace MultiPart {
+namespace CH {
+struct ContentType : public HTTP::CH::ContentType {};
+struct ContentDisposition : public HTTP::CH::ContentDisposition {};
+
+} // namespace CH
+} // namespace MultiPart
 
 #endif

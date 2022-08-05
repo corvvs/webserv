@@ -130,8 +130,12 @@ void AutoIndexer::scan_from_directory() {
         }
         t_stat st;
         HTTP::char_string fname(ent->d_name);
-        HTTP::char_string fpath = (directory_path_.size() > 1 ? directory_path_ + "/" : directory_path_) + fname;
-        const int result        = stat(fpath.c_str(), &st);
+        if (fname == "." || fname == "..") {
+            continue;
+        }
+        HTTP::char_string fpath
+            = HTTP::restrfy(HTTP::Utils::join_path(HTTP::strfy(directory_path_), HTTP::strfy(fname)));
+        const int result = stat(fpath.c_str(), &st);
         DXOUT(fpath << " " << result);
         if (result < 0) {
             QVOUT(strerror(errno));
@@ -170,10 +174,7 @@ void AutoIndexer::render_html() {
     response_data.inject(HTTP::strfy("\t\t</tr>\n\t</thead>\n"), false);
     response_data.inject(HTTP::strfy("<tbody>\n"), false);
     for (entry_list::size_type i = 0; i < entries.size(); ++i) {
-        const Entry &ent = entries[i];
-        if (ent.name == "." || ent.name == "..") {
-            continue;
-        }
+        const Entry &ent             = entries[i];
         HTTP::byte_string serialized = ent.serialize(requested_path_);
         response_data.inject(serialized, false);
     }

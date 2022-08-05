@@ -353,6 +353,15 @@ public:
     LightString trim(const filter_type &fil) const {
         return ltrim(fil).rtrim(fil);
     }
+
+    LightString unquote() const {
+        if (size() >= 2) {
+            if ((*this)[0] == (*this)[size() - 1] && (*this)[0] == '"') {
+                return substr(1, size() - 2);
+            }
+        }
+        return *this;
+    }
 };
 
 namespace HTTP {
@@ -410,17 +419,28 @@ bool operator!=(const LightString<T> &lhs, const std::basic_string<T> &rhs) {
 
 template <class T>
 bool operator==(const LightString<T> &lhs, const char *rhs) {
-    for (typename LightString<T>::size_type i = 0; i < lhs.size(); ++i) {
-        if (!rhs[i] || lhs[i] != rhs[i]) {
+    typename LightString<T>::size_type i = 0;
+    for (; rhs[i] && i < lhs.size(); ++i) {
+        if (lhs[i] != rhs[i]) {
             return false;
         }
     }
-    return true;
+    return (i == lhs.size() && !rhs[i]);
+}
+
+template <class T>
+bool operator==(const char *lhs, const LightString<T> &rhs) {
+    return rhs == lhs;
 }
 
 template <class T>
 bool operator!=(const LightString<T> &lhs, const char *rhs) {
     return !(lhs == rhs);
+}
+
+template <class T>
+bool operator!=(const char *lhs, const LightString<T> &rhs) {
+    return rhs != lhs;
 }
 
 #endif

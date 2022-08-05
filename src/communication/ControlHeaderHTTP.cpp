@@ -96,6 +96,8 @@ void HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
     QVOUT(this->transfer_codings.back().coding);
 }
 
+// [ContentType]
+
 const HTTP::byte_string HTTP::CH::ContentType::default_value = HTTP::strfy("application/octet-stream");
 
 void HTTP::CH::ContentType::store_list_item(const parameter_key_type &key, const parameter_value_type &val) {
@@ -150,10 +152,9 @@ void HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
         DXOUT("[KO] no subtype after /: \"" << lct << "\"");
         return;
     }
-
-    if (subtype_end == light_string::npos) {
-        return;
-    }
+    // if (subtype_end == light_string::npos) {
+    //     return;
+    // }
     this->value = lct.substr(0, subtype_end).str();
     VOUT(this->value);
     // [`parameter`の捕捉]
@@ -164,6 +165,51 @@ void HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     VOUT(parameters.size());
     QVOUT(continuation);
 }
+
+// [ContentDisposition]
+
+void HTTP::CH::ContentDisposition::store_list_item(const parameter_key_type &key, const parameter_value_type &val) {
+    parameters[key] = val;
+    VOUT(key);
+    VOUT(val);
+}
+
+void HTTP::CH::ContentDisposition::determine(const AHeaderHolder &holder) {
+
+    //  content-disposition = "Content-Disposition" ":"
+    //                         disposition-type *( ";" disposition-parm )
+    //  disposition-type    = "inline" | "attachment" | disp-ext-type
+    //                      ; case-insensitive
+    //  disp-ext-type       = token
+    //  disposition-parm    = filename-parm | disp-ext-parm
+    //  filename-parm       = "filename" "=" value
+    //                      | "filename*" "=" ext-value
+    //  disp-ext-parm       = token "=" value
+    //                      | ext-token "=" ext-value
+    //  ext-token           = <the characters in token, followed by "*">
+
+    const byte_string *ct = holder.get_val(HeaderHTTP::content_disposition);
+    if (!ct || ct->size() == 0) {
+        return;
+    }
+    const light_string lct(*ct);
+    // disposition-type の補足
+    VOUT(lct);
+    light_string::size_type type_end = lct.find_first_not_of(HTTP::CharFilter::cd_token_char);
+    if (type_end == light_string::npos) {
+        DXOUT("[KO] no type: \"" << lct << "\"");
+        return;
+    }
+    this->value = lct.substr(0, type_end).str();
+    VOUT(this->value);
+    // [`parameter`の捕捉]
+    // parameter  = 1*tchar "=" ( 1*tchar / quoted-string )
+    light_string parameters_str(lct, type_end);
+    light_string continuation = ARoutingParameters::decompose_semicoron_separated_kvlist(parameters_str, *this);
+    (void)continuation;
+}
+
+// [TE]
 
 void HTTP::CH::TE::determine(const AHeaderHolder &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.te
@@ -251,6 +297,8 @@ void HTTP::CH::TE::determine(const AHeaderHolder &holder) {
     }
 }
 
+// [Upgrade]
+
 void HTTP::CH::Upgrade::determine(const AHeaderHolder &holder) {
     // Upgrade          = 1#protocol
     // protocol         = protocol-name ["/" protocol-version]
@@ -295,6 +343,8 @@ void HTTP::CH::Upgrade::determine(const AHeaderHolder &holder) {
         }
     }
 }
+
+// [Via]
 
 void HTTP::CH::Via::determine(const AHeaderHolder &holder) {
     // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
@@ -367,6 +417,8 @@ void HTTP::CH::Via::determine(const AHeaderHolder &holder) {
         }
     }
 }
+
+// [Location]
 
 void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
     // https://datatracker.ietf.org/doc/html/rfc3875#section-6.3.2
@@ -545,6 +597,8 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
     QVOUT(this->query_string);
 }
 
+// [Connection]
+
 void HTTP::CH::Connection::determine(const AHeaderHolder &holder) {
     // Connection        = 1#connection-option
     // connection-option = token
@@ -584,7 +638,7 @@ void HTTP::CH::Connection::determine(const AHeaderHolder &holder) {
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, target_lstr.size());
             if (val_lstr.size() == 0) {
-                DXOUT("away");
+                // DXOUT("away");
                 break;
             }
             // cat(sp_end) が "," か ";" かによって分岐
@@ -609,6 +663,8 @@ bool HTTP::CH::Connection::will_close() const {
 bool HTTP::CH::Connection::will_keep_alive() const {
     return !close_ && keep_alive_;
 }
+
+// [Status]
 
 void CGIP::CH::Status::determine(const AHeaderHolder &holder) {
     // https://datatracker.ietf.org/doc/html/rfc3875#section-6.3.3

@@ -38,3 +38,12 @@ void HTTP::Utils::normalize_cgi_metavar_key(byte_string &key) {
         }
     }
 }
+
+HTTP::byte_string HTTP::Utils::join_path(const light_string &directory_path, const light_string &basename) {
+    const light_string chopped_directory_path
+        = (directory_path.size() > 0 && directory_path[directory_path.size() - 1] == '/')
+              ? directory_path.substr(0, directory_path.size() - 1)
+              : directory_path;
+    const light_string chopped_basename = (basename.size() > 0 && basename[0] == '/') ? basename.substr(1) : basename;
+    return chopped_directory_path.str() + "/" + chopped_basename.str();
+}
