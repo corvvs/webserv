@@ -20,6 +20,8 @@ void FileDeleter::delete_file() {
         return;
     }
 
+    // ターゲットパスに対して削除を試みる.
+    // できなかったらエラー.
     int rv = unlink(file_path_.c_str());
     if (rv < 0) {
         switch (errno) {

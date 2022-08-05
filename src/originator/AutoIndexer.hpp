@@ -22,6 +22,7 @@ public:
         struct timespec st_mtim;
         bool is_dir;
 
+        // 1つのテーブル行としてHTMLに起こす
         HTTP::byte_string serialize(const HTTP::char_string &requested_path) const;
     };
 
@@ -35,8 +36,9 @@ private:
     DIR *dir;
     entry_list entries;
 
-    // ファイルからデータを読み出しておく
+    // ターゲットのディレクトリ内をスキャンして entries を取り出す
     void scan_from_directory();
+    // entries をHTMLに起こす
     void render_html();
     void close_if_needed();
 

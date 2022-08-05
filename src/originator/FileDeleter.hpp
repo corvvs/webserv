@@ -17,6 +17,7 @@ private:
     ResponseDataList response_data;
     bool originated_;
 
+    // ターゲットの削除を試みる
     void delete_file();
 
 public:

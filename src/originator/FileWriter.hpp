@@ -19,6 +19,7 @@ private:
     bool originated_;
     int fd_;
 
+    // リクエストターゲットのパスへのデータ書き込みを試みる
     void write_to_file();
     void close_if_needed();
 

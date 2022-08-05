@@ -25,7 +25,6 @@ private:
 
 public:
     FileReader(const RequestMatchingResult &match_result);
-    FileReader(const char_string &file_path);
     ~FileReader();
 
     void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);

@@ -24,6 +24,8 @@ void FileWriter::write_to_file() {
     if (originated_) {
         return;
     }
+    // ファイルを上書きモードで開く.
+    // 開けなかったらエラー.
     int fd = open(file_path_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
     if (fd < 0) {
         switch (errno) {
@@ -34,6 +36,7 @@ void FileWriter::write_to_file() {
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
         }
     }
+    // データを一気に書き込む
     fd_                               = fd;
     byte_string::size_type write_head = 0;
     ssize_t written_size              = 0;
@@ -51,6 +54,7 @@ void FileWriter::write_to_file() {
             break;
         }
     }
+    // 書き込んだサイズを文字列変換してボディに突っ込む
     HTTP::byte_string written_size_str = ParserHelper::utos(write_head, 10);
     response_data.inject(&written_size_str.front(), written_size_str.size(), true);
     originated_ = true;
