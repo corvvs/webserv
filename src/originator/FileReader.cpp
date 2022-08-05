@@ -21,7 +21,7 @@ void FileReader::read_from_file() {
     if (originated_) {
         return;
     }
-    errno  = 0;
+    errno = 0;
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
     int fd = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
