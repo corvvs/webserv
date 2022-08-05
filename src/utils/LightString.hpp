@@ -354,6 +354,8 @@ public:
         return ltrim(fil).rtrim(fil);
     }
 
+    // ダブルクオートで囲まれている場合, 内部をコピーして返す
+    // そうでない場合は自身をコピーして返す
     LightString unquote() const {
         if (size() >= 2) {
             if ((*this)[0] == (*this)[size() - 1] && (*this)[0] == '"') {

@@ -801,3 +801,47 @@ TEST(split, consecutive_multiple_delimiter) {
     EXPECT_EQ(v[2], "");
     EXPECT_EQ(v[3], "third");
 }
+
+TEST(unquote, basic) {
+    {
+        // apple -> apple
+        const HTTP::byte_string base = HTTP::strfy("apple");
+        EXPECT_EQ(HTTP::strfy("apple"), HTTP::light_string(base).unquote().str());
+    }
+    {
+        // "apple" -> apple
+        const HTTP::byte_string base = HTTP::strfy("\"apple\"");
+        EXPECT_EQ(HTTP::strfy("apple"), HTTP::light_string(base).unquote().str());
+    }
+    {
+        // "apple -> "apple
+        const HTTP::byte_string base = HTTP::strfy("\"apple");
+        EXPECT_EQ(HTTP::strfy("\"apple"), HTTP::light_string(base).unquote().str());
+    }
+    {
+        // a"ppl"e -> a"ppl"e
+        const HTTP::byte_string base = HTTP::strfy("a\"ppl\"e");
+        EXPECT_EQ(HTTP::strfy("a\"ppl\"e"), HTTP::light_string(base).unquote().str());
+    }
+    {
+        //  -> 
+        const HTTP::byte_string base = HTTP::strfy("");
+        EXPECT_EQ(HTTP::strfy(""), HTTP::light_string(base).unquote().str());
+    }
+    {
+        // "" -> 
+        const HTTP::byte_string base = HTTP::strfy("\"\"");
+        EXPECT_EQ(HTTP::strfy(""), HTTP::light_string(base).unquote().str());
+    }
+    {
+        // " -> "
+        const HTTP::byte_string base = HTTP::strfy("\"");
+        EXPECT_EQ(HTTP::strfy("\""), HTTP::light_string(base).unquote().str());
+    }
+    {
+        // """ -> "
+        const HTTP::byte_string base = HTTP::strfy("\"\"\"");
+        EXPECT_EQ(HTTP::strfy("\""), HTTP::light_string(base).unquote().str());
+    }
+}
+
