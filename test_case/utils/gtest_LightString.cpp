@@ -824,12 +824,12 @@ TEST(unquote, basic) {
         EXPECT_EQ(HTTP::strfy("a\"ppl\"e"), HTTP::light_string(base).unquote().str());
     }
     {
-        //  -> 
+        //  ->
         const HTTP::byte_string base = HTTP::strfy("");
         EXPECT_EQ(HTTP::strfy(""), HTTP::light_string(base).unquote().str());
     }
     {
-        // "" -> 
+        // "" ->
         const HTTP::byte_string base = HTTP::strfy("\"\"");
         EXPECT_EQ(HTTP::strfy(""), HTTP::light_string(base).unquote().str());
     }
