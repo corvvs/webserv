@@ -60,6 +60,27 @@ TEST(utils_string_upcase, basic_destructive) {
 }
 
 // [normalize_cgi_metavar_key]
+TEST(utils_string_normalize_cgi_metavar_key, basic) {
+    HTTP::byte_string str;
+    str = HTTP::strfy("Via");
+    HTTP::Utils::normalize_cgi_metavar_key(str);
+    EXPECT_EQ(HTTP::strfy("VIA"), str);
+    str = HTTP::strfy("v-i-a");
+    HTTP::Utils::normalize_cgi_metavar_key(str);
+    EXPECT_EQ(HTTP::strfy("V_I_A"), str);
+    str = HTTP::strfy("-----");
+    HTTP::Utils::normalize_cgi_metavar_key(str);
+    EXPECT_EQ(HTTP::strfy("_____"), str);
+    str = HTTP::strfy("Content-Type");
+    HTTP::Utils::normalize_cgi_metavar_key(str);
+    EXPECT_EQ(HTTP::strfy("CONTENT_TYPE"), str);
+    str = HTTP::strfy("CONTENT_TYPE");
+    HTTP::Utils::normalize_cgi_metavar_key(str);
+    EXPECT_EQ(HTTP::strfy("CONTENT_TYPE"), str);
+    str = HTTP::strfy("CONTENT-TYPE");
+    HTTP::Utils::normalize_cgi_metavar_key(str);
+    EXPECT_EQ(HTTP::strfy("CONTENT_TYPE"), str);
+}
 
 // [join_path]
 
