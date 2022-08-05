@@ -123,7 +123,7 @@ void AutoIndexer::scan_from_directory() {
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
             default:
-                QVOUT(strerror(errno));
+                VOUT(errno);
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
         }
     }

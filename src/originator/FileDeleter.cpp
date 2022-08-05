@@ -30,7 +30,7 @@ void FileDeleter::delete_file() {
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
             default:
-                QVOUT(strerror(errno));
+                VOUT(errno);
                 throw http_error("can't delete", HTTP::STATUS_FORBIDDEN);
         }
         return;
