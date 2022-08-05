@@ -24,7 +24,8 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
     RequestMatchingResult res;
     const RequestTarget &target = rp.get_request_target();
     if (is_redirect(target, conf)) {
-        res.redirect = get_redirect(target, conf);
+        res.redirect    = get_redirect(target, conf);
+        res.result_type = RequestMatchingResult::RT_EXTERNAL_REDIRECTION;
         return res;
     }
     res.client_max_body_size = get_client_max_body_size(target, conf);
@@ -43,7 +44,7 @@ RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &targ
     res.path_local        = resource.first;
     res.path_after        = resource.second;
     res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
-    res.is_cgi            = true;
+    res.result_type       = RequestMatchingResult::RT_CGI;
     return res;
 }
 
@@ -55,10 +56,25 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
     if (path.empty()) {
         throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
     }
-    res.path_local    = path;
-    res.is_executable = get_is_executable(target, method, conf);
-    res.is_autoindex  = get_is_autoindex(target, conf);
-    res.is_cgi        = false;
+    res.path_local  = path;
+    res.result_type = RequestMatchingResult::RT_FILE;
+    if (get_is_autoindex(target, conf)) {
+        res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+    } else if (get_is_executable(target, method, conf)) {
+        switch (method) {
+            case HTTP::METHOD_DELETE:
+                res.result_type = RequestMatchingResult::RT_FILE_DELETE;
+                break;
+            case HTTP::METHOD_POST:
+                res.result_type = RequestMatchingResult::RT_FILE_POST;
+                break;
+            case HTTP::METHOD_PUT:
+                res.result_type = RequestMatchingResult::RT_FILE_PUT;
+                break;
+            default:
+                break;
+        }
+    }
     return res;
 }
 

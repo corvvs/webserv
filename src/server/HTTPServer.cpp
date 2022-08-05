@@ -41,33 +41,27 @@ void HTTPServer::run() {
 
 IOriginator *HTTPServer::route(const RequestHTTP &request) {
 
-    (void)request;
     // Connectionに紐づくserver群に対し, リクエストを渡してマッチングを要請.
     // その結果を使ってここでオリジネータを生成する.
     std::vector<config::Config> confs;
     RequestMatchingResult result = mock_matcher.request_match(confs, request.get_request_matching_param());
     switch (result.result_type) {
-        case RequestMatchingResult::RT_CGI: {
-            CGI::byte_string query_string = HTTP::strfy("");
-            CGI *o                        = new CGI(result, request);
-            return o;
-        }
-        case RequestMatchingResult::RT_AUTO_INDEX: {
+        case RequestMatchingResult::RT_CGI:
+            return new CGI(result, request);
+        case RequestMatchingResult::RT_FILE_DELETE:
+            return new FileDeleter(result);
+        case RequestMatchingResult::RT_FILE_PUT:
+            return new FileWriter(result, request.get_plain_message());
+        case RequestMatchingResult::RT_AUTO_INDEX:
             return new AutoIndexer(result);
-        }
-        case RequestMatchingResult::RT_EXTERNAL_REDIRECTION: {
+        case RequestMatchingResult::RT_EXTERNAL_REDIRECTION:
             return new Redirector(result);
-        }
-        case RequestMatchingResult::RT_ECHO: {
+        case RequestMatchingResult::RT_ECHO:
             return new Echoer(result);
-        }
-        case RequestMatchingResult::RT_FILE: {
+        case RequestMatchingResult::RT_FILE:
             return new FileReader(result);
-        }
         default:
             break;
     }
-    // return new FileWriter(HTTP::strfy("./write_test"), request.get_plain_message());
-    // return new FileDeleter(result);
     return NULL;
 }
