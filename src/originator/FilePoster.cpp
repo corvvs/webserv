@@ -41,9 +41,7 @@ FilePoster::FilePoster(const RequestMatchingResult &match_result, const IContent
     }
 }
 
-FilePoster::~FilePoster() {
-    close_if_needed();
-}
+FilePoster::~FilePoster() {}
 
 void FilePoster::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     (void)observer;
@@ -95,9 +93,6 @@ void FilePoster::analyze_body() {
     }
     for (size_t i = 0; i < entries.size(); ++i) {
         entries[i].name = HTTP::Utils::join_path(HTTP::strfy(directory_path_), entries[i].name);
-        VOUT(entries[i].name);
-        VOUT(entries[i].content_type.value);
-        VOUT(entries[i].content.size());
     }
 }
 
@@ -156,7 +151,6 @@ void FilePoster::analyze_subpart(const light_string &subpart) {
     MultiPart::CH::ContentDisposition content_disposition;
 
     content_type.determine(holder);
-    VOUT(content_type.value);
     content_disposition.determine(holder);
     if (content_disposition.value != HTTP::strfy("form-data")) {
         return;
@@ -179,8 +173,6 @@ void FilePoster::post_file(const FileEntry &file) const {
     const light_string::size_type file_size = file.content.size();
     light_string::size_type written         = 0;
     for (; written < file_size;) {
-        VOUT(written);
-        BVOUT(file.content);
         light_string::size_type write_max = 8192;
         if (write_max > file_size - written) {
             write_max = file_size - written;
@@ -197,14 +189,6 @@ void FilePoster::post_file(const FileEntry &file) const {
         written += written_size;
     }
     close(fd);
-}
-
-void FilePoster::close_if_needed() {
-    if (fd_ < 0) {
-        return;
-    }
-    close(fd_);
-    fd_ = NON_FD;
 }
 
 void FilePoster::inject_socketlike(ISocketLike *socket_like) {

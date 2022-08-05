@@ -33,7 +33,6 @@ private:
     char_string directory_path_;
     ResponseDataList response_data;
     bool originated_;
-    int fd_;
     const IContentProvider &content_provider;
     light_string boundary;
     byte_string body;
@@ -50,7 +49,6 @@ private:
     void analyze_subpart(const light_string &subpart);
     // FileEntryの内容をディスクに書き込む
     void post_file(const FileEntry &file) const;
-    void close_if_needed();
 
 public:
     FilePoster(const RequestMatchingResult &match_result, const IContentProvider &request);
