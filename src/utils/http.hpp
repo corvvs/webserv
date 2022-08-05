@@ -50,7 +50,8 @@ enum t_method {
     METHOD_GET,
     METHOD_POST,
     METHOD_DELETE,
-    METHOD_OPTION,
+    METHOD_OPTIONS,
+    METHOD_PUT,
 
     METHOD_ERROR
 };

@@ -33,6 +33,7 @@ bool Redirector::is_responsive() const {
 
 void Redirector::start_origination(IObserver &observer) {
     (void)observer;
+    // オリジネーションとしての特定の動作はないので何もない
 }
 
 void Redirector::leave() {
@@ -43,6 +44,7 @@ ResponseHTTP *Redirector::respond(const RequestHTTP &request) {
     response_data.inject("", 0, true);
     response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers;
+    // redirect_to を Location: に設定
     headers.push_back(std::make_pair(HeaderHTTP::location, redirect_to));
     ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), status_code, &headers, &response_data);
     res->start();

@@ -9,16 +9,21 @@
 struct RequestMatchingResult {
 
     typedef std::map<HTTP::t_status, HTTP::byte_string> status_dict_type;
-    enum ResultType { RT_FILE, RT_EXTERNAL_REDIRECTION, RT_CGI, RT_AUTO_INDEX, RT_ECHO };
+    enum ResultType {
+        RT_FILE,
+        RT_FILE_DELETE,
+        RT_FILE_POST,
+        RT_FILE_PUT,
+        RT_EXTERNAL_REDIRECTION,
+        RT_CGI,
+        RT_AUTO_INDEX,
+        RT_ECHO
+    };
 
     const RequestTarget *target;
 
     // 種別
     ResultType result_type;
-
-    bool is_cgi;
-    bool is_autoindex;
-    bool is_redirect;
 
     std::pair<int, HTTP::byte_string> redirect;
 

@@ -6,10 +6,14 @@
 
 typedef struct dirent t_dirent;
 
+// [ソート用比較関数]
+
+// 名前 昇順
 bool compare_entry_by_name(const AutoIndexer::Entry &s1, const AutoIndexer::Entry &s2) {
     return s1.name < s2.name;
 }
 
+// 最終変更時刻 降順
 bool compare_entry_by_mod_time(const AutoIndexer::Entry &s1, const AutoIndexer::Entry &s2) {
     if (s1.st_mtim.tv_sec == s2.st_mtim.tv_sec) {
         return s1.st_mtim.tv_nsec > s2.st_mtim.tv_nsec;
@@ -17,6 +21,7 @@ bool compare_entry_by_mod_time(const AutoIndexer::Entry &s1, const AutoIndexer::
     return s1.st_mtim.tv_sec > s2.st_mtim.tv_sec;
 }
 
+// ディレクトリが先, それ以外が後
 bool compare_entry_by_type(const AutoIndexer::Entry &s1, const AutoIndexer::Entry &s2) {
     return s1.is_dir > s2.is_dir;
 }
@@ -118,7 +123,7 @@ void AutoIndexer::scan_from_directory() {
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
             default:
-                QVOUT(strerror(errno));
+                VOUT(errno);
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
         }
     }
@@ -138,7 +143,7 @@ void AutoIndexer::scan_from_directory() {
         const int result = stat(fpath.c_str(), &st);
         DXOUT(fpath << " " << result);
         if (result < 0) {
-            QVOUT(strerror(errno));
+            VOUT(errno);
             continue;
         }
         entries.resize(entries.size() + 1);
@@ -234,6 +239,7 @@ ResponseHTTP *AutoIndexer::respond(const RequestHTTP &request) {
         default:
             break;
     }
+    // MIMEタイプ設定
     headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::strfy("text/html")));
     ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &headers, &response_data);
     res->start();

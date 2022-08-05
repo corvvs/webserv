@@ -4,7 +4,6 @@
 
 FileReader::FileReader(const RequestMatchingResult &match_result)
     : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), fd_(-1) {}
-FileReader::FileReader(const char_string &path) : file_path_(path), originated_(false), fd_(-1) {}
 
 FileReader::~FileReader() {
     close_if_needed();
@@ -23,6 +22,8 @@ void FileReader::read_from_file() {
         return;
     }
     errno  = 0;
+    // ファイルを読み込み用に開く
+    // 開けなかったらエラー
     int fd = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         switch (errno) {
@@ -31,11 +32,12 @@ void FileReader::read_from_file() {
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
             default:
-                QVOUT(strerror(errno));
+                VOUT(errno);
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
         }
     }
     fd_ = fd;
+    // 読んでデータリストに注入
     char read_buf[READ_SIZE];
     ssize_t read_size;
     for (;;) {
