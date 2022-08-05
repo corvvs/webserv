@@ -115,6 +115,7 @@ void FilePoster::decompose_multipart(const light_string &body, const light_strin
         }
         const light_string line = str.substr(0, i);
         light_string working    = line;
+        bool detected_closer    = false;
         if (working.starts_with(boundary_prefix)) {
             working = working.substr(boundary_prefix.size());
             if (working.starts_with(boundary)) {
@@ -122,24 +123,27 @@ void FilePoster::decompose_multipart(const light_string &body, const light_strin
                 if (working.starts_with(boundary_suffix)) {
                     // 閉じ境界区切子行?
                     DXOUT("is close?");
-                    working = working.substr(boundary_suffix.size());
+                    working         = working.substr(boundary_suffix.size());
+                    detected_closer = true;
                 } else {
                     DXOUT("is ordinary?");
                 }
-                if (working.find_first_not_of(ParserHelper::LWS) != light_string::npos) {
-                    // 行末までに空白でない文字がある -> Bad
-                    throw http_error("invalid boundary delimiter line", HTTP::STATUS_BAD_REQUEST);
+                if (working.find_first_not_of(ParserHelper::LWS) == light_string::npos) {
+                    // 行末までに空白でない文字がない -> boundaryである, と考える
+                    part_to = line.get_first() - ParserHelper::CRLF.size();
+                    if (part_from != light_string::npos) {
+                        // [part_from, part_to) をサブパートとして解析
+                        const light_string subpart(body, part_from, part_to);
+                        analyze_subpart(subpart);
+                    }
+                    part_from = line.get_last() + ParserHelper::CRLF.size();
                 }
-                part_to = line.get_first() - ParserHelper::CRLF.size();
-                if (part_from != light_string::npos) {
-                    // [part_from, part_to) をサブパートとして解析
-                    const light_string subpart(body, part_from, part_to);
-                    analyze_subpart(subpart);
-                }
-                part_from = line.get_last() + ParserHelper::CRLF.size();
             }
         }
-        str = str.substr(i + ParserHelper::CRLF.size());
+        str = str.substr(line.size() + ParserHelper::CRLF.size());
+        if (detected_closer) {
+            break;
+        }
     }
 }
 
