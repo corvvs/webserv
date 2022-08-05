@@ -364,6 +364,36 @@ public:
         }
         return *this;
     }
+
+    bool starts_with(const LightString &str) const {
+        size_type n = str.size();
+        return size() >= n && substr(0, n) == str;
+    }
+
+    bool starts_with(const string_class &str) const {
+        size_type n = str.size();
+        return size() >= n && substr(0, n) == str;
+    }
+
+    bool starts_with(const T *str) const {
+        size_type n = strlen(str);
+        return size() >= n && substr(0, n) == str;
+    }
+
+    bool ends_with(const LightString &str) const {
+        size_type n = str.size();
+        return size() >= n && substr(size() - n, n) == str;
+    }
+
+    bool ends_with(const string_class &str) const {
+        size_type n = str.size();
+        return size() >= n && substr(size() - n, n) == str;
+    }
+
+    bool ends_with(const T *str) const {
+        size_type n = strlen(str);
+        return size() >= n && substr(size() - n, n) == str;
+    }
 };
 
 namespace HTTP {

@@ -103,38 +103,40 @@ void FilePoster::extract_file_entries() {
 
 void FilePoster::decompose_multipart(const light_string &body, const light_string &boundary) {
     light_string str(body);
-    light_string::size_type part_from = light_string::npos;
-    light_string::size_type part_to   = light_string::npos;
+    light_string::size_type part_from       = light_string::npos;
+    light_string::size_type part_to         = light_string::npos;
+    const HTTP::byte_string boundary_prefix = HTTP::strfy("--");
+    const HTTP::byte_string boundary_suffix = HTTP::strfy("--");
+    // リクエストボディを boundary で区切る.
     while (true) {
         light_string::size_type i = str.find(ParserHelper::CRLF);
         if (i == light_string::npos) {
             break;
         }
-        const light_string whole_line = str.substr(0, i);
-        light_string line             = whole_line;
-        if (line.substr(0, 2) == "--") {
-            line = line.substr(2);
-            if (line.substr(0, boundary.size()) == boundary) {
-                line = line.substr(boundary.size());
-                if (line.substr(0, 2) == "--") {
+        const light_string line = str.substr(0, i);
+        light_string working    = line;
+        if (working.starts_with(boundary_prefix)) {
+            working = working.substr(boundary_prefix.size());
+            if (working.starts_with(boundary)) {
+                working = working.substr(boundary.size());
+                if (working.starts_with(boundary_suffix)) {
                     // 閉じ境界区切子行?
                     DXOUT("is close?");
-                    line = line.substr(2);
+                    working = working.substr(boundary_suffix.size());
                 } else {
                     DXOUT("is ordinary?");
                 }
-                if (line.find_first_not_of(ParserHelper::LWS) != light_string::npos) {
-                    // 行末までに空白でない文字がある
-                    // -> Bad
+                if (working.find_first_not_of(ParserHelper::LWS) != light_string::npos) {
+                    // 行末までに空白でない文字がある -> Bad
                     throw http_error("invalid boundary delimiter line", HTTP::STATUS_BAD_REQUEST);
                 }
-                part_to = whole_line.get_first() - 2;
+                part_to = line.get_first() - ParserHelper::CRLF.size();
                 if (part_from != light_string::npos) {
                     // [part_from, part_to) をサブパートとして解析
                     const light_string subpart(body, part_from, part_to);
                     analyze_subpart(subpart);
                 }
-                part_from = whole_line.get_last() + 2;
+                part_from = line.get_last() + ParserHelper::CRLF.size();
             }
         }
         str = str.substr(i + ParserHelper::CRLF.size());

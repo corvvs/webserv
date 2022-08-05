@@ -845,3 +845,64 @@ TEST(unquote, basic) {
     }
 }
 
+TEST(starts_with, byte_string) {
+    const HTTP::byte_string base = HTTP::strfy("AppleJuice");
+    const HTTP::light_string str(base);
+    EXPECT_EQ(true, str.starts_with(HTTP::strfy("A")));
+    EXPECT_EQ(false, str.starts_with(HTTP::strfy("B")));
+    EXPECT_EQ(false, str.starts_with(HTTP::strfy("a")));
+    EXPECT_EQ(false, str.starts_with(HTTP::strfy("b")));
+    EXPECT_EQ(true, str.starts_with(HTTP::strfy("Apple")));
+    EXPECT_EQ(true, str.starts_with(HTTP::strfy("AppleJuice")));
+    EXPECT_EQ(false, str.starts_with(HTTP::strfy("AppleJuiceBar")));
+    EXPECT_EQ(false, str.starts_with(HTTP::strfy("apple")));
+    EXPECT_EQ(false, str.starts_with(HTTP::strfy(" ")));
+    EXPECT_EQ(true, str.starts_with(HTTP::strfy("")));
+}
+
+TEST(starts_with, cstr) {
+    const HTTP::byte_string base = HTTP::strfy("AppleJuice");
+    const HTTP::light_string str(base);
+    EXPECT_EQ(true, str.starts_with("A"));
+    EXPECT_EQ(false, str.starts_with("B"));
+    EXPECT_EQ(false, str.starts_with("a"));
+    EXPECT_EQ(false, str.starts_with("b"));
+    EXPECT_EQ(true, str.starts_with("Apple"));
+    EXPECT_EQ(true, str.starts_with("AppleJuice"));
+    EXPECT_EQ(false, str.starts_with("AppleJuiceBar"));
+    EXPECT_EQ(false, str.starts_with("apple"));
+    EXPECT_EQ(false, str.starts_with(" "));
+    EXPECT_EQ(true, str.starts_with(""));
+}
+
+TEST(ends_with, byte_string) {
+    const HTTP::byte_string base = HTTP::strfy("AppleJuice");
+    const HTTP::light_string str(base);
+    EXPECT_EQ(false, str.ends_with(HTTP::strfy("A")));
+    EXPECT_EQ(false, str.ends_with(HTTP::strfy("E")));
+    EXPECT_EQ(false, str.ends_with(HTTP::strfy("a")));
+    EXPECT_EQ(true, str.ends_with(HTTP::strfy("e")));
+    EXPECT_EQ(false, str.ends_with(HTTP::strfy("Apple")));
+    EXPECT_EQ(true, str.ends_with(HTTP::strfy("Juice")));
+    EXPECT_EQ(true, str.ends_with(HTTP::strfy("AppleJuice")));
+    EXPECT_EQ(true, str.ends_with(HTTP::strfy("ce")));
+    EXPECT_EQ(false, str.ends_with(HTTP::strfy("SuperAppleJuice")));
+    EXPECT_EQ(false, str.ends_with(HTTP::strfy(" ")));
+    EXPECT_EQ(true, str.ends_with(HTTP::strfy("")));
+}
+
+TEST(ends_with, cstr) {
+    const HTTP::byte_string base = HTTP::strfy("AppleJuice");
+    const HTTP::light_string str(base);
+    EXPECT_EQ(false, str.ends_with("A"));
+    EXPECT_EQ(false, str.ends_with("E"));
+    EXPECT_EQ(false, str.ends_with("a"));
+    EXPECT_EQ(true, str.ends_with("e"));
+    EXPECT_EQ(false, str.ends_with("Apple"));
+    EXPECT_EQ(true, str.ends_with("Juice"));
+    EXPECT_EQ(true, str.ends_with("AppleJuice"));
+    EXPECT_EQ(true, str.ends_with("ce"));
+    EXPECT_EQ(false, str.ends_with("SuperAppleJuice"));
+    EXPECT_EQ(false, str.ends_with(" "));
+    EXPECT_EQ(true, str.ends_with(""));
+}
