@@ -8,11 +8,10 @@ HTTP::byte_string HTTP::Utils::downcase(const byte_string &str) {
     return rv;
 }
 
-HTTP::byte_string &HTTP::Utils::downcase(byte_string &str) {
+void HTTP::Utils::downcase(byte_string &str) {
     for (byte_string::size_type i = 0; i < str.size(); ++i) {
         str[i] = tolower(str[i]);
     }
-    return str;
 }
 
 HTTP::byte_string HTTP::Utils::upcase(const byte_string &str) {

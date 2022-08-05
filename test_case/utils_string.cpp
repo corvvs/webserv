@@ -3,10 +3,61 @@
 #include <vector>
 
 // [downcase]
+TEST(utils_string_downcase, basic_non_destructive) {
+    const HTTP::byte_string str
+        = HTTP::strfy("RFC 2616 defines the Content-Disposition response header field (Section 19.5.1 of [RFC2616]) "
+                      "but points out that it is not part of the HTTP/1.1 Standard (Section 15.5):");
+    HTTP::byte_string expected
+        = HTTP::strfy("rfc 2616 defines the content-disposition response header field (section 19.5.1 of [rfc2616]) "
+                      "but points out that it is not part of the http/1.1 standard (section 15.5):");
+    HTTP::byte_string str2   = str;
+    HTTP::byte_string downed = HTTP::Utils::downcase(str);
+    EXPECT_EQ(str2, str);
+    EXPECT_EQ(expected, downed);
+}
+
+TEST(utils_string_downcase, basic_destructive) {
+    HTTP::byte_string str
+        = HTTP::strfy("RFC 2616 defines the Content-Disposition response header field (Section 19.5.1 of [RFC2616]) "
+                      "but points out that it is not part of the HTTP/1.1 Standard (Section 15.5):");
+    HTTP::byte_string expected
+        = HTTP::strfy("rfc 2616 defines the content-disposition response header field (section 19.5.1 of [rfc2616]) "
+                      "but points out that it is not part of the http/1.1 standard (section 15.5):");
+    HTTP::byte_string str2 = str;
+    HTTP::Utils::downcase(str);
+    EXPECT_NE(str2, str);
+    EXPECT_EQ(expected, str);
+}
 
 // [upcase(non-destructive)]
 
+TEST(utils_string_upcase, basic_non_destructive) {
+    const HTTP::byte_string str
+        = HTTP::strfy("RFC 2616 defines the Content-Disposition response header field (Section 19.5.1 of [RFC2616]) "
+                      "but points out that it is not part of the HTTP/1.1 Standard (Section 15.5):");
+    HTTP::byte_string expected
+        = HTTP::strfy("RFC 2616 DEFINES THE CONTENT-DISPOSITION RESPONSE HEADER FIELD (SECTION 19.5.1 OF [RFC2616]) "
+                      "BUT POINTS OUT THAT IT IS NOT PART OF THE HTTP/1.1 STANDARD (SECTION 15.5):");
+    HTTP::byte_string str2  = str;
+    HTTP::byte_string upped = HTTP::Utils::upcase(str);
+    EXPECT_EQ(str2, str);
+    EXPECT_EQ(expected, upped);
+}
+
 // [upcase(destructive)]
+
+TEST(utils_string_upcase, basic_destructive) {
+    HTTP::byte_string str
+        = HTTP::strfy("RFC 2616 defines the Content-Disposition response header field (Section 19.5.1 of [RFC2616]) "
+                      "but points out that it is not part of the HTTP/1.1 Standard (Section 15.5):");
+    HTTP::byte_string expected
+        = HTTP::strfy("RFC 2616 DEFINES THE CONTENT-DISPOSITION RESPONSE HEADER FIELD (SECTION 19.5.1 OF [RFC2616]) "
+                      "BUT POINTS OUT THAT IT IS NOT PART OF THE HTTP/1.1 STANDARD (SECTION 15.5):");
+    HTTP::byte_string str2 = str;
+    HTTP::Utils::upcase(str);
+    EXPECT_NE(str2, str);
+    EXPECT_EQ(expected, str);
+}
 
 // [normalize_cgi_metavar_key]
 
