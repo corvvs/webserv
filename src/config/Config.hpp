@@ -26,6 +26,11 @@
 
 namespace config {
 
+class Config;
+
+typedef std::vector<Config> config_vector;
+typedef std::map<host_port_pair, config_vector> config_dict;
+
 class Config {
 public:
     Config(const ContextServer &srv);

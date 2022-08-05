@@ -3,6 +3,7 @@
 #include "../Interfaces.hpp"
 #include "../Originators.hpp"
 #include "../communication/Channel.hpp"
+#include "../config/Config.hpp"
 #include <map>
 
 // [サーバクラス]
@@ -18,20 +19,25 @@ public:
 private:
     IObserver *socket_observer_;
     channel_map channels;
+    config::config_dict configs_;
 
 public:
     HTTPServer(IObserver *observer);
 
     ~HTTPServer();
 
+    void init(const std::string &config_path);
+
     // ソケットlisten開始
     // ほんとはconfに基づいてやる
-    void listen(t_socket_domain sdomain, t_socket_type stype, t_port port);
 
     // イベントループ開始
     void run();
 
-    IOriginator *route(const RequestHTTP &request);
+private:
+    void listen(t_socket_domain sdomain, t_socket_type stype, t_port port, const config::config_vector &configs);
+
+    IOriginator *route(const RequestHTTP &request, const config::config_vector &configs);
 };
 
 #endif
