@@ -143,7 +143,6 @@ void RoundTrip::respond_error(const http_error &err) {
     destroy_response();
     in_error_responding = true;
     ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err);
-    BVOUT(res->get_message_text());
     res->start();
     response_ = res;
 }

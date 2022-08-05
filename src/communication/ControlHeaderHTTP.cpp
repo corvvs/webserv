@@ -4,9 +4,11 @@
 typedef HTTP::byte_string byte_string;
 typedef HTTP::light_string light_string;
 
+// [TransferCoding]
+
 void HTTP::Term::TransferCoding::store_list_item(const parameter_key_type &key, const parameter_value_type &val) {
     parameters[key] = val;
-    DXOUT("\"" << key << "\" << \"" << parameters[key] << "\"");
+    // DXOUT("\"" << key << "\" << \"" << parameters[key] << "\"");
 }
 
 HTTP::Term::TransferCoding HTTP::Term::TransferCoding::init() {
@@ -67,7 +69,7 @@ void HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
             if (val_lstr.size() == 0) {
-                DXOUT("away");
+                // DXOUT("away");
                 break;
             }
             // cat(sp_end) が "," か ";" かによって分岐

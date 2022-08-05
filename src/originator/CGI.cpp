@@ -148,7 +148,6 @@ void CGI::start_origination(IObserver &observer) {
         int rv = execve(HTTP::restrfy(attr.script_path_).c_str(), argv, mvs);
         VOUT(rv);
         VOUT(errno);
-        QVOUT(strerror(errno));
         exit(rv);
     }
     // parent: server process
@@ -247,7 +246,7 @@ char **CGI::flatten_metavar(const metavar_dict_type &metavar) {
         memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
         frame[i]    = item;
         frame[i][j] = '\0';
-        VOUT(frame[i]);
+        // VOUT(frame[i]);
     }
     frame[n] = NULL;
     return frame;
@@ -293,7 +292,7 @@ t_port CGI::get_port() const {
 }
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    DXOUT("CGI received: " << cat);
+    // DXOUT("CGI received: " << cat);
     if (attr.master) {
         switch (cat) {
             case IObserver::OT_WRITE:
