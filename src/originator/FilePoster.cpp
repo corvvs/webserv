@@ -5,13 +5,16 @@
 #define WRITE_SIZE 1024
 #define NON_FD -1
 
+// アップロードされるファイルの名前を決定する
 HTTP::byte_string new_file_name(const HTTP::CH::ContentDisposition &content_disposition, size_t serial) {
     HTTP::byte_string file_name;
-    const HTTP::IDictHolder::parameter_dict &params = content_disposition.parameters;
+    // 現在時刻を文字列化したものを接頭辞とする
     file_name = ParserHelper::utos(WSTime::get_epoch_ms(), 10) + ParserHelper::utos(WSTime::get_epoch_us(), 10);
-    HTTP::IDictHolder::parameter_dict::const_iterator res = params.find(HTTP::strfy("filename"));
     file_name += HTTP::strfy("0");
     file_name += ParserHelper::utos(serial, 10);
+    // Content-Disposition: がパラメータ filename を持っていれば、その値を _ で繋いで追記する
+    const HTTP::IDictHolder::parameter_dict &params       = content_disposition.parameters;
+    HTTP::IDictHolder::parameter_dict::const_iterator res = params.find(HTTP::strfy("filename"));
     if (res != params.end()) {
         file_name += HTTP::strfy("_");
         file_name += res->second.unquote().str();
@@ -29,15 +32,16 @@ FilePoster::FileEntry::FileEntry(const byte_string &name_,
     : name(name_), content(content_), content_type(content_type_), content_disposition(content_disposition_) {}
 
 FilePoster::FilePoster(const RequestMatchingResult &match_result, const IContentProvider &request)
-    : directory_path_(HTTP::restrfy(match_result.path_local))
-    , originated_(false)
-    , fd_(NON_FD)
-    , content_provider(request) {
-    const HTTP::CH::ContentType &ct                       = content_provider.get_content_type_item();
-    HTTP::IDictHolder::parameter_dict::const_iterator res = ct.parameters.find(HTTP::strfy("boundary"));
-    if (ct.value == "multipart/form-data" && res != ct.parameters.end() && res->second.size() > 0) {
-        // マルチパートである
-        boundary = res->second;
+    : directory_path_(HTTP::restrfy(match_result.path_local)), originated_(false), content_provider(request) {
+    // リクエストの Content-Type: が "multipart/form-data" でかつ正しい boundary パラメータがあれば,
+    // マルチパートとみなして処理する.
+    const HTTP::CH::ContentType &ct = content_provider.get_content_type_item();
+    if (ct.value == "multipart/form-data") {
+        HTTP::IDictHolder::parameter_dict::const_iterator res = ct.parameters.find(HTTP::strfy("boundary"));
+        if (res != ct.parameters.end() && res->second.size() > 0) {
+            // マルチパートである
+            boundary = res->second;
+        }
     }
 }
 
@@ -54,10 +58,10 @@ void FilePoster::post_files() {
     // ターゲットがディレクトリであることを確認
     check_target_directory();
     // ボディからFileEntryのリストを生成
-    analyze_body();
+    extract_file_entries();
     // FileEntryを1つずつアップロード
     for (size_t i = 0; i < entries.size(); ++i) {
-        post_file(entries[i]);
+        write_file(entries[i]);
     }
     response_data.inject("", 0, true);
     originated_ = true;
@@ -83,7 +87,7 @@ void FilePoster::check_target_directory() {
     }
 }
 
-void FilePoster::analyze_body() {
+void FilePoster::extract_file_entries() {
     body = content_provider.get_body();
     if (boundary.size() > 0) {
         decompose_multipart(body, boundary);
@@ -91,6 +95,7 @@ void FilePoster::analyze_body() {
         byte_string file_name = new_file_name(content_provider.get_content_disposition_item(), 1);
         entries.push_back(FileEntry(file_name, body));
     }
+    // ファイル名にディレクトリパスを結合
     for (size_t i = 0; i < entries.size(); ++i) {
         entries[i].name = HTTP::Utils::join_path(HTTP::strfy(directory_path_), entries[i].name);
     }
@@ -137,13 +142,14 @@ void FilePoster::decompose_multipart(const light_string &body, const light_strin
 }
 
 void FilePoster::analyze_subpart(const light_string &subpart) {
+    // ヘッダと本文の境界を見つける
     byte_string crlfcrlf      = ParserHelper::CRLF + ParserHelper::CRLF;
     light_string::size_type i = subpart.find(crlfcrlf);
     if (i == light_string::npos) {
         throw http_error("bad subpart", HTTP::STATUS_BAD_REQUEST);
     }
+    // ヘッダ部を解析
     const light_string header_part = subpart.substr(0, i + crlfcrlf.size() / 2);
-    const light_string body_part   = subpart.substr(i + crlfcrlf.size());
     HeaderHolderSubpart holder;
     holder.parse_header_lines(header_part, &holder);
 
@@ -155,12 +161,16 @@ void FilePoster::analyze_subpart(const light_string &subpart) {
     if (content_disposition.value != HTTP::strfy("form-data")) {
         return;
     }
+    // ヘッダ部の解析結果をもとにファイル名を決定
     byte_string file_name = new_file_name(content_disposition, entries.size() + 1);
+    // FileEntryを生成
+    const light_string body_part = subpart.substr(i + crlfcrlf.size());
     entries.push_back(FileEntry(file_name, body_part, content_type, content_disposition));
 }
 
-void FilePoster::post_file(const FileEntry &file) const {
+void FilePoster::write_file(const FileEntry &file) const {
     int fd = open(HTTP::restrfy(file.name).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0444);
+    // 0444 なのはアップロードされたファイルを即時実行させないため
     if (fd < 0) {
         switch (errno) {
             case EACCES:

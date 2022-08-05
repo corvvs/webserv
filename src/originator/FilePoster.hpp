@@ -40,15 +40,16 @@ private:
 
     // ファイルアップロード処理
     void post_files();
+    // リクエストターゲットがディレクトリであることを確認
     void check_target_directory();
-    // リクエストボディを解析してFileEntryを取り出す
-    void analyze_body();
-    // リクエストボディがマルチパートだった場合, それを分解する
+    // リクエストを解析してFileEntryを取り出す
+    void extract_file_entries();
+    // リクエストがマルチパートだった場合, それを分解する
     void decompose_multipart(const light_string &body, const light_string &boundary);
     // マルチパートを分解した後のサブパートを解析する
     void analyze_subpart(const light_string &subpart);
     // FileEntryの内容をディスクに書き込む
-    void post_file(const FileEntry &file) const;
+    void write_file(const FileEntry &file) const;
 
 public:
     FilePoster(const RequestMatchingResult &match_result, const IContentProvider &request);
