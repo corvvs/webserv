@@ -17,11 +17,9 @@ private:
     char_string file_path_;
     bool originated_;
     ResponseDataList response_data;
-    int fd_;
 
     // ファイルからデータを読み出しておく
     void read_from_file();
-    void close_if_needed();
 
 public:
     FileReader(const RequestMatchingResult &match_result);

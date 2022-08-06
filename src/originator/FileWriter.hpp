@@ -17,11 +17,9 @@ private:
     byte_string content_to_write_;
     ResponseDataList response_data;
     bool originated_;
-    int fd_;
 
     // リクエストターゲットのパスへのデータ書き込みを試みる
     void write_to_file();
-    void close_if_needed();
 
 public:
     FileWriter(const RequestMatchingResult &match_result, const byte_string &content_to_write_);
