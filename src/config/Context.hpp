@@ -1,5 +1,6 @@
 #ifndef CONTEXT_HPP
 #define CONTEXT_HPP
+#include "../utils/HTTPError.hpp"
 #include <map>
 #include <set>
 #include <string>
@@ -14,7 +15,7 @@ typedef std::string extension_type;
 typedef std::string executer_path_type;
 typedef std::map<extension_type, executer_path_type> cgi_path_map;
 
-static const int REDIRECT_INITIAL_VALUE = -1;
+static const HTTP::t_status REDIRECT_INITIAL_VALUE = HTTP::STATUS_REDIRECT_INIT;
 
 class ContextMain {
 public:
@@ -24,7 +25,7 @@ public:
     bool autoindex;
     std::string root;
     std::vector<std::string> indexes;
-    std::map<int, std::string> error_pages;
+    std::map<HTTP::t_status, std::string> error_pages;
 
     // 重複していいディレクティブか判定するときに使用する
     std::map<std::string, bool> defined_;
@@ -40,13 +41,13 @@ public:
     bool autoindex;
     std::string root;
     std::vector<std::string> indexes;
-    std::map<int, std::string> error_pages;
+    std::map<HTTP::t_status, std::string> error_pages;
 
     // 継承しない
     std::vector<std::string> server_names;
     std::vector<host_port_pair> host_ports;
     std::vector<class ContextLocation> locations;
-    std::pair<int, std::string> redirect;
+    std::pair<HTTP::t_status, std::string> redirect;
     std::string upload_store;
     std::vector<bool> is_default_servers;
 
@@ -74,8 +75,8 @@ public:
     bool autoindex;
     std::string root;
     std::vector<std::string> indexes;
-    std::map<int, std::string> error_pages;
-    std::pair<int, std::string> redirect;
+    std::map<HTTP::t_status, std::string> error_pages;
+    std::pair<HTTP::t_status, std::string> redirect;
     std::string upload_store;
 
     /// 継承しない

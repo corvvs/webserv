@@ -25,8 +25,6 @@ struct RequestMatchingResult {
     // 種別
     ResultType result_type;
 
-    std::pair<int, HTTP::byte_string> redirect;
-
     // メソッドが実行できるか(できない場合はgetとして扱う)
     bool is_executable;
 

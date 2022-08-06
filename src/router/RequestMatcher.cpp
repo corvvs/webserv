@@ -24,8 +24,10 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
     RequestMatchingResult res;
     const RequestTarget &target = rp.get_request_target();
     if (is_redirect(target, conf)) {
-        res.redirect    = get_redirect(target, conf);
-        res.result_type = RequestMatchingResult::RT_EXTERNAL_REDIRECTION;
+        RequestMatcher::redirect_pair pair = get_redirect(target, conf);
+        res.status_code                    = pair.first;
+        res.redirect_location              = pair.second;
+        res.result_type                    = RequestMatchingResult::RT_EXTERNAL_REDIRECTION;
         return res;
     }
     res.client_max_body_size = get_client_max_body_size(target, conf);
@@ -195,8 +197,8 @@ bool RequestMatcher::is_regular_file(const std::string &path) const {
 
 RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &target,
                                                            const config::Config &conf) const {
-    const std::string &path              = HTTP::restrfy(target.path.str());
-    std::pair<int, std::string> redirect = conf.get_redirect(path);
+    const std::string &path                         = HTTP::restrfy(target.path.str());
+    std::pair<HTTP::t_status, std::string> redirect = conf.get_redirect(path);
     return std::make_pair(redirect.first, HTTP::strfy(redirect.second));
 }
 
@@ -230,9 +232,10 @@ RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(con
                                                                              const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.path.str());
 
-    const std::map<int, std::string> error_pages = conf.get_error_page(path);
+    const std::map<HTTP::t_status, std::string> error_pages = conf.get_error_page(path);
     RequestMatchingResult::status_dict_type res;
-    for (std::map<int, std::string>::const_iterator it = error_pages.begin(); it != error_pages.end(); ++it) {
+    for (std::map<HTTP::t_status, std::string>::const_iterator it = error_pages.begin(); it != error_pages.end();
+         ++it) {
         res[static_cast<HTTP::t_status>(it->first)] = HTTP::strfy(it->second);
     }
     return res;
