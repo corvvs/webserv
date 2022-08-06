@@ -49,9 +49,6 @@ struct RequestMatchingResult {
     // 外部リダイレクトの行先
     HTTP::byte_string redirect_location;
 
-    // confから決まる「HTTPリクエストのボディのサイズ上限」
-    HTTP::byte_string::size_type max_body_size;
-
     long client_max_body_size;
 };
 class IRequestMatcher {
