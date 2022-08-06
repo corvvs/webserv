@@ -177,9 +177,9 @@ bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
 }
 
 bool RequestMatcher::is_redirect(const RequestTarget &target, const config::Config &conf) {
-    const std::string &path              = HTTP::restrfy(target.path.str());
-    std::pair<int, std::string> redirect = conf.get_redirect(path);
-    return redirect.first != -1;
+    const std::string &path                         = HTTP::restrfy(target.path.str());
+    std::pair<HTTP::t_status, std::string> redirect = conf.get_redirect(path);
+    return redirect.first != HTTP::STATUS_REDIRECT_INIT;
 }
 
 bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &conf) {

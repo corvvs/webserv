@@ -38,7 +38,7 @@ TEST_F(config_test, get_error_page) {
     const config::Config conf       = configs[hp].front();
 
     const std::string target = "/";
-    std::map<int, std::string> error_page;
+    std::map<HTTP::t_status, std::string> error_page;
     //    error_page[404] = "";
     EXPECT_EQ(error_page, conf.get_error_page(target));
 }
@@ -98,8 +98,8 @@ TEST_F(config_test, get_redirect) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target             = "/";
-    std::pair<int, std::string> redirect = std::make_pair(-1, "");
+    const std::string target                        = "/";
+    std::pair<HTTP::t_status, std::string> redirect = std::make_pair(HTTP::STATUS_REDIRECT_INIT, "");
     EXPECT_EQ(redirect, conf.get_redirect(target));
 }
 
@@ -161,17 +161,17 @@ TEST_F(config_test, get_error_page_from_mix_context) {
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
 
-    std::map<int, std::string> error_page;
-    error_page[400] = "error.html";
+    std::map<HTTP::t_status, std::string> error_page;
+    error_page[HTTP::STATUS_BAD_REQUEST] = "error.html";
     EXPECT_EQ(error_page, conf.get_error_page("/"));
     error_page.clear();
-    error_page[401] = "error1.html";
+    error_page[HTTP::STATUS_UNAUTHORIZED] = "error1.html";
     EXPECT_EQ(error_page, conf.get_error_page("/dir1"));
     error_page.clear();
-    error_page[402] = "error2.html";
+    error_page[(HTTP::t_status)402] = "error2.html";
     EXPECT_EQ(error_page, conf.get_error_page("/dir2"));
     error_page.clear();
-    error_page[403] = "error3.html";
+    error_page[HTTP::STATUS_FORBIDDEN] = "error3.html";
     EXPECT_EQ(error_page, conf.get_error_page("/dir2/dir3"));
 }
 
@@ -248,10 +248,10 @@ TEST_F(config_test, get_redirect_from_mix_context) {
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
 
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/"));
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir1"));
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir2"));
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir2/dir3"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/dir1"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/dir2"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/dir2/dir3"));
 }
 
 TEST_F(config_test, get_server_name_from_mix_context) {
