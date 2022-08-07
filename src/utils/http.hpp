@@ -40,7 +40,8 @@ enum t_status {
     STATUS_SERVICE_UNAVAILABLE   = 503,
     STATUS_VERSION_NOT_SUPPORTED = 505,
 
-    STATUS_DUMMY = 0
+    STATUS_DUMMY         = 0,
+    STATUS_REDIRECT_INIT = -1
 };
 
 // リクエストメソッド

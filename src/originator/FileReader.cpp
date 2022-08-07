@@ -3,11 +3,9 @@
 #define READ_SIZE 1024
 
 FileReader::FileReader(const RequestMatchingResult &match_result)
-    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), fd_(-1) {}
+    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false) {}
 
-FileReader::~FileReader() {
-    close_if_needed();
-}
+FileReader::~FileReader() {}
 
 void FileReader::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     (void)observer;
@@ -36,13 +34,13 @@ void FileReader::read_from_file() {
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
         }
     }
-    fd_ = fd;
     // 読んでデータリストに注入
     char read_buf[READ_SIZE];
     ssize_t read_size;
     for (;;) {
         read_size = read(fd, read_buf, READ_SIZE);
         if (read_size < 0) {
+            close(fd);
             throw http_error("read error", HTTP::STATUS_FORBIDDEN);
         }
         response_data.inject(read_buf, read_size, read_size == 0);
@@ -51,15 +49,7 @@ void FileReader::read_from_file() {
         }
     }
     originated_ = true;
-    close_if_needed();
-}
-
-void FileReader::close_if_needed() {
-    if (fd_ < 0) {
-        return;
-    }
-    close(fd_);
-    fd_ = -1;
+    close(fd);
 }
 
 void FileReader::inject_socketlike(ISocketLike *socket_like) {

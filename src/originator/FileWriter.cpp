@@ -1,17 +1,11 @@
 #include "FileWriter.hpp"
 #include <unistd.h>
 #define WRITE_SIZE 1024
-#define NON_FD -1
 
 FileWriter::FileWriter(const RequestMatchingResult &match_result, const byte_string &content_to_write)
-    : file_path_(HTTP::restrfy(match_result.path_local))
-    , content_to_write_(content_to_write)
-    , originated_(false)
-    , fd_(NON_FD) {}
+    : file_path_(HTTP::restrfy(match_result.path_local)), content_to_write_(content_to_write), originated_(false) {}
 
-FileWriter::~FileWriter() {
-    close_if_needed();
-}
+FileWriter::~FileWriter() {}
 
 void FileWriter::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     (void)observer;
@@ -37,7 +31,6 @@ void FileWriter::write_to_file() {
         }
     }
     // データを一気に書き込む
-    fd_                               = fd;
     byte_string::size_type write_head = 0;
     ssize_t written_size              = 0;
     for (; write_head < content_to_write_.size();) {
@@ -46,6 +39,7 @@ void FileWriter::write_to_file() {
 
         written_size = write(fd, &content_to_write_[write_head], write_max);
         if (written_size < 0) {
+            close(fd);
             throw http_error("read error", HTTP::STATUS_FORBIDDEN);
         }
         write_head += written_size;
@@ -58,15 +52,7 @@ void FileWriter::write_to_file() {
     HTTP::byte_string written_size_str = ParserHelper::utos(write_head, 10);
     response_data.inject(&written_size_str.front(), written_size_str.size(), true);
     originated_ = true;
-    close_if_needed();
-}
-
-void FileWriter::close_if_needed() {
-    if (fd_ < 0) {
-        return;
-    }
-    close(fd_);
-    fd_ = NON_FD;
+    close(fd);
 }
 
 void FileWriter::inject_socketlike(ISocketLike *socket_like) {

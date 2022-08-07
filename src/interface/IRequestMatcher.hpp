@@ -25,8 +25,6 @@ struct RequestMatchingResult {
     // 種別
     ResultType result_type;
 
-    std::pair<int, HTTP::byte_string> redirect;
-
     // メソッドが実行できるか(できない場合はgetとして扱う)
     bool is_executable;
 
@@ -50,9 +48,6 @@ struct RequestMatchingResult {
 
     // 外部リダイレクトの行先
     HTTP::byte_string redirect_location;
-
-    // confから決まる「HTTPリクエストのボディのサイズ上限」
-    HTTP::byte_string::size_type max_body_size;
 
     long client_max_body_size;
 };
