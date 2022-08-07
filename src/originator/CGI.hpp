@@ -43,6 +43,8 @@ public:
     typedef HeaderHolderCGI header_holder_type;
 
     struct Attribute {
+        const ICGIConfigurationProvider &configuration_provider_;
+        const byte_string executor_path_;
         const byte_string script_path_;
         const byte_string query_string_;
         IObserver *observer;
@@ -52,7 +54,8 @@ public:
         // CGIスクリプトプロセスとの通信に使うUNIXドメインソケットオブジェクト
         SocketUNIX *sock;
 
-        Attribute(const byte_string &script_path, const byte_string &query_string);
+        Attribute(const RequestMatchingResult &matching_result,
+                  const ICGIConfigurationProvider &configuration_provider);
     };
 
     struct Status {
@@ -109,7 +112,6 @@ private:
     metavar_dict_type metavar_;
     size_type to_script_content_length_;
     byte_string to_script_content_;
-    byte_string from_script_content_;
 
     // bool is_disconnected;
     byte_string bytebuffer;
@@ -122,7 +124,7 @@ private:
     // [CGIヘッダ]
     header_holder_type from_script_header_holder;
 
-    static char **flatten_argv(const byte_string &script_path);
+    static char **flatten_argv(const byte_string &executor_path, const byte_string &script_path);
     static char **flatten_metavar(const metavar_dict_type &metavar);
 
     IResponseDataProducer &response_data_producer();
@@ -155,7 +157,7 @@ private:
     void check_cgi_response_consistensy();
 
 public:
-    CGI(const byte_string &script_path, const byte_string &query_string, const RequestHTTP &request);
+    CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request);
     ~CGI();
 
     // CGIスクリプトに送信するためのデータを投入する
@@ -171,7 +173,6 @@ public:
     bool is_responsive() const;
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
-    byte_string draw_data() const;
     void leave();
     ResponseHTTP *respond(const RequestHTTP &request);
 

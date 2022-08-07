@@ -8,7 +8,7 @@ class RequestMatcher : public IRequestMatcher {
 public:
     typedef HTTP::light_string light_string;
     typedef std::pair<HTTP::byte_string, HTTP::byte_string> cgi_resource_pair;
-    typedef std::pair<int, HTTP::byte_string> redirect_pair;
+    typedef std::pair<HTTP::t_status, HTTP::byte_string> redirect_pair;
 
 public:
     RequestMatcher();

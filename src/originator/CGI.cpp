@@ -23,8 +23,16 @@ CGI::ParserStatus::ParserStatus() : parse_progress(PP_HEADER_SECTION_END), start
 
 CGI::Status::Status() : is_started(false), to_script_content_sent_(0), is_responsive(false), is_complete(false) {}
 
-CGI::Attribute::Attribute(const CGI::byte_string &script_path, const CGI::byte_string &query_string)
-    : script_path_(script_path), query_string_(query_string), observer(NULL), master(NULL), cgi_pid(0), sock(NULL) {}
+CGI::Attribute::Attribute(const RequestMatchingResult &matching_result,
+                          const ICGIConfigurationProvider &configuration_provider)
+    : configuration_provider_(configuration_provider)
+    , executor_path_(matching_result.path_cgi_executor)
+    , script_path_(matching_result.path_local)
+    , query_string_(configuration_provider.get_request_matching_param().get_request_target().query.str())
+    , observer(NULL)
+    , master(NULL)
+    , cgi_pid(0)
+    , sock(NULL) {}
 
 const CGI::byte_string CGI::META_GATEWAY_INTERFACE = HTTP::strfy("GATEWAY_INTERFACE");
 const CGI::byte_string CGI::META_REQUEST_METHOD    = HTTP::strfy("REQUEST_METHOD");
@@ -33,17 +41,16 @@ const CGI::byte_string CGI::META_CONTENT_TYPE      = HTTP::strfy("CONTENT_TYPE")
 const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
 const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
 
-CGI::CGI(const byte_string &script_path, const byte_string &query_string, const RequestHTTP &request)
-    : attr(Attribute(script_path, query_string))
-    , metavar_(request.get_cgi_http_vars())
+CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
+    : attr(Attribute(match_result, request))
+    , metavar_(request.get_cgi_meta_vars())
     , to_script_content_length_(0)
     , mid(0) {
     ps.start_of_header               = 0;
     metavar_[META_GATEWAY_INTERFACE] = HTTP::strfy("CGI/1.1");
-    metavar_[META_REQUEST_METHOD]    = HTTP::method_str(request.get_method());
-    metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(request.get_http_version());
-    metavar_[META_CONTENT_TYPE]      = request.get_content_type();
-    set_content(request.get_plain_message());
+    metavar_[META_REQUEST_METHOD]    = HTTP::method_str(attr.configuration_provider_.get_method());
+    metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(attr.configuration_provider_.get_http_version());
+    metavar_[META_CONTENT_TYPE]      = attr.configuration_provider_.get_content_type();
 }
 
 CGI::~CGI() {
@@ -52,20 +59,19 @@ CGI::~CGI() {
         ::kill(attr.cgi_pid, SIGKILL);
         int wstatus;
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
-        VOUT(pid);
+        // VOUT(pid);
         assert(pid > 0);
-        VOUT(WIFEXITED(wstatus));
-        VOUT(WEXITSTATUS(wstatus));
-        VOUT(WIFSIGNALED(wstatus));
-        VOUT(WTERMSIG(wstatus));
+        // VOUT(WIFEXITED(wstatus));
+        // VOUT(WEXITSTATUS(wstatus));
+        // VOUT(WIFSIGNALED(wstatus));
+        // VOUT(WTERMSIG(wstatus));
         attr.cgi_pid = 0;
     }
     delete attr.sock;
-    DXOUT("DESTROYED: " << this);
+    // DXOUT("DESTROYED: " << this);
 }
 
 void CGI::inject_socketlike(ISocketLike *socket_like) {
-    VOUT(socket_like);
     attr.master                = socket_like;
     metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port(), 10);
 }
@@ -99,6 +105,7 @@ void CGI::check_executable() const {
 
 void CGI::start_origination(IObserver &observer) {
     check_executable();
+    set_content(attr.configuration_provider_.get_body());
 
     std::pair<SocketUNIX *, t_fd> socks = SocketUNIX::socket_pair();
     socks.first->set_nonblock();
@@ -116,7 +123,7 @@ void CGI::start_origination(IObserver &observer) {
         // child: CGI process
         delete socks.first;
         // 引数の準備
-        char **argv = flatten_argv(attr.script_path_);
+        char **argv = flatten_argv(attr.executor_path_, attr.script_path_);
         if (argv == NULL) {
             exit(1);
         }
@@ -182,22 +189,21 @@ void CGI::capture_script_termination() {
     }
 }
 
-CGI::byte_string CGI::draw_data() const {
-    return from_script_content_;
-}
-
-char **CGI::flatten_argv(const byte_string &script_path) {
-    size_t n     = 2;
+char **CGI::flatten_argv(const byte_string &executor_path, const byte_string &script_path) {
+    size_t n     = 3;
     char **frame = (char **)malloc(sizeof(char *) * n);
     if (frame == NULL) {
         return frame;
     }
-    frame[0] = strdup(HTTP::restrfy(script_path).c_str());
-    if (frame[0] == NULL) {
+    frame[0] = strdup(HTTP::restrfy(executor_path).c_str());
+    frame[1] = strdup(HTTP::restrfy(script_path).c_str());
+    if (frame[0] == NULL || frame[1] == NULL) {
+        free(frame[0]);
+        free(frame[1]);
         free(frame);
         return NULL;
     }
-    frame[1] = NULL;
+    frame[2] = NULL;
     return frame;
 }
 
@@ -254,8 +260,9 @@ IResponseDataProducer &CGI::response_data_producer() {
 void CGI::set_content(const byte_string &content) {
     to_script_content_        = content;
     to_script_content_length_ = content.size();
-    VOUT(to_script_content_length_);
-    BVOUT(to_script_content_);
+    const byte_string val
+        = to_script_content_length_ > 0 ? ParserHelper::utos(to_script_content_length_, 10) : HTTP::strfy("");
+    metavar_[META_CONTENT_LENGTH] = val;
 }
 
 CGI::metavar_dict_type CGI::make_metavars_from_envp(char **envp) {
@@ -631,7 +638,6 @@ void CGI::RoutingParameters::determine_body_size(const header_holder_type &holde
     //
     // ということで, サイズは事前に決められない.
 
-    // むしろ, CGIヘッダに content-length: がある場合, それを破棄する必要がありそう.
     (void)holder;
 }
 
@@ -694,49 +700,67 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
-    ResponseHTTP res(request.get_http_version(), HTTP::STATUS_OK, &status.response_data);
     CGI::t_cgi_response_type response_type = rp.get_response_type();
+    HTTP::t_status response_status         = HTTP::STATUS_OK;
     VOUT(response_type);
     VOUT(rp.status.code);
-
     switch (response_type) {
         case CGIRES_DOCUMENT:
             // ドキュメント応答
             if (rp.status.code == HTTP::STATUS_UNSPECIFIED) {
-                res.set_status(HTTP::STATUS_OK);
+                response_status = HTTP::STATUS_OK;
             } else {
-                res.set_status((HTTP::t_status)rp.status.code);
+                response_status = (HTTP::t_status)rp.status.code;
             }
             break;
         case CGIRES_REDIRECT_CLIENT:
             // クライアントリダイレクト
-            res.set_status(HTTP::STATUS_FOUND);
+            response_status = HTTP::STATUS_FOUND;
             break;
         case CGIRES_REDIRECT_CLIENT_DOCUMENT:
             // クライアントリダイレクト ドキュメント付き
-            res.set_status((HTTP::t_status)rp.status.code);
+            response_status = (HTTP::t_status)rp.status.code;
             break;
         default:
             assert(false);
     }
 
-    // 本文がある場合は Transfer-Encoding をセット
+    ResponseHTTP::header_list_type headers;
 
-    // 本文がある場合は Content-Type をセット
+    // [伝送に関する決め事]
+    // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
+    // それはそうとして, chunkedで送るか, そうでないかを決める
+    // chunkedでない場合, Content-Length: を与える
+    // 本文がある場合は Content-Type: をセット
     // (なければ何もセットしない)
-    if (response_type == CGIRES_DOCUMENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT) {
-        if (from_script_content_.size() > 0) {
+    IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
+    const bool must_have_body = response_type == CGIRES_DOCUMENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
+    if (must_have_body) {
+        VOUT(status.response_data.current_total_size());
+        if (status.response_data.current_total_size() > 0) {
             const HeaderHolderCGI::header_val_type *val
                 = from_script_header_holder.get_back_val(HeaderHTTP::content_type);
             if (val) {
-                res.feed_header(HeaderHTTP::content_type, *val);
+                headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
             }
         }
+        switch (sm) {
+            case ResponseDataList::SM_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+                break;
+            case ResponseDataList::SM_NOT_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::content_length,
+                                                 ParserHelper::utos(status.response_data.current_total_size(), 10)));
+                break;
+            default:
+                break;
+        }
     }
-    res.start();
+    ResponseHTTP res(request.get_http_version(), response_status, &headers, &status.response_data);
 
     // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL);
+    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, NULL);
     ResponseHTTP::swap(res, *r);
+    r->start();
     return r;
 }

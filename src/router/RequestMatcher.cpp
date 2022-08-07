@@ -24,7 +24,10 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
     RequestMatchingResult res;
     const RequestTarget &target = rp.get_request_target();
     if (is_redirect(target, conf)) {
-        res.redirect = get_redirect(target, conf);
+        RequestMatcher::redirect_pair pair = get_redirect(target, conf);
+        res.status_code                    = pair.first;
+        res.redirect_location              = pair.second;
+        res.result_type                    = RequestMatchingResult::RT_EXTERNAL_REDIRECTION;
         return res;
     }
     res.client_max_body_size = get_client_max_body_size(target, conf);
@@ -43,7 +46,7 @@ RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &targ
     res.path_local        = resource.first;
     res.path_after        = resource.second;
     res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
-    res.is_cgi            = true;
+    res.result_type       = RequestMatchingResult::RT_CGI;
     return res;
 }
 
@@ -55,10 +58,25 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
     if (path.empty()) {
         throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
     }
-    res.path_local    = path;
-    res.is_executable = get_is_executable(target, method, conf);
-    res.is_autoindex  = get_is_autoindex(target, conf);
-    res.is_cgi        = false;
+    res.path_local  = path;
+    res.result_type = RequestMatchingResult::RT_FILE;
+    if (get_is_autoindex(target, conf)) {
+        res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+    } else if (get_is_executable(target, method, conf)) {
+        switch (method) {
+            case HTTP::METHOD_DELETE:
+                res.result_type = RequestMatchingResult::RT_FILE_DELETE;
+                break;
+            case HTTP::METHOD_POST:
+                res.result_type = RequestMatchingResult::RT_FILE_POST;
+                break;
+            case HTTP::METHOD_PUT:
+                res.result_type = RequestMatchingResult::RT_FILE_PUT;
+                break;
+            default:
+                break;
+        }
+    }
     return res;
 }
 
@@ -159,9 +177,9 @@ bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
 }
 
 bool RequestMatcher::is_redirect(const RequestTarget &target, const config::Config &conf) {
-    const std::string &path              = HTTP::restrfy(target.path.str());
-    std::pair<int, std::string> redirect = conf.get_redirect(path);
-    return redirect.first != -1;
+    const std::string &path                         = HTTP::restrfy(target.path.str());
+    std::pair<HTTP::t_status, std::string> redirect = conf.get_redirect(path);
+    return redirect.first != HTTP::STATUS_REDIRECT_INIT;
 }
 
 bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &conf) {
@@ -179,8 +197,8 @@ bool RequestMatcher::is_regular_file(const std::string &path) const {
 
 RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &target,
                                                            const config::Config &conf) const {
-    const std::string &path              = HTTP::restrfy(target.path.str());
-    std::pair<int, std::string> redirect = conf.get_redirect(path);
+    const std::string &path                         = HTTP::restrfy(target.path.str());
+    std::pair<HTTP::t_status, std::string> redirect = conf.get_redirect(path);
     return std::make_pair(redirect.first, HTTP::strfy(redirect.second));
 }
 
@@ -214,9 +232,10 @@ RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(con
                                                                              const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.path.str());
 
-    const std::map<int, std::string> error_pages = conf.get_error_page(path);
+    const std::map<HTTP::t_status, std::string> error_pages = conf.get_error_page(path);
     RequestMatchingResult::status_dict_type res;
-    for (std::map<int, std::string>::const_iterator it = error_pages.begin(); it != error_pages.end(); ++it) {
+    for (std::map<HTTP::t_status, std::string>::const_iterator it = error_pages.begin(); it != error_pages.end();
+         ++it) {
         res[static_cast<HTTP::t_status>(it->first)] = HTTP::strfy(it->second);
     }
     return res;

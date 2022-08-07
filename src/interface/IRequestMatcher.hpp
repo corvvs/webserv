@@ -9,12 +9,21 @@
 struct RequestMatchingResult {
 
     typedef std::map<HTTP::t_status, HTTP::byte_string> status_dict_type;
+    enum ResultType {
+        RT_FILE,
+        RT_FILE_DELETE,
+        RT_FILE_POST,
+        RT_FILE_PUT,
+        RT_EXTERNAL_REDIRECTION,
+        RT_CGI,
+        RT_AUTO_INDEX,
+        RT_ECHO
+    };
 
-    bool is_cgi;
-    bool is_autoindex;
-    bool is_redirect;
+    const RequestTarget *target;
 
-    std::pair<int, HTTP::byte_string> redirect;
+    // 種別
+    ResultType result_type;
 
     // メソッドが実行できるか(できない場合はgetとして扱う)
     bool is_executable;
@@ -33,6 +42,12 @@ struct RequestMatchingResult {
     // あるHTTPステータスの時はこのファイルの中身を返す, という時の
     // ステータスとファイルパスの辞書.
     status_dict_type status_page_dict;
+
+    // 必要な場合, HTTPステータスコードが入る
+    HTTP::t_status status_code;
+
+    // 外部リダイレクトの行先
+    HTTP::byte_string redirect_location;
 
     long client_max_body_size;
 };

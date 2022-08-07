@@ -67,10 +67,24 @@ public:
     virtual const HTTP::CH::Host &get_host() const          = 0;
 };
 
+class ICGIConfigurationProvider {
+public:
+    typedef HeaderHolderHTTP header_holder_type;
+
+    virtual ~ICGIConfigurationProvider() {}
+
+    virtual HTTP::t_version get_http_version() const                        = 0;
+    virtual HTTP::t_method get_method() const                               = 0;
+    virtual const IRequestMatchingParam &get_request_matching_param() const = 0;
+    virtual header_holder_type::joined_dict_type get_cgi_meta_vars() const  = 0;
+    virtual HTTP::byte_string get_content_type() const                      = 0;
+    virtual HTTP::byte_string get_body() const                              = 0;
+};
+
 // [HTTPリクエストクラス]
 // [責務]
 // - 順次供給されるバイト列をHTTPリクエストとして解釈すること
-class RequestHTTP {
+class RequestHTTP : public ICGIConfigurationProvider {
 public:
     enum t_parse_progress {
         PP_UNREACHED,
@@ -246,7 +260,7 @@ public:
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
 
-    header_holder_type::joined_dict_type get_cgi_http_vars() const;
+    header_holder_type::joined_dict_type get_cgi_meta_vars() const;
     const IRequestMatchingParam &get_request_matching_param() const;
 };
 

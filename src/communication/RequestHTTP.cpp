@@ -121,7 +121,7 @@ RequestHTTP::RequestHTTP() : mid(0), rp() {
     this->ps.parse_progress = PP_REQLINE_START;
     this->rp.http_method    = HTTP::METHOD_UNKNOWN;
     this->rp.http_version   = HTTP::V_UNKNOWN;
-    bytebuffer.reserve(HTTP::MAX_REQLINE_END);
+    bytebuffer.reserve(MAX_REQLINE_END);
 }
 
 RequestHTTP::~RequestHTTP() {}
@@ -411,7 +411,7 @@ bool RequestHTTP::seek_reqline_end(size_t len) {
     this->ps.end_of_reqline  = res.first;
     this->ps.start_of_header = this->mid;
     // -> end_of_reqline が8192バイト以内かどうか調べる。
-    if (HTTP::MAX_REQLINE_END <= this->ps.end_of_reqline) {
+    if (MAX_REQLINE_END <= this->ps.end_of_reqline) {
         throw http_error("Invalid Response: request line is too long", HTTP::STATUS_URI_TOO_LONG);
     }
     this->ps.crlf_in_header = IndexRange(this->ps.start_of_header, this->ps.start_of_header);
@@ -752,7 +752,7 @@ RequestHTTP::byte_string RequestHTTP::get_body() const {
 }
 
 RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
-    return bytebuffer;
+    return RequestHTTP::byte_string(bytebuffer.begin(), bytebuffer.begin() + mid);
 }
 
 RequestHTTP::light_string RequestHTTP::freeze() {
@@ -768,8 +768,8 @@ bool RequestHTTP::should_keep_in_touch() const {
     return false;
 }
 
-RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_http_vars() const {
-    return header_holder.get_cgi_http_vars();
+RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars() const {
+    return header_holder.get_cgi_meta_vars();
 }
 
 const IRequestMatchingParam &RequestHTTP::get_request_matching_param() const {

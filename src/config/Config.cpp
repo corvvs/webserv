@@ -19,7 +19,7 @@ bool Config::get_autoindex(const std::string &target) const {
     return loc.autoindex;
 }
 
-std::map<int, std::string> Config::get_error_page(const std::string &target) const {
+std::map<HTTP::t_status, std::string> Config::get_error_page(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.error_pages;
 }
@@ -57,7 +57,7 @@ std::vector<std::string> Config::get_server_name() const {
     return ctx_server_.server_names;
 }
 
-std::pair<int, std::string> Config::get_redirect(const std::string &target) const {
+std::pair<HTTP::t_status, std::string> Config::get_redirect(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.redirect;
 }

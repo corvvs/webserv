@@ -2,6 +2,13 @@
 #include <iomanip>
 #include <limits>
 
+const ParserHelper::byte_string ParserHelper::SP                 = HTTP::strfy(" ");
+const ParserHelper::byte_string ParserHelper::OWS                = HTTP::strfy(" \t");
+const ParserHelper::byte_string ParserHelper::HEADER_KV_SPLITTER = HTTP::strfy(":");
+const ParserHelper::byte_string ParserHelper::CRLF               = HTTP::strfy("\r\n");
+const ParserHelper::byte_string ParserHelper::LF                 = HTTP::strfy("\n");
+const ParserHelper::byte_string ParserHelper::LWS                = HTTP::strfy(" \t");
+
 IndexRange ParserHelper::find_crlf(const byte_string &str, ssize_t from, ssize_t len) {
     if ((size_t)(from + len) > str.size()) {
         len = str.size() - from;
