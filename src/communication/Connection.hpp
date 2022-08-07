@@ -56,6 +56,8 @@ private:
     // ラウンドトリップ
     RoundTrip rt;
 
+    Lifetime lifetime;
+
     // 余剰データバッファ
     // あるリクエストが終端以降のデータを持っている場合, それを受け取って保持しておく
     // 次のリクエストがきたら, 受信データより優先的にこのデータを使ってリクエストを処理する
@@ -74,6 +76,8 @@ private:
     // 次のupdateで接続を完全に閉じる
     // 以降すべての通知をシャットアウトする
     void die(IObserver &observer);
+
+    bool is_timeout(t_time_epoch_ms now) const;
 
 public:
     Connection(IRouter *router, SocketConnected *sock_given);

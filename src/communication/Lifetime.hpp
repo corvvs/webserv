@@ -28,21 +28,31 @@ private:
     t_time_epoch_ms deactivated_at;
     t_time_epoch_ms activated_at;
 
+    bool is_active() const;
+
 public:
     Lifetime(const t_time_epoch_ms &active, const t_time_epoch_ms &inactive);
 
-    void mark_active();
-    void mark_inactive();
+    void activate();
+    void deactivate();
     bool is_timeout(t_time_epoch_ms now) const;
 
     // [Factory関数群]
+    static const t_time_epoch_ms LIFETIME_CONNECTION_ACTIVE;
+    static const t_time_epoch_ms LIFETIME_CONNECTION_INACTIVE;
+    static Lifetime make_connection();
+
     static const t_time_epoch_ms LIFETIME_ROUNDTRIP_ACTIVE;
     static const t_time_epoch_ms LIFETIME_ROUNDTRIP_INACTIVE;
     static Lifetime make_round_trip();
 
+    static const t_time_epoch_ms LIFETIME_REQUEST_HEADER_ACTIVE;
+    static const t_time_epoch_ms LIFETIME_REQUEST_HEADER_INACTIVE;
+    static Lifetime make_request();
+
     static const t_time_epoch_ms LIFETIME_REQUEST_ACTIVE;
     static const t_time_epoch_ms LIFETIME_REQUEST_INACTIVE;
-    static Lifetime make_request();
+    static Lifetime make_request_header();
 
     static const t_time_epoch_ms LIFETIME_RESPONSE_ACTIVE;
     static const t_time_epoch_ms LIFETIME_RESPONSE_INACTIVE;

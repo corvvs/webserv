@@ -178,6 +178,7 @@ private:
     byte_string bytebuffer;
     ssize_t mid;
     Lifetime lifetime;
+    Lifetime lifetime_header;
 
     // 解析中の情報
     ParserStatus ps;

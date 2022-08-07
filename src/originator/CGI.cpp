@@ -60,7 +60,7 @@ CGI::~CGI() {
         ::kill(attr.cgi_pid, SIGKILL);
         int wstatus;
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
-        lifetime.mark_inactive();
+        lifetime.deactivate();
         // VOUT(pid);
         assert(pid > 0);
         // VOUT(WIFEXITED(wstatus));
@@ -164,7 +164,7 @@ void CGI::start_origination(IObserver &observer) {
     observer.reserve_set(this, IObserver::OT_READ);
     observer.reserve_set(this, IObserver::OT_WRITE);
     status.is_started = true;
-    lifetime.mark_active();
+    lifetime.activate();
 }
 
 void CGI::capture_script_termination() {
@@ -177,7 +177,7 @@ void CGI::capture_script_termination() {
         VOUT(strerror(errno));
     } else if (rv > 0) {
         attr.cgi_pid = 0;
-        lifetime.mark_inactive();
+        lifetime.deactivate();
         // 終了している
         if (WIFEXITED(wstatus)) {
             int cstatus = WEXITSTATUS(wstatus);

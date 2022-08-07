@@ -32,7 +32,7 @@ void RoundTrip::start_if_needed() {
     }
     DXOUT("[start_roundtrip]");
     request_ = new RequestHTTP();
-    lifetime.mark_active();
+    lifetime.activate();
 }
 
 bool RoundTrip::inject_data(const u8t *received_buffer, ssize_t received_size, extra_buffer_type &extra_buffer) {
@@ -177,7 +177,7 @@ void RoundTrip::wipeout() {
     destroy_response();
     destroy_originator();
     reroute_count = 0;
-    lifetime.mark_inactive();
+    lifetime.deactivate();
 }
 
 void RoundTrip::destroy_request() {

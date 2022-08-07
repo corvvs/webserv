@@ -15,7 +15,7 @@ Connection::Attribute::Attribute() {
 // [[Connection]]
 
 Connection::Connection(IRouter *router, SocketConnected *sock_given)
-    : attr(Attribute()), phase(CONNECTION_ESTABLISHED), dying(false), sock(sock_given), rt(*router) {
+    : attr(Attribute()), phase(CONNECTION_ESTABLISHED), dying(false), sock(sock_given), rt(*router), lifetime(Lifetime::make_connection()) {
     DXOUT("[established] " << sock->get_fd());
 }
 
@@ -72,7 +72,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
 void Connection::perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     switch (cat) {
         case IObserver::OT_TIMEOUT:
-            if (rt.is_timeout(epoch)) {
+            if (lifetime.is_timeout(epoch) || rt.is_timeout(epoch)) {
                 throw http_error("connection timed out", HTTP::STATUS_TIMEOUT);
             }
             break;
@@ -121,6 +121,7 @@ void Connection::perform_receiving(IObserver &observer) {
     // -> 受信したデータをリクエストに注入する
     if (!rt.is_freezed()) {
         rt.start_if_needed();
+        lifetime.activate();
         bool is_disconnected = rt.inject_data(buf, received_size, extra_data_buffer);
         rt.req()->after_injection(is_disconnected);
     }

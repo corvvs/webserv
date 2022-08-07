@@ -17,7 +17,7 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
             feed_header(it->first, it->second);
         }
     }
-    lifetime.mark_active();
+    lifetime.activate();
 }
 
 ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error)
@@ -27,7 +27,7 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error)
     , lifetime(Lifetime::make_response())
     , sent_size(0)
     , data_consumer_(NULL) {
-    lifetime.mark_active();
+    lifetime.activate();
     local_datalist.inject("", 0, true);
     local_datalist.determine_sending_mode();
 }
@@ -83,7 +83,7 @@ void ResponseHTTP::mark_sent(ssize_t sent) {
     }
     consumer()->mark_sent(sent);
     if (is_complete()) {
-        lifetime.mark_inactive();
+        lifetime.deactivate();
     }
 }
 
