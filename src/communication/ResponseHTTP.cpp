@@ -1,14 +1,23 @@
 #include "ResponseHTTP.hpp"
 #include <unistd.h>
 
-ResponseHTTP::ResponseHTTP(HTTP::t_version version, HTTP::t_status status, IResponseDataConsumer *data_consumer)
+ResponseHTTP::ResponseHTTP(HTTP::t_version version,
+                           HTTP::t_status status,
+                           const header_list_type *headers,
+                           IResponseDataConsumer *data_consumer)
     : version_(version), status_(status), is_error_(false), sent_size(0), data_consumer_(data_consumer) {
     VOUT(data_consumer_);
+    if (headers != NULL) {
+        for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
+            feed_header(it->first, it->second);
+        }
+    }
 }
 
 ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error)
     : version_(version), status_(error.get_status()), is_error_(true), sent_size(0), data_consumer_(NULL) {
     local_datalist.inject("", 0, true);
+    local_datalist.determine_sending_mode();
 }
 
 ResponseHTTP::~ResponseHTTP() {
@@ -37,7 +46,8 @@ HTTP::byte_string ResponseHTTP::serialize_former_part() {
                    + HTTP::reason(status_) + ParserHelper::CRLF;
     // ヘッダ
     for (std::vector<HTTP::header_kvpair_type>::iterator it = header_list.begin(); it != header_list.end(); ++it) {
-        message_text += it->first + ParserHelper::HEADER_KV_SPLITTER + it->second + ParserHelper::CRLF;
+        message_text
+            += it->first + ParserHelper::HEADER_KV_SPLITTER + ParserHelper::SP + it->second + ParserHelper::CRLF;
     }
     // 空行
     message_text += ParserHelper::CRLF;
@@ -45,10 +55,6 @@ HTTP::byte_string ResponseHTTP::serialize_former_part() {
 }
 
 void ResponseHTTP::start() {
-    const ResponseDataList::t_sending_mode mode = consumer()->determine_sending_mode();
-    if (mode == ResponseDataList::SM_CHUNKED) {
-        feed_header(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked"));
-    }
     consumer()->start(serialize_former_part());
 }
 

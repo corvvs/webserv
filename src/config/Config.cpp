@@ -19,7 +19,7 @@ bool Config::get_autoindex(const std::string &target) const {
     return loc.autoindex;
 }
 
-std::map<int, std::string> Config::get_error_page(const std::string &target) const {
+std::map<HTTP::t_status, std::string> Config::get_error_page(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.error_pages;
 }
@@ -45,17 +45,19 @@ long Config::get_client_max_body_size(const std::string &target) const {
     return loc.client_max_body_size;
 }
 
-std::string Config::get_host(const std::string &target) const {
-    (void)target;
+std::string Config::get_host() const {
     return host_port_.first;
 }
 
-int Config::get_port(const std::string &target) const {
-    (void)target;
+int Config::get_port() const {
     return host_port_.second;
 }
 
-std::pair<int, std::string> Config::get_redirect(const std::string &target) const {
+std::vector<std::string> Config::get_server_name() const {
+    return ctx_server_.server_names;
+}
+
+std::pair<HTTP::t_status, std::string> Config::get_redirect(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.redirect;
 }
@@ -65,18 +67,12 @@ std::set<enum Methods> Config::get_limit_except(const std::string &target) const
     return loc.limit_except.allowed_methods;
 }
 
-std::vector<std::string> Config::get_server_name(const std::string &target) const {
-    (void)target;
-    return ctx_server_.server_names;
-}
-
 std::string Config::get_upload_store(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
     return loc.upload_store;
 }
 
-bool Config::get_default_server(const std::string &target) const {
-    (void)target;
+bool Config::get_default_server() const {
     return is_default_server_;
 }
 

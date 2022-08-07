@@ -15,11 +15,12 @@ namespace ParserHelper {
 typedef HTTP::byte_string byte_string;
 typedef HTTP::light_string light_string;
 
-const byte_string SP                 = HTTP::strfy(" ");
-const byte_string OWS                = HTTP::strfy(" \t");
-const byte_string HEADER_KV_SPLITTER = HTTP::strfy(":");
-const byte_string CRLF               = HTTP::strfy("\r\n");
-const byte_string LF                 = HTTP::strfy("\n");
+extern const byte_string SP;
+extern const byte_string OWS;
+extern const byte_string HEADER_KV_SPLITTER;
+extern const byte_string CRLF;
+extern const byte_string LF;
+extern const byte_string LWS;
 
 // LF, または CRLF を見つける.
 // 見つかった場合, LFまたはCRLFの [開始位置, 終了位置の次) のペアを(絶対位置で)返す.

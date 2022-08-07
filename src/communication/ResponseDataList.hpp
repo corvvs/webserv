@@ -64,8 +64,9 @@ public:
 private:
     list_type list;                    // バケットリスト
     HTTP::byte_string serialized_data; // サイズ行など込みで展開されたデータ
-    size_t sent_serialized;            // serialized_data のうち送信済みのバイト数
-    t_sending_mode sending_mode;       // 送信モード
+    size_t total;
+    size_t sent_serialized;      // serialized_data のうち送信済みのバイト数
+    t_sending_mode sending_mode; // 送信モード
 
     void set_mode(t_sending_mode mode);
 
@@ -87,8 +88,12 @@ public:
     // 全データ送信完了
     bool is_sending_over() const;
 
+    size_t current_total_size() const;
+
     // 長さ n のデータを注入
     void inject(const char *src, size_t n, bool is_completed);
+    void inject(const HTTP::byte_string &src, bool is_completed);
+    void inject(const HTTP::light_string &src, bool is_completed);
 
     // 閉じたバケットをバイト列(HTTPレスポンスとして送信できる形式)にシリアライズ
 private:

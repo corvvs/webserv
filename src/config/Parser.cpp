@@ -245,26 +245,27 @@ void Parser::add_autoindex(const std::vector<std::string> &args, std::stack<Cont
 }
 
 void Parser::add_error_page(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
-    std::vector<int> error_codes;
+    typedef std::vector<HTTP::t_status> status_list_type;
+    status_list_type error_codes;
     for (size_t i = 0; i < args.size() - 1; ++i) {
-        error_codes.push_back(std::atoi(args[i].c_str()));
+        error_codes.push_back((HTTP::t_status)std::atoi(args[i].c_str()));
     }
     const std::string path = args.back();
     switch (ctx.top()) {
         case MAIN:
-            for (std::vector<int>::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
+            for (status_list_type::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
                 ctx_main_.error_pages[*it] = path;
             }
             break;
         case SERVER:
-            for (std::vector<int>::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
+            for (status_list_type::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
                 ctx_servers_.back().error_pages[*it] = path;
             }
             ctx_servers_.back().defined_["error_page"] = true;
             break;
         case LOCATION: {
             ContextLocation *p = get_current_location(ctx);
-            for (std::vector<int>::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
+            for (status_list_type::iterator it = error_codes.begin(); it != error_codes.end(); ++it) {
                 p->error_pages[*it] = path;
             }
             p->defined_["error_page"] = true;
@@ -339,8 +340,8 @@ void Parser::add_listen(const std::vector<std::string> &args, std::stack<Context
 }
 
 void Parser::add_return(const std::vector<std::string> &args, std::stack<ContextType> &ctx) {
-    const int status_code  = std::atoi(args.front().c_str());
-    const std::string path = args.back();
+    const HTTP::t_status status_code = (HTTP::t_status)std::atoi(args.front().c_str());
+    const std::string path           = args.back();
 
     if (ctx.top() == SERVER) {
         ctx_servers_.back().redirect             = std::make_pair(status_code, path);

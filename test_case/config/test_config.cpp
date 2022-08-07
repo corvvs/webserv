@@ -38,7 +38,7 @@ TEST_F(config_test, get_error_page) {
     const config::Config conf       = configs[hp].front();
 
     const std::string target = "/";
-    std::map<int, std::string> error_page;
+    std::map<HTTP::t_status, std::string> error_page;
     //    error_page[404] = "";
     EXPECT_EQ(error_page, conf.get_error_page(target));
 }
@@ -80,9 +80,8 @@ TEST_F(config_test, get_host) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target = "/";
-    const std::string host   = "0.0.0.0";
-    EXPECT_EQ(host, conf.get_host(target));
+    const std::string host = "0.0.0.0";
+    EXPECT_EQ(host, conf.get_host());
 }
 
 TEST_F(config_test, get_port) {
@@ -90,9 +89,8 @@ TEST_F(config_test, get_port) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target = "/";
-    const int port           = 80;
-    EXPECT_EQ(port, conf.get_port(target));
+    const int port = 80;
+    EXPECT_EQ(port, conf.get_port());
 }
 
 TEST_F(config_test, get_redirect) {
@@ -100,8 +98,8 @@ TEST_F(config_test, get_redirect) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target             = "/";
-    std::pair<int, std::string> redirect = std::make_pair(-1, "");
+    const std::string target                        = "/";
+    std::pair<HTTP::t_status, std::string> redirect = std::make_pair(HTTP::STATUS_REDIRECT_INIT, "");
     EXPECT_EQ(redirect, conf.get_redirect(target));
 }
 
@@ -110,10 +108,9 @@ TEST_F(config_test, get_server_name) {
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
-    const std::string target = "/";
     std::vector<std::string> server_name;
     server_name.push_back("server1");
-    EXPECT_EQ(server_name, conf.get_server_name(target));
+    EXPECT_EQ(server_name, conf.get_server_name());
 }
 
 TEST_F(config_test, get_upload_store) {
@@ -133,7 +130,7 @@ TEST_F(config_test, get_default_server) {
 
     const std::string target  = "/";
     const bool default_server = false;
-    EXPECT_EQ(default_server, conf.get_default_server(target));
+    EXPECT_EQ(default_server, conf.get_default_server());
 }
 
 TEST_F(config_test, get_limit_except) {
@@ -164,17 +161,17 @@ TEST_F(config_test, get_error_page_from_mix_context) {
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
 
-    std::map<int, std::string> error_page;
-    error_page[400] = "error.html";
+    std::map<HTTP::t_status, std::string> error_page;
+    error_page[HTTP::STATUS_BAD_REQUEST] = "error.html";
     EXPECT_EQ(error_page, conf.get_error_page("/"));
     error_page.clear();
-    error_page[401] = "error1.html";
+    error_page[HTTP::STATUS_UNAUTHORIZED] = "error1.html";
     EXPECT_EQ(error_page, conf.get_error_page("/dir1"));
     error_page.clear();
-    error_page[402] = "error2.html";
+    error_page[(HTTP::t_status)402] = "error2.html";
     EXPECT_EQ(error_page, conf.get_error_page("/dir2"));
     error_page.clear();
-    error_page[403] = "error3.html";
+    error_page[HTTP::STATUS_FORBIDDEN] = "error3.html";
     EXPECT_EQ(error_page, conf.get_error_page("/dir2/dir3"));
 }
 
@@ -220,31 +217,29 @@ TEST_F(config_test, get_client_max_body_size_from_mix_context) {
 
 TEST_F(config_test, get_host_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
-    const std::string target = "/";
     {
         const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ("127.0.0.1", conf.get_host(target));
+        EXPECT_EQ("127.0.0.1", conf.get_host());
     }
     {
         const config::host_port_pair hp = std::make_pair("1.1.1.1", 81);
         const config::Config conf       = configs[hp].back();
-        EXPECT_EQ("1.1.1.1", conf.get_host(target));
+        EXPECT_EQ("1.1.1.1", conf.get_host());
     }
 }
 
 TEST_F(config_test, get_port_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
-    const std::string target = "/";
     {
         const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(80, conf.get_port(target));
+        EXPECT_EQ(80, conf.get_port());
     }
     {
         const config::host_port_pair hp = std::make_pair("1.1.1.1", 81);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(81, conf.get_port(target));
+        EXPECT_EQ(81, conf.get_port());
     }
 }
 
@@ -253,10 +248,10 @@ TEST_F(config_test, get_redirect_from_mix_context) {
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
 
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/"));
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir1"));
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir2"));
-    EXPECT_EQ(std::make_pair(300, std::string("/")), conf.get_redirect("/dir2/dir3"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/dir1"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/dir2"));
+    EXPECT_EQ(std::make_pair((HTTP::t_status)300, std::string("/")), conf.get_redirect("/dir2/dir3"));
 }
 
 TEST_F(config_test, get_server_name_from_mix_context) {
@@ -266,8 +261,7 @@ TEST_F(config_test, get_server_name_from_mix_context) {
 
     std::vector<std::string> server_name;
     server_name.push_back("server");
-    EXPECT_EQ(server_name, conf.get_server_name("/"));
-    EXPECT_EQ(server_name, conf.get_server_name("/dir1"));
+    EXPECT_EQ(server_name, conf.get_server_name());
 }
 
 TEST_F(config_test, get_upload_store_from_mix_context) {
@@ -283,17 +277,17 @@ TEST_F(config_test, get_upload_store_from_mix_context) {
 
 TEST_F(config_test, get_default_server_from_mix_context) {
     SetUpBasedOnFile("./conf/valid/11_mix.conf");
-    const std::string target = "/";
     {
         const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(false, conf.get_default_server(target));
+        EXPECT_EQ(80, conf.get_port());
+        EXPECT_EQ(false, conf.get_default_server());
     }
     {
         const config::host_port_pair hp = std::make_pair("1.1.1.1", 81);
         const config::Config conf       = configs[hp].front();
-        EXPECT_EQ(81, conf.get_port(target));
-        EXPECT_EQ(true, conf.get_default_server(target));
+        EXPECT_EQ(81, conf.get_port());
+        EXPECT_EQ(true, conf.get_default_server());
     }
 }
 
