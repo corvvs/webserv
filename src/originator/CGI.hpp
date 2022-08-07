@@ -2,6 +2,7 @@
 #define CGI_HPP
 #include "../Interfaces.hpp"
 #include "../communication/HeaderHTTP.hpp"
+#include "../communication/Lifetime.hpp"
 #include "../communication/RequestHTTP.hpp"
 #include "../communication/ResponseDataList.hpp"
 #include "../communication/RoutingParameters.hpp"
@@ -109,6 +110,8 @@ public:
 
 private:
     Attribute attr;
+    Lifetime lifetime;
+
     metavar_dict_type metavar_;
     size_type to_script_content_length_;
     byte_string to_script_content_;
@@ -175,6 +178,7 @@ public:
     void start_origination(IObserver &observer);
     void leave();
     ResponseHTTP *respond(const RequestHTTP &request);
+    bool is_timeout(t_time_epoch_ms now) const;
 
     // 内部バッファにバイト列を追加する
     template <class InputItr>

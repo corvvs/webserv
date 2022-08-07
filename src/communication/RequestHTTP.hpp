@@ -8,9 +8,11 @@
 #include "ChunkedBody.hpp"
 #include "ControlHeaderHTTP.hpp"
 #include "HeaderHTTP.hpp"
+#include "Lifetime.hpp"
 #include "ParserHelper.hpp"
 #include "RoutingParameters.hpp"
 #include "ValidatorHTTP.hpp"
+
 #include <iostream>
 #include <list>
 #include <map>
@@ -175,6 +177,7 @@ public:
 private:
     byte_string bytebuffer;
     ssize_t mid;
+    Lifetime lifetime;
 
     // 解析中の情報
     ParserStatus ps;
@@ -259,6 +262,8 @@ public:
     bool is_freezed() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
+
+    bool is_timeout(t_time_epoch_ms now) const;
 
     header_holder_type::joined_dict_type get_cgi_meta_vars() const;
     const IRequestMatchingParam &get_request_matching_param() const;

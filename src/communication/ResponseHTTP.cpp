@@ -5,24 +5,34 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
                            HTTP::t_status status,
                            const header_list_type *headers,
                            IResponseDataConsumer *data_consumer)
-    : version_(version), status_(status), is_error_(false), sent_size(0), data_consumer_(data_consumer) {
+    : version_(version)
+    , status_(status)
+    , is_error_(false)
+    , lifetime(Lifetime::make_response())
+    , sent_size(0)
+    , data_consumer_(data_consumer) {
     VOUT(data_consumer_);
     if (headers != NULL) {
         for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
             feed_header(it->first, it->second);
         }
     }
+    lifetime.mark_active();
 }
 
 ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error)
-    : version_(version), status_(error.get_status()), is_error_(true), sent_size(0), data_consumer_(NULL) {
+    : version_(version)
+    , status_(error.get_status())
+    , is_error_(true)
+    , lifetime(Lifetime::make_response())
+    , sent_size(0)
+    , data_consumer_(NULL) {
+    lifetime.mark_active();
     local_datalist.inject("", 0, true);
     local_datalist.determine_sending_mode();
 }
 
-ResponseHTTP::~ResponseHTTP() {
-    VOUT(this);
-}
+ResponseHTTP::~ResponseHTTP() {}
 
 void ResponseHTTP::set_version(HTTP::t_version version) {
     version_ = version;
@@ -72,6 +82,9 @@ void ResponseHTTP::mark_sent(ssize_t sent) {
         return;
     }
     consumer()->mark_sent(sent);
+    if (is_complete()) {
+        lifetime.mark_inactive();
+    }
 }
 
 size_t ResponseHTTP::get_unsent_size() const {
@@ -101,6 +114,10 @@ void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) {
 
 bool ResponseHTTP::is_error() const {
     return is_error_;
+}
+
+bool ResponseHTTP::is_timeout(t_time_epoch_ms now) const {
+    return lifetime.is_timeout(now);
 }
 
 IResponseDataConsumer *ResponseHTTP::consumer() {

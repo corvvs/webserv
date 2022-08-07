@@ -116,12 +116,13 @@ std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
 
 RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
 
-RequestHTTP::RequestHTTP() : mid(0), rp() {
+RequestHTTP::RequestHTTP() : mid(0), lifetime(Lifetime::make_request()), rp() {
     DXOUT("[create_requedt]");
     this->ps.parse_progress = PP_REQLINE_START;
     this->rp.http_method    = HTTP::METHOD_UNKNOWN;
     this->rp.http_version   = HTTP::V_UNKNOWN;
     bytebuffer.reserve(MAX_REQLINE_END);
+    lifetime.mark_active();
 }
 
 RequestHTTP::~RequestHTTP() {}
@@ -719,6 +720,10 @@ bool RequestHTTP::is_freezed() const {
     return this->ps.is_freezed;
 }
 
+bool RequestHTTP::is_timeout(t_time_epoch_ms now) const {
+    return lifetime.is_timeout(now);
+}
+
 size_t RequestHTTP::receipt_size() const {
     return bytebuffer.size();
 }
@@ -760,6 +765,7 @@ RequestHTTP::light_string RequestHTTP::freeze() {
         return light_string();
     }
     this->ps.is_freezed = true;
+    lifetime.mark_inactive();
     return light_string(bytebuffer, mid);
 }
 

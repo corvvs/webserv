@@ -15,13 +15,7 @@ Connection::Attribute::Attribute() {
 // [[Connection]]
 
 Connection::Connection(IRouter *router, SocketConnected *sock_given)
-    : attr(Attribute())
-    , phase(CONNECTION_ESTABLISHED)
-    , dying(false)
-    , sock(sock_given)
-    , rt(*router)
-    , latest_operated_at(0) {
-    touch();
+    : attr(Attribute()), phase(CONNECTION_ESTABLISHED), dying(false), sock(sock_given), rt(*router) {
     DXOUT("[established] " << sock->get_fd());
 }
 
@@ -78,7 +72,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
 void Connection::perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     switch (cat) {
         case IObserver::OT_TIMEOUT:
-            if (epoch >= attr.timeout + latest_operated_at) {
+            if (rt.is_timeout(epoch)) {
                 throw http_error("connection timed out", HTTP::STATUS_TIMEOUT);
             }
             break;
@@ -121,7 +115,6 @@ void Connection::perform_receiving(IObserver &observer) {
         // -> 受信したデータを extra_data_buffer 末尾に追加する
         extra_data_buffer.insert(extra_data_buffer.end(), buf, buf + received_size);
     }
-    touch();
 
     // データ注入
     // インバウンド許容
@@ -180,7 +173,6 @@ void Connection::perform_sending(IObserver &observer) {
         die(observer);
         return;
     }
-    touch();
     rt.res()->mark_sent(sent);
 }
 
@@ -191,12 +183,6 @@ void Connection::perform_shutting_down(IObserver &observer) {
         return;
     }
     die(observer);
-}
-
-void Connection::touch() {
-    const t_time_epoch_ms t = WSTime::get_epoch_ms();
-    DXOUT("operated_at: " << latest_operated_at << " -> " << t);
-    latest_operated_at = t;
 }
 
 void Connection::shutdown_gracefully(IObserver &observer) {
