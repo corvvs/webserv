@@ -25,7 +25,6 @@ void Lifetime::deactivate() {
     if (is_active()) {
         deactivated_at = WSTime::get_epoch_ms();
     }
-    
 }
 
 bool Lifetime::is_timeout(t_time_epoch_ms now) const {

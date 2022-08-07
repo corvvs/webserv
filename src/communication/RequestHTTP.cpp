@@ -116,7 +116,8 @@ std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
 
 RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
 
-RequestHTTP::RequestHTTP() : mid(0), lifetime(Lifetime::make_request()), lifetime_header(Lifetime::make_request_header()) ,rp() {
+RequestHTTP::RequestHTTP()
+    : mid(0), lifetime(Lifetime::make_request()), lifetime_header(Lifetime::make_request_header()), rp() {
     DXOUT("[create_request]");
     this->ps.parse_progress = PP_REQLINE_START;
     this->rp.http_method    = HTTP::METHOD_UNKNOWN;

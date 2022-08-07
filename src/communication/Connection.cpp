@@ -15,7 +15,12 @@ Connection::Attribute::Attribute() {
 // [[Connection]]
 
 Connection::Connection(IRouter *router, SocketConnected *sock_given)
-    : attr(Attribute()), phase(CONNECTION_ESTABLISHED), dying(false), sock(sock_given), rt(*router), lifetime(Lifetime::make_connection()) {
+    : attr(Attribute())
+    , phase(CONNECTION_ESTABLISHED)
+    , dying(false)
+    , sock(sock_given)
+    , rt(*router)
+    , lifetime(Lifetime::make_connection()) {
     DXOUT("[established] " << sock->get_fd());
 }
 
