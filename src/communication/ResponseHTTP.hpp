@@ -3,6 +3,7 @@
 #include "../utils/HTTPError.hpp"
 #include "../utils/http.hpp"
 #include "HeaderHTTP.hpp"
+#include "Lifetime.hpp"
 #include "ParserHelper.hpp"
 #include "ResponseDataList.hpp"
 #include <string>
@@ -22,6 +23,7 @@ private:
     HTTP::t_version version_;
     HTTP::t_status status_;
     bool is_error_;
+    Lifetime lifetime;
     // 送信済みマーカー
     size_t sent_size;
     header_list_type header_list;
@@ -71,6 +73,8 @@ public:
 
     // エラー応答かどうか
     bool is_error() const;
+
+    bool is_timeout(t_time_epoch_ms now) const;
 
     static void swap(ResponseHTTP &lhs, ResponseHTTP &rhs);
 };
