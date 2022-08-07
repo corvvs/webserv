@@ -18,7 +18,11 @@
 // を判定して返す.
 class Lifetime {
 private:
+    // アクティブ状態になってからタイムアウトするまでの時間
+    // ただし0はタイムアウトにならないことを意味する
     const t_time_epoch_ms lifetime_active;
+    // 非アクティブ状態になってからタイムアウトするまでの時間
+    // ただし0はタイムアウトにならないことを意味する
     const t_time_epoch_ms lifetime_inactive;
 
     t_time_epoch_ms deactivated_at;
