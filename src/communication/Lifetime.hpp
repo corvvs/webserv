@@ -38,26 +38,33 @@ public:
     bool is_timeout(t_time_epoch_ms now) const;
 
     // [Factory関数群]
+
+    // コネクションができてからすぐにデータを送ってこない場合のための設定
     static const t_time_epoch_ms LIFETIME_CONNECTION_ACTIVE;
     static const t_time_epoch_ms LIFETIME_CONNECTION_INACTIVE;
     static Lifetime make_connection();
 
+    // ラウンドトリップの持続時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_ROUNDTRIP_ACTIVE;
     static const t_time_epoch_ms LIFETIME_ROUNDTRIP_INACTIVE;
     static Lifetime make_round_trip();
 
+    // リクエストの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_REQUEST_HEADER_ACTIVE;
     static const t_time_epoch_ms LIFETIME_REQUEST_HEADER_INACTIVE;
     static Lifetime make_request();
 
+    // リクエストのヘッダの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_REQUEST_ACTIVE;
     static const t_time_epoch_ms LIFETIME_REQUEST_INACTIVE;
     static Lifetime make_request_header();
 
+    // レスポンスの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_RESPONSE_ACTIVE;
     static const t_time_epoch_ms LIFETIME_RESPONSE_INACTIVE;
     static Lifetime make_response();
 
+    // CGIの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_CGI_ACTIVE;
     static const t_time_epoch_ms LIFETIME_CGI_INACTIVE;
     static Lifetime make_cgi();
