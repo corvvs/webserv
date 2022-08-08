@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"bufio"
@@ -13,9 +13,9 @@ type Client struct {
 }
 
 type Response struct {
-	statusCode int
-	header     http.Header
-	body       []byte
+	StatusCode int
+	Header     http.Header
+	Body       []byte
 }
 
 func NewClient(request string, port string) (*Client, error) {
@@ -48,7 +48,7 @@ func (c *Client) readResponse() (*http.Response, error) {
 }
 
 func (c *Client) Run() (*Response, error) {
-	defer c.conn.Close()
+	defer c.Close()
 	err := c.send()
 	if err != nil {
 		return nil, err
@@ -65,8 +65,12 @@ func (c *Client) Run() (*Response, error) {
 		return nil, err
 	}
 	return &Response{
-		statusCode: statusCode,
-		header:     response.Header,
-		body:       body,
+		StatusCode: statusCode,
+		Header:     response.Header,
+		Body:       body,
 	}, nil
+}
+
+func (c *Client) Close() error {
+	return c.conn.Close()
 }

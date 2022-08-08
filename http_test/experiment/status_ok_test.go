@@ -1,7 +1,8 @@
-package main
+package experiment
 
 import (
 	"github.com/stretchr/testify/assert"
+	"http_test/client"
 	"net/http"
 	"testing"
 )
@@ -68,16 +69,16 @@ func TestStatusOK(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := NewClient(tt.request, webservPort)
+			c, err := client.NewClient(tt.request, webservPort)
 			if err != nil {
 				t.Fatal(err)
 			}
-			res, err := client.Run()
+			res, err := c.Run()
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, tt.statusCode, res.statusCode, "unexpected status code")
-			assert.Equal(t, tt.body, res.body, "unexpected body")
+			assert.Equal(t, tt.statusCode, res.StatusCode, "unexpected status code")
+			assert.Equal(t, tt.body, res.Body, "unexpected body")
 		})
 	}
 }

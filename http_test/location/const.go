@@ -1,4 +1,4 @@
-package main
+package location
 
 const (
 	webservPort = "8080"
