@@ -1,5 +1,6 @@
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
+#include "../config/Config.hpp"
 #include "../interface/IObserver.hpp"
 #include "../interface/IRouter.hpp"
 #include "../interface/ISocketLike.hpp"
@@ -21,10 +22,16 @@ public:
 private:
     SocketListening *sock;
     IRouter *router_;
+    const config::config_vector &configs_;
 
 public:
     // TODO: confのlistenパラメータを与えて、そこからsocket生成用パラメータを作るようにする
     Channel(IRouter *router, t_socket_domain sdomain, t_socket_type stype, t_port port);
+    Channel(IRouter *router,
+            t_socket_domain sdomain,
+            t_socket_type stype,
+            t_port port,
+            const config::config_vector &configs);
 
     ~Channel();
 

@@ -14,12 +14,12 @@ Connection::Attribute::Attribute() {
 
 // [[Connection]]
 
-Connection::Connection(IRouter *router, SocketConnected *sock_given)
+Connection::Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs)
     : attr(Attribute())
     , phase(CONNECTION_ESTABLISHED)
     , dying(false)
     , sock(sock_given)
-    , rt(*router)
+    , rt(*router, configs)
     , latest_operated_at(0) {
     touch();
     DXOUT("[established] " << sock->get_fd());
@@ -42,8 +42,10 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
     if (dying) {
         return;
     }
-    VOUT(phase);
-    VOUT(cat);
+    // VOUT(phase);
+    // VOUT(cat);
+    // VOUT(get_fd());
+    // VOUT(get_port());
     try {
         switch (phase) {
             case CONNECTION_ESTABLISHED:
@@ -195,7 +197,7 @@ void Connection::perform_shutting_down(IObserver &observer) {
 
 void Connection::touch() {
     const t_time_epoch_ms t = WSTime::get_epoch_ms();
-    DXOUT("operated_at: " << latest_operated_at << " -> " << t);
+    // DXOUT("operated_at: " << latest_operated_at << " -> " << t);
     latest_operated_at = t;
 }
 

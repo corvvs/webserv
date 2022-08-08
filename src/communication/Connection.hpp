@@ -81,7 +81,7 @@ private:
     void die(IObserver &observer);
 
 public:
-    Connection(IRouter *router, SocketConnected *sock_given);
+    Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs);
     ~Connection();
 
     t_fd get_fd() const;

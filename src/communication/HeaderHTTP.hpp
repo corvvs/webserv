@@ -1,5 +1,6 @@
 #ifndef HEADERITEMHTTP_HPP
 #define HEADERITEMHTTP_HPP
+#include "../utils/HTTPError.hpp"
 #include "../utils/LightString.hpp"
 #include "../utils/http.hpp"
 #include "ParserHelper.hpp"
@@ -8,23 +9,24 @@
 #include <string>
 
 namespace HeaderHTTP {
-const HTTP::byte_string host              = ParserHelper::normalize_header_key(HTTP::strfy("Host"));
-const HTTP::byte_string connection        = ParserHelper::normalize_header_key(HTTP::strfy("Connection"));
-const HTTP::byte_string cookie            = ParserHelper::normalize_header_key(HTTP::strfy("Cookie"));
-const HTTP::byte_string set_cookie        = ParserHelper::normalize_header_key(HTTP::strfy("Set-Cookie"));
-const HTTP::byte_string pragma            = ParserHelper::normalize_header_key(HTTP::strfy("Pragma"));
-const HTTP::byte_string user_agent        = ParserHelper::normalize_header_key(HTTP::strfy("User-Agent"));
-const HTTP::byte_string cache_control     = ParserHelper::normalize_header_key(HTTP::strfy("Cache-Control"));
-const HTTP::byte_string authorization     = ParserHelper::normalize_header_key(HTTP::strfy("Authorization"));
-const HTTP::byte_string www_authenticate  = ParserHelper::normalize_header_key(HTTP::strfy("www-Authenticate"));
-const HTTP::byte_string keep_alive        = ParserHelper::normalize_header_key(HTTP::strfy("Keep-Alive"));
-const HTTP::byte_string content_type      = ParserHelper::normalize_header_key(HTTP::strfy("Content-Type"));
-const HTTP::byte_string content_length    = ParserHelper::normalize_header_key(HTTP::strfy("Content-Length"));
-const HTTP::byte_string transfer_encoding = ParserHelper::normalize_header_key(HTTP::strfy("Transfer-Encoding"));
-const HTTP::byte_string te                = ParserHelper::normalize_header_key(HTTP::strfy("TE"));
-const HTTP::byte_string vary              = ParserHelper::normalize_header_key(HTTP::strfy("Vary"));
-const HTTP::byte_string upgrade           = ParserHelper::normalize_header_key(HTTP::strfy("Upgrade"));
-const HTTP::byte_string via               = ParserHelper::normalize_header_key(HTTP::strfy("Via"));
+const HTTP::byte_string host                = ParserHelper::normalize_header_key(HTTP::strfy("Host"));
+const HTTP::byte_string connection          = ParserHelper::normalize_header_key(HTTP::strfy("Connection"));
+const HTTP::byte_string cookie              = ParserHelper::normalize_header_key(HTTP::strfy("Cookie"));
+const HTTP::byte_string set_cookie          = ParserHelper::normalize_header_key(HTTP::strfy("Set-Cookie"));
+const HTTP::byte_string pragma              = ParserHelper::normalize_header_key(HTTP::strfy("Pragma"));
+const HTTP::byte_string user_agent          = ParserHelper::normalize_header_key(HTTP::strfy("User-Agent"));
+const HTTP::byte_string cache_control       = ParserHelper::normalize_header_key(HTTP::strfy("Cache-Control"));
+const HTTP::byte_string authorization       = ParserHelper::normalize_header_key(HTTP::strfy("Authorization"));
+const HTTP::byte_string www_authenticate    = ParserHelper::normalize_header_key(HTTP::strfy("www-Authenticate"));
+const HTTP::byte_string keep_alive          = ParserHelper::normalize_header_key(HTTP::strfy("Keep-Alive"));
+const HTTP::byte_string content_type        = ParserHelper::normalize_header_key(HTTP::strfy("Content-Type"));
+const HTTP::byte_string content_disposition = ParserHelper::normalize_header_key(HTTP::strfy("Content-Disposition"));
+const HTTP::byte_string content_length      = ParserHelper::normalize_header_key(HTTP::strfy("Content-Length"));
+const HTTP::byte_string transfer_encoding   = ParserHelper::normalize_header_key(HTTP::strfy("Transfer-Encoding"));
+const HTTP::byte_string te                  = ParserHelper::normalize_header_key(HTTP::strfy("TE"));
+const HTTP::byte_string vary                = ParserHelper::normalize_header_key(HTTP::strfy("Vary"));
+const HTTP::byte_string upgrade             = ParserHelper::normalize_header_key(HTTP::strfy("Upgrade"));
+const HTTP::byte_string via                 = ParserHelper::normalize_header_key(HTTP::strfy("Via"));
 // for CGI
 const HTTP::byte_string status   = HTTP::strfy("status");
 const HTTP::byte_string location = HTTP::strfy("location");
@@ -111,6 +113,9 @@ public:
     const list_type &get_list() const;
     list_type::size_type get_list_size() const;
     dict_type::size_type get_dict_size() const;
+
+    static void parse_header_lines(const light_string &lines, AHeaderHolder *holder);
+    static void parse_header_line(const light_string &line, AHeaderHolder *holder);
 };
 
 class HeaderHolderHTTP : public AHeaderHolder {
@@ -122,5 +127,7 @@ public:
 };
 
 class HeaderHolderCGI : public AHeaderHolder {};
+
+class HeaderHolderSubpart : public AHeaderHolder {};
 
 #endif

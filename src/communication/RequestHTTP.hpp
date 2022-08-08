@@ -81,10 +81,21 @@ public:
     virtual HTTP::byte_string get_body() const                              = 0;
 };
 
+class IContentProvider {
+public:
+    typedef HTTP::byte_string byte_string;
+    virtual ~IContentProvider() {}
+
+    virtual const HTTP::CH::ContentType &get_content_type_item() const               = 0;
+    virtual const HTTP::CH::ContentDisposition &get_content_disposition_item() const = 0;
+    virtual bool is_complete() const                                                 = 0;
+    virtual byte_string get_body() const                                             = 0;
+};
+
 // [HTTPリクエストクラス]
 // [責務]
 // - 順次供給されるバイト列をHTTPリクエストとして解釈すること
-class RequestHTTP : public ICGIConfigurationProvider {
+class RequestHTTP : public ICGIConfigurationProvider, public IContentProvider {
 public:
     enum t_parse_progress {
         PP_UNREACHED,
@@ -153,6 +164,7 @@ public:
 
         HTTP::CH::Host header_host; // リクエストマッチングに必要
         HTTP::CH::ContentType content_type;
+        HTTP::CH::ContentDisposition content_disposition;
         HTTP::CH::TransferEncoding transfer_encoding;
         HTTP::CH::Connection connection;
         HTTP::CH::TE te;
@@ -204,10 +216,6 @@ private:
     bool seek_reqline_end(size_t len);
     // [begin, end) を要求行としてパースする
     void parse_reqline(const light_string &line);
-    // ヘッダ行全体をパースする
-    void parse_header_lines(const light_string &lines, header_holder_type *holder) const;
-    // ヘッダ行をパースする
-    void parse_header_line(const light_string &line, header_holder_type *holder) const;
 
     void parse_chunk_size_line(const light_string &line);
     void parse_chunk_data(const light_string &data);
@@ -245,6 +253,8 @@ public:
     HTTP::t_method get_method() const;
 
     HTTP::byte_string get_content_type() const;
+    const HTTP::CH::ContentType &get_content_type_item() const;
+    const HTTP::CH::ContentDisposition &get_content_disposition_item() const;
 
     // 受信したデータから本文を抽出して返す
     byte_string get_body() const;
