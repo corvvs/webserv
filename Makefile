@@ -27,8 +27,16 @@ TEST_CASE_SRCS			=	$(shell find $(TEST_CASE_SRC_DIR) -type f -name "*.cpp")
 TEST_CASE_OBJS			=	$(addprefix $(TEST_CASE_OBJ_DIR)/,  $(TEST_CASE_SRCS:.cpp=.o))
 TEST_CASE_DPS			=	$(addprefix $(TEST_CASE_DPS_DIR)/,  $(TEST_CASE_SRCS:.cpp=.d))
 
-.PHONY: all
-all: $(NAME)
+CF						=	clang-format
+
+.PHONY: all cf
+all: cf $(NAME)
+
+-include $(DPS)
+
+cf:
+	$(CF) -i src/*.*pp src/*/*.*pp test_case/*.*pp test_case/*/*.*pp
+
 
 -include $(DPS)
 
