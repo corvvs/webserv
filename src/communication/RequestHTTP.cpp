@@ -387,7 +387,7 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_trailer_end(size_t len,
     // あたり
     this->ps.end_of_trailer_field = res.first;
     const light_string trailer_field_lines(bytebuffer, this->ps.start_of_trailer_field, this->ps.end_of_trailer_field);
-    parse_header_lines(trailer_field_lines, NULL);
+    this->header_holder.parse_header_lines(trailer_field_lines, NULL);
     return PP_OVER;
 }
 
@@ -396,7 +396,7 @@ void RequestHTTP::analyze_headers(IndexRange res) {
     this->ps.start_of_body = res.second;
     // -> [start_of_header, end_of_header) を解析する
     const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
-    parse_header_lines(header_lines, &this->header_holder);
+    this->header_holder.parse_header_lines(header_lines, &this->header_holder);
     extract_control_headers();
     VOUT(this->rp.is_body_chunked);
     if (this->rp.is_body_chunked) {
@@ -469,59 +469,6 @@ void RequestHTTP::check_reqline_consistensy() {
     DXOUT("OK.");
 }
 
-void RequestHTTP::parse_header_lines(const light_string &lines, header_holder_type *holder) const {
-    light_string rest(lines);
-    BVOUT(rest);
-    while (true) {
-        // QVOUT(rest);
-        const IndexRange res = ParserHelper::find_crlf_header_value(rest);
-        if (res.is_invalid()) {
-            break;
-        }
-        const light_string header_line = rest.substr(0, res.first);
-        // QVOUT(header_line);
-        if (header_line.length() > 0) {
-            // header_line が空文字列でない
-            // -> ヘッダ行としてパースを試みる
-            parse_header_line(header_line, holder);
-        }
-        rest = rest.substr(res.second);
-    }
-}
-
-void RequestHTTP::parse_header_line(const light_string &line, header_holder_type *holder) const {
-
-    const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
-    // QVOUT(line);
-    // QVOUT(key);
-    if (key.length() == line.length()) {
-        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
-        // は無視して処理を続けます。
-        throw http_error("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
-    }
-    // ":"があった -> ":"の前後をキーとバリューにする
-    if (key.length() == 0) {
-        throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
-    }
-    light_string val = line.substr(key.length() + 1);
-    // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。
-    // 串は、下流に転送する前に空白を削除しなければなりません。
-    light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
-    if (key_tail + 1 != key.length()) {
-        throw http_error("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
-    }
-    // [!] 欄値の前後の OWS は、欄値の一部ではなく、 構文解析の際に削除します
-    val = val.trim(ParserHelper::OWS);
-    // holder があるなら holder に渡す. あとの処理は holder に任せる.
-    if (holder != NULL) {
-        holder->add_item(key, val);
-    } else {
-        DXOUT("no holder");
-        QVOUT(key);
-        QVOUT(val);
-    }
-}
-
 void RequestHTTP::parse_chunk_size_line(const light_string &line) {
     light_string size_str = line.substr_while(HTTP::CharFilter::hexdig);
     if (size_str.size() == 0) {
@@ -585,6 +532,7 @@ void RequestHTTP::extract_control_headers() {
 
     this->rp.determine_host(header_holder);
     this->rp.content_type.determine(header_holder);
+    this->rp.content_disposition.determine(header_holder);
     this->rp.transfer_encoding.determine(header_holder);
     this->rp.determine_body_size(header_holder);
     this->rp.connection.determine(header_holder);
@@ -749,6 +697,14 @@ HTTP::t_method RequestHTTP::get_method() const {
 
 RequestHTTP::byte_string RequestHTTP::get_content_type() const {
     return this->rp.content_type.value;
+}
+
+const HTTP::CH::ContentType &RequestHTTP::get_content_type_item() const {
+    return this->rp.content_type;
+}
+
+const HTTP::CH::ContentDisposition &RequestHTTP::get_content_disposition_item() const {
+    return this->rp.content_disposition;
 }
 
 RequestHTTP::byte_string RequestHTTP::get_body() const {

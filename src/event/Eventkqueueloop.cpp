@@ -54,7 +54,6 @@ void EventKqueueLoop::loop() {
         update();
 
         int count = kevent(kq, NULL, 0, &*evlist.begin(), nev, NULL);
-        VOUT(count);
         if (count < 0) {
             throw std::runtime_error("kevent error");
         }
@@ -169,8 +168,6 @@ void EventKqueueLoop::update() {
         errno     = 0;
         int count = kevent(kq, &*changelist.begin(), changelist.size(), NULL, 0, NULL);
         if (errno) {
-            VOUT(count);
-            QVOUT(strerror(errno));
             (void)count; // DXOUT を無効化すると`count`がunusedになるため
         }
     }

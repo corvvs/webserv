@@ -51,9 +51,9 @@ ARoutingParameters::decompose_semicoron_separated_kvlist(const light_string &kvl
     // *( OWS ";" OWS parameter )
     for (;;) {
         light_string params_str = list_str;
-        QVOUT(params_str);
+        // QVOUT(params_str);
         params_str = params_str.substr_after(HTTP::CharFilter::sp);
-        QVOUT(params_str);
+        // QVOUT(params_str);
         if (params_str.size() == 0) {
             DXOUT("away, there's only sp.");
             return params_str;
@@ -82,7 +82,7 @@ ARoutingParameters::decompose_semicoron_separated_kvlist(const light_string &kvl
         params_str = params_str.substr(key_lstr.size() + 1);
 
         byte_string key_str = ParserHelper::normalize_header_key(key_lstr);
-        QVOUT(key_str);
+        // QVOUT(key_str);
         {
             const light_string just_value_str = ParserHelper::extract_quoted_or_token(params_str);
             holder.store_list_item(key_str, just_value_str);

@@ -80,6 +80,14 @@ public:
     static const CharFilter cgi_extra;
     static const CharFilter pchar_without_pct;
     static const CharFilter uri_scheme;
+    static const CharFilter ascii;
+    static const CharFilter controls;
+    // Content-Disposition: における separator
+    static const CharFilter cd_separators;
+    // Content-Disposition: における token 構成文字
+    static const CharFilter cd_token_char;
+    // Content-Type: の boundary に使ってよい文字
+    static const CharFilter boundary_char;
 
     byte_string str() const;
 };

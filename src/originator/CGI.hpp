@@ -131,6 +131,7 @@ private:
     static char **flatten_metavar(const metavar_dict_type &metavar);
 
     IResponseDataProducer &response_data_producer();
+
     // 「CGIスクリプトが実行可能であること」を確認する
     // (オリジネーション可能性とは関係ないことに注意)
     // - スクリプトのパスにファイルが存在すること
@@ -150,11 +151,9 @@ private:
 
     t_parse_progress reach_headers_end(size_t len, bool is_disconnected);
     t_parse_progress reach_fixed_body_end(size_t len, bool is_disconnected);
-    void analyze_headers(IndexRange res);
-
-    void parse_header_lines(const light_string &lines, header_holder_type *holder) const;
-    void parse_header_line(const light_string &line, header_holder_type *holder) const;
+    void analyze_headers(const IndexRange res);
     void extract_control_headers();
+
     // CGI応答の整合性をチェック
     // 不整合があるなら http_error 例外を飛ばす
     void check_cgi_response_consistensy();
@@ -187,6 +186,7 @@ public:
         VOUT(bytebuffer.size());
         BVOUT(bytebuffer);
     }
+
     void after_injection(bool is_disconnected);
 
     size_t parsed_body_size() const;

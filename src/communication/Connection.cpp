@@ -14,12 +14,12 @@ Connection::Attribute::Attribute() {
 
 // [[Connection]]
 
-Connection::Connection(IRouter *router, SocketConnected *sock_given)
+Connection::Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs)
     : attr(Attribute())
     , phase(CONNECTION_ESTABLISHED)
     , dying(false)
     , sock(sock_given)
-    , rt(*router)
+    , rt(*router, configs)
     , lifetime(Lifetime::make_connection()) {
     DXOUT("[established] " << sock->get_fd());
 }
@@ -41,8 +41,10 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
     if (dying) {
         return;
     }
-    VOUT(phase);
-    VOUT(cat);
+    // VOUT(phase);
+    // VOUT(cat);
+    // VOUT(get_fd());
+    // VOUT(get_port());
     try {
         switch (phase) {
             case CONNECTION_ESTABLISHED:

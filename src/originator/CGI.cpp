@@ -150,7 +150,6 @@ void CGI::start_origination(IObserver &observer) {
         int rv = execve(HTTP::restrfy(attr.script_path_).c_str(), argv, mvs);
         VOUT(rv);
         VOUT(errno);
-        QVOUT(strerror(errno));
         exit(rv);
     }
     // parent: server process
@@ -251,7 +250,7 @@ char **CGI::flatten_metavar(const metavar_dict_type &metavar) {
         memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
         frame[i]    = item;
         frame[i][j] = '\0';
-        VOUT(frame[i]);
+        // VOUT(frame[i]);
     }
     frame[n] = NULL;
     return frame;
@@ -297,7 +296,7 @@ t_port CGI::get_port() const {
 }
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    DXOUT("CGI received: " << cat);
+    // DXOUT("CGI received: " << cat);
     if (attr.master) {
         switch (cat) {
             case IObserver::OT_WRITE:
@@ -475,7 +474,7 @@ void CGI::analyze_headers(IndexRange res) {
     VOUT(this->ps.start_of_header);
     const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
     BVOUT(header_lines);
-    parse_header_lines(header_lines, &this->from_script_header_holder);
+    this->from_script_header_holder.parse_header_lines(header_lines, &this->from_script_header_holder);
     extract_control_headers();
 }
 
@@ -656,57 +655,6 @@ size_t CGI::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
-void CGI::parse_header_lines(const light_string &lines, header_holder_type *holder) const {
-    light_string rest(lines);
-    while (true) {
-        QVOUT(rest);
-        const IndexRange res = ParserHelper::find_crlf_header_value(rest);
-        if (res.is_invalid()) {
-            break;
-        }
-        const light_string header_line = rest.substr(0, res.first);
-        QVOUT(header_line);
-        if (header_line.length() > 0) {
-            // header_line が空文字列でない
-            // -> ヘッダ行としてパースを試みる
-            parse_header_line(header_line, holder);
-        }
-        rest = rest.substr(res.second);
-    }
-}
-
-void CGI::parse_header_line(const light_string &line, header_holder_type *holder) const {
-
-    const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
-    QVOUT(line);
-    QVOUT(key);
-    if (key.length() == line.length()) {
-        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
-        // は無視して処理を続けます。
-        throw http_error("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
-    }
-    // ":"があった -> ":"の前後をキーとバリューにする
-    if (key.length() == 0) {
-        throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
-    }
-    light_string val = line.substr(key.length() + 1);
-    // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。
-    // 串は、下流に転送する前に空白を削除しなければなりません。
-    light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
-    if (key_tail + 1 != key.length()) {
-        throw http_error("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
-    }
-    val = val.trim(ParserHelper::OWS);
-    // holder があるなら holder に渡す. あとの処理は holder に任せる.
-    if (holder != NULL) {
-        holder->add_item(key, val);
-    } else {
-        DXOUT("no holder");
-        QVOUT(key);
-        QVOUT(val);
-    }
-}
-
 ResponseHTTP *CGI::respond(const RequestHTTP &request) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
@@ -737,7 +685,6 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
     }
 
     ResponseHTTP::header_list_type headers;
-
     // [伝送に関する決め事]
     // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
     // それはそうとして, chunkedで送るか, そうでないかを決める
