@@ -39,9 +39,9 @@ void HTTPServer::init(const std::string &config_path) {
     }
 
     config::Parser parser;
-    const config::config_dict &configs = parser.parse(file::read(config_path));
+    configs_ = parser.parse(file::read(config_path));
 
-    for (config::config_dict::const_iterator it = configs.begin(); it != configs.end(); ++it) {
+    for (config::config_dict::const_iterator it = configs_.begin(); it != configs_.end(); ++it) {
         const config::host_port_pair &hp     = it->first;
         const config::config_vector &configs = it->second;
         this->listen(SD_IP4, ST_TCP, hp.second, configs);
