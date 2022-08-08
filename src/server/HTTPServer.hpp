@@ -39,7 +39,7 @@ public:
     // イベントループ開始
     void run();
 
-    IOriginator *route(const RequestHTTP &request);
+    RequestMatchingResult route(const IRequestMatchingParam &request);
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include "RoundTrip.hpp"
+#include "../Originators.hpp"
 #include "Connection.hpp"
 #include <cassert>
 
@@ -57,11 +58,33 @@ void RoundTrip::notify_originator(IObserver &observer, IObserver::observation_ca
     originator_->notify(observer, cat, epoch);
 }
 
+IOriginator *make_originator(const RequestMatchingResult &result, const RequestHTTP &request) {
+    switch (result.result_type) {
+        case RequestMatchingResult::RT_CGI:
+            return new CGI(result, request);
+        case RequestMatchingResult::RT_FILE_DELETE:
+            return new FileDeleter(result);
+        case RequestMatchingResult::RT_FILE_PUT:
+            return new FileWriter(result, request.get_plain_message());
+        case RequestMatchingResult::RT_AUTO_INDEX:
+            return new AutoIndexer(result);
+        case RequestMatchingResult::RT_EXTERNAL_REDIRECTION:
+            return new Redirector(result);
+        case RequestMatchingResult::RT_ECHO:
+            return new Echoer(result);
+        default:
+            break;
+    }
+    return new FileReader(result);
+}
+
 void RoundTrip::route(Connection &connection) {
     DXOUT("[route]");
     assert(request_ != NULL);
     reroute_count += 1;
-    originator_ = router.route(*request_);
+    const RequestMatchingResult result = router.route(request_->get_request_matching_param());
+    originator_                        = make_originator(result, *request_);
+    request_->set_max_body_size(result.client_max_body_size);
     originator_->inject_socketlike(&connection);
 }
 
@@ -110,7 +133,9 @@ void RoundTrip::reroute(Connection &connection) {
     }
 
     // TODO: 古いオリジネータの内容を考慮する
-    IOriginator *reoriginator = router.route(*request_);
+    const RequestMatchingResult result = router.route(request_->get_request_matching_param());
+    IOriginator *reoriginator          = make_originator(result, *request_);
+    request_->set_max_body_size(result.client_max_body_size);
 
     originator_->leave();
     originator_ = reoriginator;

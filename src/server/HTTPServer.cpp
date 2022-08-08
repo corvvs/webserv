@@ -13,12 +13,13 @@ RequestMatchingResult MockMatcher::request_match(const std::vector<config::Confi
     } else {
         result.result_type = RequestMatchingResult::RT_FILE;
     }
-    result.target            = &param.get_request_target();
-    result.path_local        = HTTP::strfy(".") + param.get_request_target().path.str();
-    result.path_after        = HTTP::strfy("");
-    result.path_cgi_executor = HTTP::strfy("/usr/bin/ruby");
-    result.status_code       = HTTP::STATUS_MOVED_PERMANENTLY;
-    result.redirect_location = HTTP::strfy("/mmmmm");
+    result.target               = &param.get_request_target();
+    result.path_local           = HTTP::strfy(".") + param.get_request_target().path.str();
+    result.path_after           = HTTP::strfy("");
+    result.path_cgi_executor    = HTTP::strfy("/usr/bin/ruby");
+    result.status_code          = HTTP::STATUS_MOVED_PERMANENTLY;
+    result.redirect_location    = HTTP::strfy("/mmmmm");
+    result.client_max_body_size = 10;
     return result;
 }
 
@@ -39,29 +40,10 @@ void HTTPServer::run() {
     socket_observer_->loop();
 }
 
-IOriginator *HTTPServer::route(const RequestHTTP &request) {
+RequestMatchingResult HTTPServer::route(const IRequestMatchingParam &matching_param) {
 
     // Connectionに紐づくserver群に対し, リクエストを渡してマッチングを要請.
     // その結果を使ってここでオリジネータを生成する.
     std::vector<config::Config> confs;
-    RequestMatchingResult result = mock_matcher.request_match(confs, request.get_request_matching_param());
-    switch (result.result_type) {
-        case RequestMatchingResult::RT_CGI:
-            return new CGI(result, request);
-        case RequestMatchingResult::RT_FILE_DELETE:
-            return new FileDeleter(result);
-        case RequestMatchingResult::RT_FILE_PUT:
-            return new FileWriter(result, request.get_plain_message());
-        case RequestMatchingResult::RT_AUTO_INDEX:
-            return new AutoIndexer(result);
-        case RequestMatchingResult::RT_EXTERNAL_REDIRECTION:
-            return new Redirector(result);
-        case RequestMatchingResult::RT_ECHO:
-            return new Echoer(result);
-        case RequestMatchingResult::RT_FILE:
-            return new FileReader(result);
-        default:
-            break;
-    }
-    return NULL;
+    return mock_matcher.request_match(confs, matching_param);
 }

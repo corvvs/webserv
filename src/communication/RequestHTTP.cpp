@@ -116,7 +116,7 @@ std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
 
 RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
 
-RequestHTTP::RequestHTTP() : mid(0), rp() {
+RequestHTTP::RequestHTTP() : mid(0), client_max_body_size(0), rp() {
     DXOUT("[create_requedt]");
     this->ps.parse_progress = PP_REQLINE_START;
     this->rp.http_method    = HTTP::METHOD_UNKNOWN;
@@ -753,6 +753,10 @@ RequestHTTP::byte_string RequestHTTP::get_body() const {
 
 RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
     return RequestHTTP::byte_string(bytebuffer.begin(), bytebuffer.begin() + mid);
+}
+
+void RequestHTTP::set_max_body_size(ssize_t size) {
+    client_max_body_size = size;
 }
 
 RequestHTTP::light_string RequestHTTP::freeze() {

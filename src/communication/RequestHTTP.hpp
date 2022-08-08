@@ -175,6 +175,7 @@ public:
 private:
     byte_string bytebuffer;
     ssize_t mid;
+    ssize_t client_max_body_size;
 
     // 解析中の情報
     ParserStatus ps;
@@ -250,6 +251,8 @@ public:
     byte_string get_body() const;
     // HTTPメッセージ全文を返す
     byte_string get_plain_message() const;
+
+    void set_max_body_size(ssize_t size);
 
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
     bool is_routable() const;
