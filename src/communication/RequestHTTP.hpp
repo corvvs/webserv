@@ -236,9 +236,12 @@ public:
     // 受信済み(未解釈含む)データサイズ
     size_t receipt_size() const;
     // 解釈済みボディサイズ
+    // 「受信したデータのうち解釈済みのもの」なので、実際のボディサイズとは限らない(特にchunkedの場合は明確に異なる)
     size_t parsed_body_size() const;
     // 解釈済みデータサイズ
     size_t parsed_size() const;
+
+    size_t effective_parsed_body_size() const;
 
     // リクエストのHTTPバージョン
     HTTP::t_version get_http_version() const;
@@ -262,6 +265,10 @@ public:
     bool is_freezed() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
+
+    // 各種サイズの制限を調べる
+    // 違反していれば対応する例外を投げる(すべてunrecovarable扱い)
+    void check_size_limitation();
 
     header_holder_type::joined_dict_type get_cgi_meta_vars() const;
     const IRequestMatchingParam &get_request_matching_param() const;

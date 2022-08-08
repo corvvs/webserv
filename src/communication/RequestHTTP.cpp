@@ -114,7 +114,17 @@ std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
                << "\", authority: \"" << f.authority << "\", path: \"" << f.path << "\", query: \"" << f.query;
 }
 
-RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
+RequestHTTP::ParserStatus::ParserStatus()
+    : found_obs_fold(false)
+    , start_of_reqline(0)
+    , end_of_reqline(0)
+    , start_of_header(0)
+    , end_of_header(0)
+    , start_of_body(0)
+    , end_of_body(0)
+    ,
+
+    is_freezed(false) {}
 
 RequestHTTP::RequestHTTP() : mid(0), client_max_body_size(0), rp() {
     DXOUT("[create_requedt]");
@@ -589,6 +599,16 @@ void RequestHTTP::extract_control_headers() {
     this->rp.via.determine(header_holder);
 }
 
+void RequestHTTP::check_size_limitation() {
+    // ボディ
+    if (client_max_body_size > 0) {
+        if (effective_parsed_body_size() > (size_t)client_max_body_size) {
+            // ダメ
+            throw http_error("request body size exceeded the limit", HTTP::STATUS_PAYLOAD_TOO_LARGE);
+        }
+    }
+}
+
 void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_type &holder) {
     // https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length
 
@@ -727,6 +747,13 @@ size_t RequestHTTP::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
+size_t RequestHTTP::effective_parsed_body_size() const {
+    if (ps.parse_progress >= PP_OVER) {
+        return ps.end_of_body - ps.start_of_body;
+    }
+    return parsed_body_size();
+}
+
 size_t RequestHTTP::parsed_size() const {
     return this->mid;
 }
@@ -757,6 +784,7 @@ RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
 
 void RequestHTTP::set_max_body_size(ssize_t size) {
     client_max_body_size = size;
+    check_size_limitation();
 }
 
 RequestHTTP::light_string RequestHTTP::freeze() {

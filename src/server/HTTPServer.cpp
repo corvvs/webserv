@@ -19,7 +19,7 @@ RequestMatchingResult MockMatcher::request_match(const std::vector<config::Confi
     result.path_cgi_executor    = HTTP::strfy("/usr/bin/ruby");
     result.status_code          = HTTP::STATUS_MOVED_PERMANENTLY;
     result.redirect_location    = HTTP::strfy("/mmmmm");
-    result.client_max_body_size = 10;
+    result.client_max_body_size = 1024; // 仮
     return result;
 }
 
