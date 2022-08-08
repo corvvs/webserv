@@ -5,6 +5,7 @@
 #include "originator/CGI.hpp"
 #include "originator/Echoer.hpp"
 #include "originator/FileDeleter.hpp"
+#include "originator/FilePoster.hpp"
 #include "originator/FileReader.hpp"
 #include "originator/FileWriter.hpp"
 #include "originator/Redirector.hpp"

@@ -3,8 +3,14 @@
 #include "Connection.hpp"
 #include <cassert>
 
-RoundTrip::RoundTrip(IRouter &router)
-    : router(router), request_(NULL), originator_(NULL), response_(NULL), reroute_count(0) {}
+RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs)
+    : router(router)
+    , configs_(configs)
+    , request_(NULL)
+    , originator_(NULL)
+    , response_(NULL)
+    , lifetime(Lifetime::make_round_trip())
+    , reroute_count(0) {}
 
 RoundTrip::~RoundTrip() {
     wipeout();
@@ -28,6 +34,7 @@ void RoundTrip::start_if_needed() {
     }
     DXOUT("[start_roundtrip]");
     request_ = new RequestHTTP();
+    lifetime.activate();
 }
 
 bool RoundTrip::inject_data(const u8t *received_buffer, ssize_t received_size, extra_buffer_type &extra_buffer) {
@@ -82,7 +89,7 @@ void RoundTrip::route(Connection &connection) {
     DXOUT("[route]");
     assert(request_ != NULL);
     reroute_count += 1;
-    const RequestMatchingResult result = router.route(request_->get_request_matching_param());
+    const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
     originator_                        = make_originator(result, *request_);
     request_->set_max_body_size(result.client_max_body_size);
     originator_->inject_socketlike(&connection);
@@ -133,7 +140,7 @@ void RoundTrip::reroute(Connection &connection) {
     }
 
     // TODO: 古いオリジネータの内容を考慮する
-    const RequestMatchingResult result = router.route(request_->get_request_matching_param());
+    const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
     IOriginator *reoriginator          = make_originator(result, *request_);
     request_->set_max_body_size(result.client_max_body_size);
 
@@ -157,6 +164,16 @@ bool RoundTrip::is_responding() const {
     return response_ != NULL;
 }
 
+bool RoundTrip::is_timeout(t_time_epoch_ms now) const {
+    if (request_ != NULL && request_->is_timeout(now)) {
+        return true;
+    }
+    if (response_ != NULL && response_->is_timeout(now)) {
+        return true;
+    }
+    return lifetime.is_timeout(now);
+}
+
 void RoundTrip::respond() {
     DXOUT("[respond]");
     response_ = originator_->respond(*request_);
@@ -168,7 +185,6 @@ void RoundTrip::respond_error(const http_error &err) {
     destroy_response();
     in_error_responding = true;
     ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err);
-    BVOUT(res->get_message_text());
     res->start();
     response_ = res;
 }
@@ -183,9 +199,10 @@ bool RoundTrip::is_terminatable() const {
 
 void RoundTrip::wipeout() {
     destroy_request();
-    destroy_originator();
     destroy_response();
+    destroy_originator();
     reroute_count = 0;
+    lifetime.deactivate();
 }
 
 void RoundTrip::destroy_request() {

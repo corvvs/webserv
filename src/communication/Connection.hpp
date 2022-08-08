@@ -1,9 +1,8 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
-#include "../interface/IObserver.hpp"
-#include "../interface/IRouter.hpp"
-#include "../interface/ISocketLike.hpp"
+#include "../Interfaces.hpp"
 #include "../socket/SocketConnected.hpp"
+#include "Lifetime.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
 #include "RoundTrip.hpp"
@@ -47,24 +46,22 @@ private:
     Attribute attr;
 
     t_phase phase;
+
     // 今切断中かどうか
     bool dying;
 
     // 通信用ソケット
     SocketConnected *sock;
 
+    // ラウンドトリップ
     RoundTrip rt;
 
-    // 最終操作時刻
-    t_time_epoch_ms latest_operated_at;
+    Lifetime lifetime;
 
     // 余剰データバッファ
     // あるリクエストが終端以降のデータを持っている場合, それを受け取って保持しておく
     // 次のリクエストがきたら, 受信データより優先的にこのデータを使ってリクエストを処理する
     extra_buffer_type extra_data_buffer;
-
-    // 最終操作時刻を更新する
-    void touch();
 
     void perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
     void perform_receiving(IObserver &observer);
@@ -80,8 +77,10 @@ private:
     // 以降すべての通知をシャットアウトする
     void die(IObserver &observer);
 
+    bool is_timeout(t_time_epoch_ms now) const;
+
 public:
-    Connection(IRouter *router, SocketConnected *sock_given);
+    Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs);
     ~Connection();
 
     t_fd get_fd() const;

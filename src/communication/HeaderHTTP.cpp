@@ -51,9 +51,9 @@ HeaderItem::HeaderItem(const header_key_type &key) : key(key) {
 void HeaderItem::add_val(const header_val_type &val) {
     if (values.size() > 0) {
         // すでにvalueがある場合 -> 必要に応じてしかるべく処理する
-        DXOUT("* MULTIPLE VALUES * " << values.size());
+        // DXOUT("* MULTIPLE VALUES * " << values.size());
     }
-    DXOUT("ADDING Val to `" << key << "`: " << val);
+    // DXOUT("ADDING Val to `" << key << "`: " << val);
     values.push_back(val);
 }
 
@@ -140,6 +140,57 @@ AHeaderHolder::list_type::size_type AHeaderHolder::get_list_size() const {
 
 AHeaderHolder::dict_type::size_type AHeaderHolder::get_dict_size() const {
     return dict.size();
+}
+
+void AHeaderHolder::parse_header_lines(const light_string &lines, AHeaderHolder *holder) {
+    // TODO: HTTP, CGI, Multipartの微妙な差異を吸収する
+    light_string rest(lines);
+    while (true) {
+        const IndexRange res = ParserHelper::find_crlf_header_value(rest);
+        if (res.is_invalid()) {
+            break;
+        }
+        const light_string header_line = rest.substr(0, res.first);
+        if (header_line.length() > 0) {
+            // header_line が空文字列でない
+            // -> ヘッダ行としてパースを試みる
+            parse_header_line(header_line, holder);
+        }
+        rest = rest.substr(res.second);
+    }
+}
+
+void AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *holder) {
+
+    const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
+    // QVOUT(line);
+    // QVOUT(key);
+    if (key.length() == line.length()) {
+        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
+        // は無視して処理を続けます。
+        throw http_error("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
+    }
+    // ":"があった -> ":"の前後をキーとバリューにする
+    if (key.length() == 0) {
+        throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
+    }
+    light_string val = line.substr(key.length() + 1);
+    // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。
+    // 串は、下流に転送する前に空白を削除しなければなりません。
+    light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
+    if (key_tail + 1 != key.length()) {
+        throw http_error("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
+    }
+    // [!] 欄値の前後の OWS は、欄値の一部ではなく、 構文解析の際に削除します
+    val = val.trim(ParserHelper::OWS);
+    // holder があるなら holder に渡す. あとの処理は holder に任せる.
+    if (holder != NULL) {
+        holder->add_item(key, val);
+    } else {
+        DXOUT("no holder");
+    }
+    QVOUT(key);
+    QVOUT(val);
 }
 
 // [HeaderHolderHTTP]
