@@ -1,4 +1,6 @@
 #include "HTTPServer.hpp"
+#include "../config/File.hpp"
+#include "../config/Parser.hpp"
 
 RequestMatchingResult MockMatcher::request_match(const std::vector<config::Config> &configs,
                                                  const IRequestMatchingParam &param) {
@@ -28,8 +30,27 @@ HTTPServer::~HTTPServer() {
     delete socket_observer_;
 }
 
-void HTTPServer::listen(t_socket_domain sdomain, t_socket_type stype, t_port port) {
-    Channel *ch            = new Channel(this, sdomain, stype, port);
+void HTTPServer::init(const std::string &config_path) {
+    file::ErrorType err;
+    if ((err = file::check(config_path)) != file::NONE) {
+        throw std::runtime_error(file::error_message(err));
+    }
+
+    config::Parser parser;
+    const config::config_dict &configs = parser.parse(file::read(config_path));
+
+    for (config::config_dict::const_iterator it = configs.begin(); it != configs.end(); ++it) {
+        const config::host_port_pair &hp     = it->first;
+        const config::config_vector &configs = it->second;
+        this->listen(SD_IP4, ST_TCP, hp.second, configs);
+    }
+}
+
+void HTTPServer::listen(t_socket_domain sdomain,
+                        t_socket_type stype,
+                        t_port port,
+                        const config::config_vector &configs) {
+    Channel *ch            = new Channel(this, sdomain, stype, port, configs);
     channels[ch->get_id()] = ch;
     socket_observer_->reserve_hold(ch);
     socket_observer_->reserve_set(ch, IObserver::OT_READ);
@@ -39,12 +60,11 @@ void HTTPServer::run() {
     socket_observer_->loop();
 }
 
-IOriginator *HTTPServer::route(const RequestHTTP &request) {
+IOriginator *HTTPServer::route(const RequestHTTP &request, const config::config_vector &configs) {
 
     // Connectionに紐づくserver群に対し, リクエストを渡してマッチングを要請.
     // その結果を使ってここでオリジネータを生成する.
-    std::vector<config::Config> confs;
-    RequestMatchingResult result = mock_matcher.request_match(confs, request.get_request_matching_param());
+    RequestMatchingResult result = mock_matcher.request_match(configs, request.get_request_matching_param());
     switch (result.result_type) {
         case RequestMatchingResult::RT_CGI:
             return new CGI(result, request);

@@ -1,6 +1,7 @@
 #ifndef ROUNDTRIP_HPP
 #define ROUNDTRIP_HPP
 #include "../Interfaces.hpp"
+#include "../config/Config.hpp"
 #include "../socket/SocketConnected.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
@@ -22,6 +23,9 @@ public:
 private:
     IRouter &router;
 
+    // 処理中のコネクションに関連するconfigの配列
+    const config::config_vector &configs_;
+
     RequestHTTP *request_;
     // 注意:
     // オリジネーションが終わっても, ラウンドトリップが終わるまでオリジネータを破棄しないこと.
@@ -40,7 +44,7 @@ private:
     void destroy_response();
 
 public:
-    RoundTrip(IRouter &router);
+    RoundTrip(IRouter &router, const config::config_vector &configs);
     ~RoundTrip();
 
     // [getters]

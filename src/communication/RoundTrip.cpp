@@ -2,8 +2,8 @@
 #include "Connection.hpp"
 #include <cassert>
 
-RoundTrip::RoundTrip(IRouter &router)
-    : router(router), request_(NULL), originator_(NULL), response_(NULL), reroute_count(0) {}
+RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs)
+    : router(router), configs_(configs), request_(NULL), originator_(NULL), response_(NULL), reroute_count(0) {}
 
 RoundTrip::~RoundTrip() {
     wipeout();
@@ -61,7 +61,7 @@ void RoundTrip::route(Connection &connection) {
     DXOUT("[route]");
     assert(request_ != NULL);
     reroute_count += 1;
-    originator_ = router.route(*request_);
+    originator_ = router.route(*request_, configs_);
     originator_->inject_socketlike(&connection);
 }
 
@@ -110,7 +110,7 @@ void RoundTrip::reroute(Connection &connection) {
     }
 
     // TODO: 古いオリジネータの内容を考慮する
-    IOriginator *reoriginator = router.route(*request_);
+    IOriginator *reoriginator = router.route(*request_, configs_);
 
     originator_->leave();
     originator_ = reoriginator;

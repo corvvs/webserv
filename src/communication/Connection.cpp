@@ -14,12 +14,12 @@ Connection::Attribute::Attribute() {
 
 // [[Connection]]
 
-Connection::Connection(IRouter *router, SocketConnected *sock_given)
+Connection::Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs)
     : attr(Attribute())
     , phase(CONNECTION_ESTABLISHED)
     , dying(false)
     , sock(sock_given)
-    , rt(*router)
+    , rt(*router, configs)
     , latest_operated_at(0) {
     touch();
     DXOUT("[established] " << sock->get_fd());
