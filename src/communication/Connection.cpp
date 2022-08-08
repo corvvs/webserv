@@ -42,8 +42,10 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
     if (dying) {
         return;
     }
-    VOUT(phase);
-    VOUT(cat);
+    // VOUT(phase);
+    // VOUT(cat);
+    // VOUT(get_fd());
+    // VOUT(get_port());
     try {
         switch (phase) {
             case CONNECTION_ESTABLISHED:
@@ -195,7 +197,7 @@ void Connection::perform_shutting_down(IObserver &observer) {
 
 void Connection::touch() {
     const t_time_epoch_ms t = WSTime::get_epoch_ms();
-    DXOUT("operated_at: " << latest_operated_at << " -> " << t);
+    // DXOUT("operated_at: " << latest_operated_at << " -> " << t);
     latest_operated_at = t;
 }
 
