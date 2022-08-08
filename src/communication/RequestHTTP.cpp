@@ -116,12 +116,15 @@ std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
 
 RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
 
-RequestHTTP::RequestHTTP() : mid(0), rp() {
-    DXOUT("[create_requedt]");
+RequestHTTP::RequestHTTP()
+    : mid(0), lifetime(Lifetime::make_request()), lifetime_header(Lifetime::make_request_header()), rp() {
+    DXOUT("[create_request]");
     this->ps.parse_progress = PP_REQLINE_START;
     this->rp.http_method    = HTTP::METHOD_UNKNOWN;
     this->rp.http_version   = HTTP::V_UNKNOWN;
     bytebuffer.reserve(MAX_REQLINE_END);
+    lifetime.activate();
+    lifetime_header.activate();
 }
 
 RequestHTTP::~RequestHTTP() {}
@@ -264,6 +267,7 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is
     }
     // あたり: ヘッダの終わりが見つかった
     analyze_headers(res);
+    lifetime_header.deactivate();
     if (this->rp.is_body_chunked) {
         return PP_CHUNK_SIZE_LINE_END;
     } else {
@@ -667,6 +671,10 @@ bool RequestHTTP::is_freezed() const {
     return this->ps.is_freezed;
 }
 
+bool RequestHTTP::is_timeout(t_time_epoch_ms now) const {
+    return lifetime.is_timeout(now) || lifetime_header.is_timeout(now);
+}
+
 size_t RequestHTTP::receipt_size() const {
     return bytebuffer.size();
 }
@@ -716,6 +724,7 @@ RequestHTTP::light_string RequestHTTP::freeze() {
         return light_string();
     }
     this->ps.is_freezed = true;
+    lifetime.deactivate();
     return light_string(bytebuffer, mid);
 }
 

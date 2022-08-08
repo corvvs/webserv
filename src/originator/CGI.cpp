@@ -43,6 +43,7 @@ const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
     : attr(Attribute(match_result, request))
+    , lifetime(Lifetime::make_response())
     , metavar_(request.get_cgi_meta_vars())
     , to_script_content_length_(0)
     , mid(0) {
@@ -59,6 +60,7 @@ CGI::~CGI() {
         ::kill(attr.cgi_pid, SIGKILL);
         int wstatus;
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
+        lifetime.deactivate();
         // VOUT(pid);
         assert(pid > 0);
         // VOUT(WIFEXITED(wstatus));
@@ -161,6 +163,7 @@ void CGI::start_origination(IObserver &observer) {
     observer.reserve_set(this, IObserver::OT_READ);
     observer.reserve_set(this, IObserver::OT_WRITE);
     status.is_started = true;
+    lifetime.activate();
 }
 
 void CGI::capture_script_termination() {
@@ -173,6 +176,7 @@ void CGI::capture_script_termination() {
         VOUT(strerror(errno));
     } else if (rv > 0) {
         attr.cgi_pid = 0;
+        lifetime.deactivate();
         // 終了している
         if (WIFEXITED(wstatus)) {
             int cstatus = WEXITSTATUS(wstatus);
@@ -317,7 +321,10 @@ void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_tim
             return;
         case IObserver::OT_TIMEOUT:
         case IObserver::OT_ORIGINATOR_TIMEOUT:
-            VOUT(epoch);
+            if (lifetime.is_timeout(epoch)) {
+                DXOUT("TIMEOUT!!");
+                throw http_error("cgi-script timed out", HTTP::STATUS_TIMEOUT);
+            }
             return;
         default:
             DXOUT("unexpected cat: " << cat);
@@ -418,6 +425,10 @@ void CGI::leave() {
         // Observerに渡される前に leave されることがある
         delete this;
     }
+}
+
+bool CGI::is_timeout(t_time_epoch_ms now) const {
+    return lifetime.is_timeout(now);
 }
 
 CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {

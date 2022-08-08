@@ -3,6 +3,7 @@
 #include "../Interfaces.hpp"
 #include "../config/Config.hpp"
 #include "../socket/SocketConnected.hpp"
+#include "Lifetime.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
 #include <deque>
@@ -31,6 +32,7 @@ private:
     // オリジネーションが終わっても, ラウンドトリップが終わるまでオリジネータを破棄しないこと.
     IOriginator *originator_;
     ResponseHTTP *response_;
+    Lifetime lifetime;
 
     // ルーティング実施回数
     // 通常は1で終わるが, 再ルーティングが起きると増えていく
@@ -73,6 +75,9 @@ public:
     bool is_terminatable() const;
     // predicate: レスポンスを送信中か
     bool is_responding() const;
+
+    // タイムアウトしているかどうか
+    bool is_timeout(t_time_epoch_ms now) const;
 
     // predicate: ラウンドトリップがリクエストを持っていないならリクエストを作成する
     void start_if_needed();

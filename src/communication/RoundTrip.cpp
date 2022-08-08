@@ -3,7 +3,13 @@
 #include <cassert>
 
 RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs)
-    : router(router), configs_(configs), request_(NULL), originator_(NULL), response_(NULL), reroute_count(0) {}
+    : router(router)
+    , configs_(configs)
+    , request_(NULL)
+    , originator_(NULL)
+    , response_(NULL)
+    , lifetime(Lifetime::make_round_trip())
+    , reroute_count(0) {}
 
 RoundTrip::~RoundTrip() {
     wipeout();
@@ -27,6 +33,7 @@ void RoundTrip::start_if_needed() {
     }
     DXOUT("[start_roundtrip]");
     request_ = new RequestHTTP();
+    lifetime.activate();
 }
 
 bool RoundTrip::inject_data(const u8t *received_buffer, ssize_t received_size, extra_buffer_type &extra_buffer) {
@@ -132,6 +139,16 @@ bool RoundTrip::is_responding() const {
     return response_ != NULL;
 }
 
+bool RoundTrip::is_timeout(t_time_epoch_ms now) const {
+    if (request_ != NULL && request_->is_timeout(now)) {
+        return true;
+    }
+    if (response_ != NULL && response_->is_timeout(now)) {
+        return true;
+    }
+    return lifetime.is_timeout(now);
+}
+
 void RoundTrip::respond() {
     DXOUT("[respond]");
     response_ = originator_->respond(*request_);
@@ -157,9 +174,10 @@ bool RoundTrip::is_terminatable() const {
 
 void RoundTrip::wipeout() {
     destroy_request();
-    destroy_originator();
     destroy_response();
+    destroy_originator();
     reroute_count = 0;
+    lifetime.deactivate();
 }
 
 void RoundTrip::destroy_request() {
