@@ -12,7 +12,6 @@ class SocketConnected;
 // - 必要に応じて通信可能ソケットクラスを生成すること
 class SocketListening : public ASocket {
 private:
-    SocketListening();
     SocketListening(t_socket_domain sdomain, t_socket_type stype);
 
 public:

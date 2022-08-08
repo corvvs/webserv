@@ -12,7 +12,7 @@ namespace HTTP {
 // 単純な文字集合クラス
 class CharFilter {
 private:
-    unsigned char filter[32];
+    u64t filter[256 / sizeof(u64t) / 8];
 
 public:
     CharFilter(const byte_string &chars);
@@ -58,6 +58,7 @@ public:
     static const CharFilter sub_delims;
     static const CharFilter tchar;
     static const CharFilter sp;
+    static const CharFilter bad_sp;
     static const CharFilter ws;
     static const CharFilter crlf;
     static const CharFilter cr;
@@ -67,8 +68,18 @@ public:
     static const CharFilter bslash;
     static const CharFilter obs_text;
     static const CharFilter vchar;
+    static const CharFilter printables;
     static const CharFilter qdtext;
-    static const CharFilter quoted_right;
+    static const CharFilter qdright;
+    static const CharFilter ctext;
+    static const CharFilter reserved;
+    static const CharFilter cgi_mark;
+    static const CharFilter cgi_sp;
+    static const CharFilter cgi_unreserved;
+    static const CharFilter cgi_reserved;
+    static const CharFilter cgi_extra;
+    static const CharFilter pchar_without_pct;
+    static const CharFilter uri_scheme;
 
     byte_string str() const;
 };

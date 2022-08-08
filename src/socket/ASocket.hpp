@@ -1,5 +1,6 @@
 #ifndef ASOCKET_HPP
 #define ASOCKET_HPP
+#include "../utils/test_common.hpp"
 #include "SocketType.hpp"
 
 // [抽象ソケットクラス]
@@ -16,9 +17,6 @@ private:
     // コンストラクタの直接呼び出しは禁止
     // Socketはfactoryメソッドbind,
     // connectおよびインスタンスメソッドacceptによってのみ生成される
-
-    // デフォルトコンストラクタは使用禁止(呼び出すと例外を投げる)
-    ASocket();
 
 protected:
     ASocket(t_socket_domain sdomain, t_socket_type stype);

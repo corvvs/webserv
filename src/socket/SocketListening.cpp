@@ -21,12 +21,12 @@ SocketListening *SocketListening::bind(t_socket_domain sdomain, t_socket_type st
     sa.sin_family      = d;
     sa.sin_port        = htons(port);
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
-    DXOUT("binding asocket for: " << port << ", " << sa.sin_addr.s_addr << "..." << std::endl);
+    DXOUT("binding asocket for: " << port << ", " << sa.sin_addr.s_addr << "...");
     if (::bind(fd, (struct sockaddr *)&sa, sizeof(struct sockaddr_in)) == -1) {
-        std::cerr << strerror(errno) << std::endl;
+        //        std::cerr << strerror(errno) << std::endl;
         throw std::runtime_error("failed to bind a asocket");
     }
-    DXOUT("bound asocket." << std::endl);
+    DXOUT("bound asocket.");
     sock->port = port;
     return sock;
 }
@@ -36,7 +36,7 @@ void SocketListening::listen(int backlog) {
     if (::listen(fd, backlog) == -1) {
         throw std::runtime_error("failed to listen");
     }
-    DXOUT("now listening..." << std::endl);
+    DXOUT("now listening...");
 }
 
 SocketConnected *SocketListening::accept() {

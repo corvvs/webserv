@@ -1,8 +1,6 @@
 #include "SocketConnected.hpp"
 #include "SocketListening.hpp"
-#include "strings.h"
-
-SocketConnected::SocketConnected(const SocketConnected &other) : ASocket(other) {}
+#include <cstring>
 
 SocketConnected::SocketConnected(t_socket_domain sdomain, t_socket_type stype) : ASocket(sdomain, stype) {}
 
@@ -31,7 +29,7 @@ SocketConnected *SocketConnected::connect(t_socket_domain sdomain, t_socket_type
     if (hostent == NULL) {
         throw std::runtime_error("failed to gethostbyname");
     }
-    memcpy(&sa.sin_addr, hostent->h_addr_list[0], sizeof(sa.sin_addr));
+    std::memcpy(&sa.sin_addr, hostent->h_addr_list[0], sizeof(sa.sin_addr));
     // 接続
     if (::connect(fd, (struct sockaddr *)&sa, sizeof(struct sockaddr_in)) == -1) {
         throw std::runtime_error("failed to connect");
