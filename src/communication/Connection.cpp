@@ -131,6 +131,7 @@ void Connection::perform_receiving(IObserver &observer) {
         lifetime.activate();
         bool is_disconnected = rt.inject_data(buf, received_size, extra_data_buffer);
         rt.req()->after_injection(is_disconnected);
+        rt.req()->check_size_limitation();
     }
 }
 

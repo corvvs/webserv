@@ -30,6 +30,7 @@ enum t_status {
     STATUS_NOT_FOUND          = 404,
     STATUS_METHOD_NOT_ALLOWED = 405,
     STATUS_TIMEOUT            = 408,
+    STATUS_PAYLOAD_TOO_LARGE  = 413,
     STATUS_URI_TOO_LONG       = 414,
     STATUS_IM_A_TEAPOT        = 418,
     STATUS_HEADER_TOO_LARGE   = 431,
