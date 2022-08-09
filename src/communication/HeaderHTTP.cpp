@@ -164,6 +164,9 @@ void AHeaderHolder::parse_header_lines(const light_string &lines, AHeaderHolder 
 }
 
 minor_error AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *holder) {
+    if (line.size() > MaxHeaderLineSize) {
+        throw http_error("size of header line exceeds the limit", HTTP::STATUS_HEADER_TOO_LARGE);
+    }
 
     const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
     if (key.length() == line.length()) {
@@ -186,9 +189,7 @@ minor_error AHeaderHolder::parse_header_line(const light_string &line, AHeaderHo
     val = val.trim(ParserHelper::OWS);
     // holder があるなら holder に渡す. あとの処理は holder に任せる.
     if (holder != NULL) {
-        holder->add_item(key, val);
-    } else {
-        DXOUT("no holder");
+        holder->add_item(key.trim(ParserHelper::OWS), val);
     }
     return minor_error::ok();
 }
