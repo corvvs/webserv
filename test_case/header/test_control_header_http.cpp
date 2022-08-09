@@ -46,7 +46,7 @@ TEST(control_header_http, content_type_normalize) {
 }
 
 TEST(control_header_http, content_type_basic_ko) {
-    const char *strs[] = {"", "text", "text/", "text/ html", NULL};
+    const char *strs[] = {"text", "text/", "text/ html", NULL};
     for (size_t i = 0; strs[i]; ++i) {
         const HTTP::byte_string item = HTTP::strfy(strs[i]);
         HeaderHolderHTTP holder;
