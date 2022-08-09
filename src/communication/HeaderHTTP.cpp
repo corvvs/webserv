@@ -167,12 +167,13 @@ minor_error AHeaderHolder::parse_header_line(const light_string &line, AHeaderHo
     if (line.size() > MaxHeaderLineSize) {
         throw http_error("size of header line exceeds the limit", HTTP::STATUS_HEADER_TOO_LARGE);
     }
-
-    const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
-    if (key.length() == line.length()) {
-        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
-        // は無視して処理を続けます。
-        return minor_error::make("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
+    const light_string key     = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
+    const bool no_coron        = key.length() == line.length();
+    const bool started_with_ws = line.length() > 0 && HTTP::CharFilter::sp.includes(line[0]);
+    if (no_coron && !started_with_ws) {
+        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。
+        // nginx は無視して処理を続けます。
+        return minor_error::ok();
     }
     // ":"があった -> ":"の前後をキーとバリューにする
     if (key.length() == 0) {

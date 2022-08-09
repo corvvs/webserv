@@ -15,7 +15,7 @@ TEST(header_http, spaces_ok) {
 
 // ':'の前のスペース, 空のヘッダ名はNG
 TEST(header_http, spaces_ko) {
-    const char *strs[] = {"", "    ", ":", "Host : aaa", NULL};
+    const char *strs[] = {"   ", ":", "Host : aaa", NULL};
     for (size_t i = 0; strs[i]; ++i) {
         HTTP::byte_string s = HTTP::strfy(strs[i]);
         const HTTP::light_string l(s);
@@ -35,11 +35,13 @@ TEST(header_http, token_ok) {
                           // 本当はKOだけどブラウザが許可してるっぽいので...
                           "Ho st:",
                           "Ho@st:",
+                          "",
                           NULL};
     for (size_t i = 0; strs[i]; ++i) {
         HTTP::byte_string s = HTTP::strfy(strs[i]);
         const HTTP::light_string l(s);
         HeaderHolderHTTP holder;
+        QVOUT(l);
         minor_error result = holder.parse_header_line(l, &holder);
         EXPECT_EQ("", result.message());
     }
