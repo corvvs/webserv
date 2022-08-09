@@ -42,9 +42,18 @@ std::string error_message(const ErrorType &type) {
     return "no reach";
 }
 
+std::string get_directory_name(const std::string &file_path) {
+    size_t slash_pos = file_path.rfind('/');
+    if (slash_pos == std::string::npos) {
+        return std::string(".");
+    }
+    return  file_path.substr(0, slash_pos);
+}
+
 std::string read(const std::string &path) {
     std::ifstream input_file(path);
     std::string data((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
     return data;
 }
+
 } // namespace file

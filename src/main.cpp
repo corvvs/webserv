@@ -29,9 +29,7 @@ int main(int argc, char **argv) {
     try {
         http_server.init(config_path);
         http_server.run();
-    } catch (const std::exception &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
+    } catch (const std::exception &e) { std::cerr << "Error: " << e.what() << std::endl; }
     // http_server.listen(SD_IP4, ST_TCP, 8080);
     // http_server.listen(SD_IP4, ST_TCP, 8081);
     // http_server.listen(SD_IP4, ST_TCP, 8082);
