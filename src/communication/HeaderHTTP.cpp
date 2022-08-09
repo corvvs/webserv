@@ -79,8 +79,19 @@ const HeaderItem::value_list_type &HeaderItem::get_vals() const {
 // [AHeaderHolder]
 
 void AHeaderHolder::add_item(const light_string &key, const light_string &val) {
-    // val の obs-foldを除去し, 全体を string に変換する.
+    // obs-fold はRFC9112で廃止された. ただし Content-Type: が "message/http"の場合は例外.
+    //   obs-fold     = OWS CRLF RWS
+    // https://www.rfc-editor.org/rfc/rfc9112.html#section-5.2
+    // A server that receives an obs-fold in a request message
+    // that is not within a "message/http" container MUST either reject the message
+    // by sending a 400 (Bad Request), preferably with a representation explaining
+    // that obsolete line folding is unacceptable, or replace each received
+    // obs-fold with one or more SP octets prior to interpreting
+    // the field value or forwarding the message downstream.
+    //
+    // val の obs-fold を除去し, 全体を string に変換する.
     // obs-fold を検知した場合, そのことを記録する
+    // (HTTPリクエストの場合はあとで400を出す)
 
     byte_string sval;
     byte_string pval = val.str();
@@ -88,9 +99,12 @@ void AHeaderHolder::add_item(const light_string &key, const light_string &val) {
     while (true) {
         IndexRange obs_fold = ParserHelper::find_obs_fold(pval, movement, val.length() - movement);
         if (obs_fold.is_invalid()) {
+            // obs-fold がない
             sval.insert(sval.end(), pval.begin() + movement, pval.begin() + obs_fold.second);
             break;
         }
+        // obs-fold が見つかった
+        encountered_obs_fold = true;
         sval.insert(sval.end(), pval.begin() + movement, pval.begin() + obs_fold.first);
         sval += ParserHelper::SP;
         VOUT(obs_fold);
@@ -145,22 +159,28 @@ AHeaderHolder::dict_type::size_type AHeaderHolder::get_dict_size() const {
     return dict.size();
 }
 
-void AHeaderHolder::parse_header_lines(const light_string &lines, AHeaderHolder *holder) {
+minor_error AHeaderHolder::parse_header_lines(const light_string &lines, AHeaderHolder *holder) {
     // TODO: HTTP, CGI, Multipartの微妙な差異を吸収する
     light_string rest(lines);
+    minor_error me;
     while (true) {
         const IndexRange res = ParserHelper::find_crlf_header_value(rest);
         if (res.is_invalid()) {
             break;
         }
+        // `rest`の[先頭,改行)
         const light_string header_line = rest.substr(0, res.first);
         if (header_line.length() > 0) {
             // header_line が空文字列でない
             // -> ヘッダ行としてパースを試みる
-            parse_header_line(header_line, holder);
+            minor_error err = parse_header_line(header_line, holder);
+            if (me.is_ok()) {
+                me = err;
+            }
         }
         rest = rest.substr(res.second);
     }
+    return me;
 }
 
 minor_error AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *holder) {

@@ -1,5 +1,7 @@
 #include "RequestHTTP.hpp"
 
+const HTTP::byte_string scheme_http = HTTP::strfy("http");
+
 HTTP::t_method discriminate_request_method(const HTTP::light_string &str) {
     if (str == "GET") {
         return HTTP::METHOD_GET;
@@ -107,6 +109,7 @@ RequestTarget::RequestTarget(const light_string &target) : given(target), is_err
             return;
         }
     }
+    scheme = HTTP::light_string(scheme_http);
 }
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
@@ -280,7 +283,9 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is
         return PP_HEADER_SECTION_END;
     }
     // あたり: ヘッダの終わりが見つかった
-    analyze_headers(res);
+    minor_error me  = analyze_headers(res);
+    this->ps.merror = me;
+    VOUT(me);
     lifetime_header.deactivate();
     if (this->rp.is_body_chunked) {
         return PP_CHUNK_SIZE_LINE_END;
@@ -405,17 +410,23 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_trailer_end(size_t len,
     return PP_OVER;
 }
 
-void RequestHTTP::analyze_headers(IndexRange res) {
+minor_error RequestHTTP::analyze_headers(IndexRange res) {
     this->ps.end_of_header = res.first;
     this->ps.start_of_body = res.second;
     // -> [start_of_header, end_of_header) を解析する
     const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
-    this->header_holder.parse_header_lines(header_lines, &this->header_holder);
-    extract_control_headers();
-    VOUT(this->rp.is_body_chunked);
+    minor_error me;
+
+    minor_error header_error  = this->header_holder.parse_header_lines(header_lines, &this->header_holder);
+    me                        = me.is_error() ? me : header_error;
+    minor_error control_error = extract_control_headers();
+    me                        = me.is_error() ? me : control_error;
+
     if (this->rp.is_body_chunked) {
         this->ps.start_of_current_chunk = this->ps.start_of_body;
     }
+    VOUT(me);
+    return me;
 }
 
 bool RequestHTTP::seek_reqline_end(size_t len) {
@@ -540,19 +551,39 @@ void RequestHTTP::parse_chunk_size_line(const light_string &line) {
     }
 }
 
-void RequestHTTP::extract_control_headers() {
+minor_error RequestHTTP::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     // TODO: ここで何を抽出すべきか洗い出す
-
-    this->rp.determine_host(header_holder);
-    this->rp.content_type.determine(header_holder);
-    this->rp.content_disposition.determine(header_holder);
-    this->rp.transfer_encoding.determine(header_holder);
-    this->rp.determine_body_size(header_holder);
-    this->rp.connection.determine(header_holder);
-    this->rp.te.determine(header_holder);
-    this->rp.upgrade.determine(header_holder);
-    this->rp.via.determine(header_holder);
+    minor_error me;
+    if (me.is_ok()) {
+        me = this->rp.determine_host(header_holder);
+    }
+    if (me.is_ok()) {
+        me = this->rp.content_type.determine(header_holder);
+    }
+    if (me.is_ok()) {
+        me = this->rp.content_disposition.determine(header_holder);
+    }
+    if (me.is_ok()) {
+        me = this->rp.transfer_encoding.determine(header_holder);
+    }
+    if (me.is_ok()) {
+        this->rp.determine_body_size(header_holder);
+    }
+    if (me.is_ok()) {
+        me = this->rp.connection.determine(header_holder);
+    }
+    if (me.is_ok()) {
+        me = this->rp.te.determine(header_holder);
+    }
+    if (me.is_ok()) {
+        me = this->rp.upgrade.determine(header_holder);
+    }
+    if (me.is_ok()) {
+        me = this->rp.via.determine(header_holder);
+    }
+    VOUT(me);
+    return me;
 }
 
 void RequestHTTP::check_size_limitation() {
@@ -645,26 +676,28 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
     // immediately after the header section.
 }
 
-void RequestHTTP::RoutingParameters::determine_host(const header_holder_type &holder) {
+minor_error RequestHTTP::RoutingParameters::determine_host(const header_holder_type &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
     const header_holder_type::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
     if (!hosts || hosts->size() == 0) {
         // HTTP/1.1 なのに host がない場合, BadRequest を出す
         if (http_version == HTTP::V_1_1) {
-            throw http_error("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
+            return minor_error::make("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
         }
-        return;
+        // TODO: okでいいの?
+        return minor_error::ok();
     }
     if (hosts->size() > 1) {
         // Hostが複数ある場合, BadRequest を出す
-        throw http_error("multiple hosts", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("multiple hosts", HTTP::STATUS_BAD_REQUEST);
     }
     // Hostの値のバリデーション (と, 必要ならBadRequest)
     const HTTP::light_string lhost(hosts->front());
     if (!HTTP::Validator::is_valid_header_host(lhost)) {
-        throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("host is not valid", HTTP::STATUS_BAD_REQUEST);
     }
     pack_host(header_host, lhost);
+    return minor_error::ok();
 }
 
 const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const {
