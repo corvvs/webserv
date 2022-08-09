@@ -1,4 +1,4 @@
-package experiment
+package review
 
 import (
 	"http_test/client"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestStatusStatusNotFound(t *testing.T) {
+func TestErrorPage(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
@@ -15,33 +15,23 @@ func TestStatusStatusNotFound(t *testing.T) {
 		body       []byte
 	}{
 		{
-			name:       "no_such_file",
-			request:    "GET /no_such_file HTTP/1.1\r\n" + validHeader,
+
+			name:       "not_found_path",
+			request:    "GET /not_found_path HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusNotFound,
 			body:       errorHtml,
 		},
 		{
-			name:       "no_such_dir",
-			request:    "GET /no_such_dir HTTP/1.1\r\n" + validHeader,
-			statusCode: http.StatusNotFound,
-			body:       errorHtml,
-		},
-		{
-			name:       "no_such_dir/no_such_file",
-			request:    "GET /no_such_dir/no_such_file HTTP/1.1\r\n" + validHeader,
-			statusCode: http.StatusNotFound,
-			body:       errorHtml,
-		},
-		{
-			name:       "dir/no_such_file",
-			request:    "GET /no_such_dir/no_such_file HTTP/1.1\r\n" + validHeader,
+
+			name:       "index.html",
+			request:    "GET /index.html HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusNotFound,
 			body:       errorHtml,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := client.NewClient(tt.request, webservPort)
+			c, err := client.NewClient(tt.request, "8080")
 			if err != nil {
 				t.Fatal(err)
 			}

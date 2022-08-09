@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"http_test/client"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -43,7 +44,7 @@ func TestStatusBadRequestRequestLine(t *testing.T) {
 		},
 		{
 			name:       "different_separator",
-			request:    "GET\t/\tHTTP/1.1\r\n" + validHeader,
+			request:    "GET\t\tHTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusBadRequest,
 			body:       errorHtml,
 		},
@@ -112,8 +113,12 @@ func TestStatusBadRequestHeader(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, tt.statusCode, res.StatusCode, "unexpected status code")
-			assert.Equal(t, tt.body, res.Body, "unexpected body")
+			if res.StatusCode != tt.statusCode {
+				t.Errorf("unexpected status code got = %d, want %d", res.StatusCode, tt.statusCode)
+			}
+			if !reflect.DeepEqual(res.Body, tt.body) {
+				t.Errorf("unexpected body got = %s, want %s", string(res.Body), string(tt.body))
+			}
 		})
 	}
 }
