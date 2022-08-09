@@ -104,7 +104,8 @@ minor_error HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
 const HTTP::byte_string HTTP::CH::ContentType::default_value = HTTP::strfy("application/octet-stream");
 
 void HTTP::CH::ContentType::store_list_item(const parameter_key_type &key, const parameter_value_type &val) {
-    parameters[key] = val;
+    const parameter_key_type normalized_key = normalize(key);
+    parameters[normalized_key]              = val;
 }
 
 minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
@@ -158,7 +159,7 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
         DXOUT("[KO] no subtype after /: \"" << lct << "\"");
         return minor_error::ok();
     }
-    this->value = lct.substr(0, subtype_end).str();
+    this->value = normalize(lct.substr(0, subtype_end).str());
     QVOUT(value);
     // [`parameter`の捕捉]
     // parameter  = 1*tchar "=" ( 1*tchar / quoted-string )
@@ -183,6 +184,10 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     }
     QVOUT(boundary);
     return minor_error::ok();
+}
+
+HTTP::byte_string HTTP::CH::ContentType::normalize(const HTTP::byte_string &str) {
+    return HTTP::Utils::downcase(str);
 }
 
 // [ContentDisposition]

@@ -41,7 +41,6 @@ TEST(header_http, token_ok) {
         HTTP::byte_string s = HTTP::strfy(strs[i]);
         const HTTP::light_string l(s);
         HeaderHolderHTTP holder;
-        QVOUT(l);
         minor_error result = holder.parse_header_line(l, &holder);
         EXPECT_EQ("", result.message());
     }

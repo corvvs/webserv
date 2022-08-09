@@ -87,6 +87,7 @@ struct ContentType : public IControlHeader, public IDictHolder {
 
     minor_error determine(const AHeaderHolder &holder);
     void store_list_item(const parameter_key_type &key, const parameter_value_type &val);
+    static HTTP::byte_string normalize(const HTTP::byte_string &str);
 };
 
 struct ContentDisposition : public IControlHeader, public IDictHolder {

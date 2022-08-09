@@ -112,6 +112,4 @@ void ARoutingParameters::pack_host(HTTP::Term::Host &host_item, const light_stri
             host_item.port    = port.str();
         }
     }
-    // DXOUT("host: \"" << host_item.host << "\"");
-    // DXOUT("port: \"" << host_item.port << "\"");
 }

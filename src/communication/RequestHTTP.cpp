@@ -680,18 +680,19 @@ minor_error RequestHTTP::RoutingParameters::determine_host(const header_holder_t
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
     const header_holder_type::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
     if (!hosts || hosts->size() == 0) {
-        // HTTP/1.1 なのに host がない場合, BadRequest を出す
+        // HTTP/1.1 なのに Host: がない場合, BadRequest を出す
         if (http_version == HTTP::V_1_1) {
             return minor_error::make("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
         }
+        // Host: がないけどHTTP/1.1でない
         // TODO: okでいいの?
         return minor_error::ok();
     }
     if (hosts->size() > 1) {
-        // Hostが複数ある場合, BadRequest を出す
+        // Host: が複数ある場合 -> BadRequest
         return minor_error::make("multiple hosts", HTTP::STATUS_BAD_REQUEST);
     }
-    // Hostの値のバリデーション (と, 必要ならBadRequest)
+    // Host: の値のバリデーション (と, 必要ならBadRequest)
     const HTTP::light_string lhost(hosts->front());
     if (!HTTP::Validator::is_valid_header_host(lhost)) {
         return minor_error::make("host is not valid", HTTP::STATUS_BAD_REQUEST);
