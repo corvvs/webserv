@@ -110,7 +110,6 @@ TEST(control_header_http, content_type_params) {
         EXPECT_EQ(HTTP::strfy("val1"), ch.parameters[HTTP::strfy("key1")].str());
         EXPECT_EQ(HTTP::strfy("val2"), ch.parameters[HTTP::strfy("key2")].str());
     }
-
 }
 
 TEST(control_header_http, content_type_bounary) {
@@ -129,7 +128,9 @@ TEST(control_header_http, content_type_bounary) {
     }
 
     {
-        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data; boundary=----------------------------------------------------------------------;");
+        const HTTP::byte_string item
+            = HTTP::strfy("content-type: multipart/form-data; "
+                          "boundary=----------------------------------------------------------------------;");
         HeaderHolderHTTP holder;
         me = holder.parse_header_line(item, &holder);
         EXPECT_TRUE(me.is_ok());
@@ -137,12 +138,15 @@ TEST(control_header_http, content_type_bounary) {
         me = ch.determine(holder);
         EXPECT_TRUE(me.is_ok());
         EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
-        EXPECT_EQ(HTTP::strfy("----------------------------------------------------------------------"), ch.boundary.str());
+        EXPECT_EQ(HTTP::strfy("----------------------------------------------------------------------"),
+                  ch.boundary.str());
     }
 
     {
         // boundaryは1文字~70文字
-        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data; boundary=-----------------------------------------------------------------------;");
+        const HTTP::byte_string item
+            = HTTP::strfy("content-type: multipart/form-data; "
+                          "boundary=-----------------------------------------------------------------------;");
         HeaderHolderHTTP holder;
         me = holder.parse_header_line(item, &holder);
         EXPECT_TRUE(me.is_ok());
@@ -167,4 +171,3 @@ TEST(control_header_http, content_type_bounary) {
         EXPECT_EQ(HTTP::strfy(""), ch.boundary.str());
     }
 }
-
