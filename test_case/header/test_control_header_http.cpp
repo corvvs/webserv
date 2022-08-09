@@ -55,7 +55,116 @@ TEST(control_header_http, content_type_basic_ko) {
         EXPECT_TRUE(me.is_ok());
         HTTP::CH::ContentType ch;
         me = ch.determine(holder);
-        QVOUT(item);
-        EXPECT_TRUE(me.is_error());
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy(""), ch.value);
     }
 }
+
+TEST(control_header_http, content_type_params) {
+    minor_error me;
+    {
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data; key=value");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        EXPECT_EQ(HTTP::strfy("value"), ch.parameters[HTTP::strfy("key")].str());
+    }
+
+    {
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data;key=value,");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        EXPECT_EQ(HTTP::strfy("value"), ch.parameters[HTTP::strfy("key")].str());
+    }
+
+    {
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data;KEY=value,");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        EXPECT_EQ(HTTP::strfy("value"), ch.parameters[HTTP::strfy("key")].str());
+    }
+
+    {
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data;key1=val1 ;  key2=val2    ;");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        EXPECT_EQ(HTTP::strfy("val1"), ch.parameters[HTTP::strfy("key1")].str());
+        EXPECT_EQ(HTTP::strfy("val2"), ch.parameters[HTTP::strfy("key2")].str());
+    }
+
+}
+
+TEST(control_header_http, content_type_bounary) {
+    minor_error me;
+    {
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data; boundary=abcdefg;");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        EXPECT_EQ(HTTP::strfy("abcdefg"), ch.parameters[HTTP::strfy("boundary")].str());
+        EXPECT_EQ(HTTP::strfy("abcdefg"), ch.boundary.str());
+    }
+
+    {
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data; boundary=----------------------------------------------------------------------;");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        EXPECT_EQ(HTTP::strfy("----------------------------------------------------------------------"), ch.boundary.str());
+    }
+
+    {
+        // boundaryは1文字~70文字
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data; boundary=-----------------------------------------------------------------------;");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        EXPECT_EQ(HTTP::strfy(""), ch.boundary.str());
+    }
+
+    {
+        // boundaryは1文字~70文字
+        const HTTP::byte_string item = HTTP::strfy("content-type: multipart/form-data; boundary=");
+        HeaderHolderHTTP holder;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentType ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
+        // 無意味では・・・
+        EXPECT_EQ(HTTP::strfy(""), ch.boundary.str());
+    }
+}
+

@@ -173,7 +173,7 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
             // マルチパートである?
             const HTTP::light_string boundary_candidate = res->second;
             // 文字数が 1 ~ 70かどうか
-            const bool length_is_right = 1 <= boundary_candidate.size() || boundary_candidate.size() <= 70;
+            const bool length_is_right = 1 <= boundary_candidate.size() && boundary_candidate.size() <= 70;
             // 使用可能文字のみかどうか
             const bool chars_right
                 = boundary_candidate.find_first_not_of(HTTP::CharFilter::boundary_char) == light_string::npos;
