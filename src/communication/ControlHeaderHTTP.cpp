@@ -25,7 +25,7 @@ const HTTP::Term::TransferCoding &HTTP::CH::TransferEncoding::current_coding() c
     return transfer_codings.back();
 }
 
-void HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
     // https://httpwg.org/specs/rfc7230.html#header.transfer-encoding
     // Transfer-Encoding  = 1#transfer-coding
     // transfer-coding    = "chunked"
@@ -38,7 +38,7 @@ void HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
 
     const AHeaderHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::transfer_encoding);
     if (!tes) {
-        return;
+        return minor_error::ok();
     }
     int i = 0;
     for (AHeaderHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
@@ -96,6 +96,7 @@ void HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
     }
     this->currently_chunked = !this->empty() && this->current_coding().coding == "chunked";
     QVOUT(this->transfer_codings.back().coding);
+    return minor_error::ok();
 }
 
 // [ContentType]
@@ -106,7 +107,7 @@ void HTTP::CH::ContentType::store_list_item(const parameter_key_type &key, const
     parameters[key] = val;
 }
 
-void HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     // https://datatracker.ietf.org/doc/html/rfc3875#section-4.1.3
     // If the request includes a message-body, the CONTENT_TYPE variable is
     // set to the Internet Media Type [6] of the message-body.
@@ -130,20 +131,22 @@ void HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     const byte_string *ct = holder.get_val(HeaderHTTP::content_type);
     if (!ct || ct->size() == 0) {
         this->value = HTTP::CH::ContentType::default_value;
-        return;
+        return minor_error::ok();
     }
     const light_string lct(*ct);
     // [`type`の捕捉]
     // type = token = 1*tchar
     light_string::size_type type_end = lct.find_first_not_of(HTTP::CharFilter::tchar);
     if (type_end == light_string::npos) {
+        // `type`がスラッシュ'/'で終わっていない
         DXOUT("[KO] no /: \"" << lct << "\"");
-        return;
+        return minor_error::ok();
     }
     // [`/`の捕捉]
     if (lct[type_end] != '/') {
+        // スラッシュ'/'がない
         DXOUT("[KO] not separated by /: \"" << lct << "\"");
-        return;
+        return minor_error::ok();
     }
     light_string type_str(lct, 0, type_end);
     // [`subtype`の捕捉]
@@ -151,12 +154,10 @@ void HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     light_string::size_type subtype_end = lct.find_first_not_of(HTTP::CharFilter::tchar, type_end + 1);
     light_string subtype_str(lct, type_end + 1, subtype_end);
     if (subtype_str.size() == 0) {
+        // スラッシュ'/'のあとに`subtype`がない
         DXOUT("[KO] no subtype after /: \"" << lct << "\"");
-        return;
+        return minor_error::ok();
     }
-    // if (subtype_end == light_string::npos) {
-    //     return;
-    // }
     this->value = lct.substr(0, subtype_end).str();
     QVOUT(value);
     // [`parameter`の捕捉]
@@ -181,6 +182,7 @@ void HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
         }
     }
     QVOUT(boundary);
+    return minor_error::ok();
 }
 
 // [ContentDisposition]
@@ -191,7 +193,7 @@ void HTTP::CH::ContentDisposition::store_list_item(const parameter_key_type &key
     VOUT(val);
 }
 
-void HTTP::CH::ContentDisposition::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::ContentDisposition::determine(const AHeaderHolder &holder) {
 
     //  content-disposition = "Content-Disposition" ":"
     //                         disposition-type *( ";" disposition-parm )
@@ -207,15 +209,16 @@ void HTTP::CH::ContentDisposition::determine(const AHeaderHolder &holder) {
 
     const byte_string *ct = holder.get_val(HeaderHTTP::content_disposition);
     if (!ct || ct->size() == 0) {
-        return;
+        return minor_error::ok();
     }
     const light_string lct(*ct);
     // disposition-type の補足
     VOUT(lct);
     light_string::size_type type_end = lct.find_first_not_of(HTTP::CharFilter::cd_token_char);
     if (type_end == light_string::npos) {
+        //
         DXOUT("[KO] no type: \"" << lct << "\"");
-        return;
+        return minor_error::ok();
     }
     this->value = lct.substr(0, type_end).str();
     VOUT(this->value);
@@ -224,11 +227,12 @@ void HTTP::CH::ContentDisposition::determine(const AHeaderHolder &holder) {
     light_string parameters_str(lct, type_end);
     light_string continuation = ARoutingParameters::decompose_semicoron_separated_kvlist(parameters_str, *this);
     (void)continuation;
+    return minor_error::ok();
 }
 
 // [TE]
 
-void HTTP::CH::TE::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::TE::determine(const AHeaderHolder &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.te
     // TE        = #t-codings
     // t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
@@ -245,21 +249,22 @@ void HTTP::CH::TE::determine(const AHeaderHolder &holder) {
 
     const AHeaderHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::te);
     if (!tes) {
-        return;
+        return minor_error::ok();
     }
     for (AHeaderHolder::value_list_type::const_iterator it = tes->begin(); it != tes->end(); ++it) {
         light_string val_lstr = light_string(*it);
         for (;;) {
-            // DXOUT("val_lstr: \"" << val_lstr << "\"");
+            // TE: のvalueがスペースしかない
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp);
             if (val_lstr.size() == 0) {
                 DXOUT("away; sp only.");
-                break;
+                return minor_error::ok();
             }
             light_string tc_lstr = val_lstr.substr_while(HTTP::CharFilter::tchar);
             if (tc_lstr.size() == 0) {
+                // TE: のvalueに有効な文字がない
                 DXOUT("away; no value.");
-                break;
+                return minor_error::ok();
             }
 
             // 本体
@@ -271,8 +276,9 @@ void HTTP::CH::TE::determine(const AHeaderHolder &holder) {
             // 後続
             val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
             if (val_lstr.size() == 0) {
+                // 値の後にSP以外なにもない
                 DXOUT("away");
-                break;
+                return minor_error::ok();
             }
 
             // DXOUT("val_lstr[0]: " << val_lstr[0]);
@@ -312,18 +318,19 @@ void HTTP::CH::TE::determine(const AHeaderHolder &holder) {
             }
         }
     }
+    return minor_error::ok();
 }
 
 // [Upgrade]
 
-void HTTP::CH::Upgrade::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::Upgrade::determine(const AHeaderHolder &holder) {
     // Upgrade          = 1#protocol
     // protocol         = protocol-name ["/" protocol-version]
     // protocol-name    = token
     // protocol-version = token
     const AHeaderHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::upgrade);
     if (!elems) {
-        return;
+        return minor_error::ok();
     }
     for (AHeaderHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
         light_string val_lstr = light_string(*it);
@@ -359,11 +366,12 @@ void HTTP::CH::Upgrade::determine(const AHeaderHolder &holder) {
             val_lstr = val_lstr.substr(1);
         }
     }
+    return minor_error::ok();
 }
 
 // [Via]
 
-void HTTP::CH::Via::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::Via::determine(const AHeaderHolder &holder) {
     // Via = 1#( received-protocol RWS received-by [ RWS comment ] )
     // received-protocol = [ protocol-name "/" ] protocol-version
     // received-by       = ( uri-host [ ":" port ] ) / pseudonym
@@ -372,7 +380,7 @@ void HTTP::CH::Via::determine(const AHeaderHolder &holder) {
     // protocol-version  = token
     const AHeaderHolder::value_list_type *elems = holder.get_vals(HeaderHTTP::via);
     if (!elems) {
-        return;
+        return minor_error::ok();
     }
     for (AHeaderHolder::value_list_type::const_iterator it = elems->begin(); it != elems->end(); ++it) {
         light_string val_lstr = light_string(*it);
@@ -433,11 +441,12 @@ void HTTP::CH::Via::determine(const AHeaderHolder &holder) {
             break;
         }
     }
+    return minor_error::ok();
 }
 
 // [Location]
 
-void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::Location::determine(const AHeaderHolder &holder) {
     // https://datatracker.ietf.org/doc/html/rfc3875#section-6.3.2
     // The Location header field is used to specify to the server that the
     // script is returning a reference to a document rather than an actual
@@ -465,7 +474,7 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
     if (!ct || ct->size() == 0) {
         this->value.clear();
         this->is_local = false;
-        return;
+        return minor_error::ok();
     }
     this->value = *ct;
     light_string lct(*ct);
@@ -488,7 +497,7 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
             const HTTP::CharFilter unreserved_extra = HTTP::CharFilter::cgi_unreserved | HTTP::CharFilter::cgi_extra;
             std::vector<light_string> segments      = abs_path.split("/");
             if (!HTTP::Validator::is_uri_path(abs_path, unreserved_extra)) {
-                throw http_error("invalid segment", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                return minor_error::make("invalid segment", HTTP::STATUS_INTERNAL_SERVER_ERROR);
             }
             this->abs_path = abs_path;
         }
@@ -498,7 +507,7 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
             const HTTP::CharFilter unreserved_reserved
                 = HTTP::CharFilter::cgi_unreserved | HTTP::CharFilter::cgi_reserved;
             if (!HTTP::Validator::is_segment(query_string, unreserved_reserved)) {
-                throw http_error("invalid query_string", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                return minor_error::make("invalid query_string", HTTP::STATUS_INTERNAL_SERVER_ERROR);
             }
             DXOUT("query_string is valid");
             this->query_string = query_string;
@@ -517,11 +526,11 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
         const light_string scheme   = lct.substr_while(ftr_scheme);
         if (scheme.size() < 1 || !HTTP::CharFilter::alpha.includes(scheme[0])) {
             QVOUT(scheme);
-            throw http_error("invalid scheme", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+            return minor_error::make("invalid scheme", HTTP::STATUS_INTERNAL_SERVER_ERROR);
         }
         // `scheme`の直後が`:`であることの確認
         if (scheme.size() >= lct.size() || lct[scheme.size()] != ':') {
-            throw http_error("invalid scheme separator", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+            return minor_error::make("invalid scheme separator", HTTP::STATUS_INTERNAL_SERVER_ERROR);
         }
         // `hier-part`の捕捉
         // hier-part   = "//" authority path-abempty
@@ -549,7 +558,7 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
             const light_string authority = rest.substr_before("/");
             QVOUT(authority);
             if (!HTTP::Validator::is_uri_authority(authority)) {
-                throw http_error("invalid authority", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                return minor_error::make("invalid authority", HTTP::STATUS_INTERNAL_SERVER_ERROR);
             }
             this->authority = authority;
             // validate `path_abempty`
@@ -559,7 +568,7 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
             QVOUT(path_abempty);
             {
                 if (!HTTP::Validator::is_uri_path(path_abempty, unreserved_extra)) {
-                    throw http_error("invalid path-abempty", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                    return minor_error::make("invalid path-abempty", HTTP::STATUS_INTERNAL_SERVER_ERROR);
                 }
                 DXOUT("hier_part is path-abempty");
             }
@@ -572,10 +581,10 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
             // path-rootless = segment-nz *( "/" segment )
             light_string tmp = hier_part[0] == '/' ? hier_part.substr(1) : hier_part;
             if (tmp.substr_before("/").size() == 0) { // 実はチェックしなくていい ("//"で始まってないはずなので)
-                throw http_error("first segment is empty", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                return minor_error::make("first segment is empty", HTTP::STATUS_INTERNAL_SERVER_ERROR);
             }
             if (!HTTP::Validator::is_uri_path(tmp, unreserved_extra)) {
-                throw http_error("invalid path-absolute or path-rootless", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                return minor_error::make("invalid path-absolute or path-rootless", HTTP::STATUS_INTERNAL_SERVER_ERROR);
             }
             DXOUT("hier_part is path-absolute or path-rootless");
         } else {
@@ -591,7 +600,7 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
             //     query-string    = *uric
             //     uric            = reserved | unreserved | escaped
             if (!HTTP::Validator::is_segment(query, uric)) {
-                throw http_error("invalid query", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                return minor_error::make("invalid query", HTTP::STATUS_INTERNAL_SERVER_ERROR);
             }
             DXOUT("query is valid");
             this->query_string = query;
@@ -601,7 +610,7 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
         {
             // fragment = *(reserved | unreserved | escaped)
             if (!HTTP::Validator::is_segment(fragment, uric)) {
-                throw http_error("invalid fragment", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+                return minor_error::make("invalid fragment", HTTP::STATUS_INTERNAL_SERVER_ERROR);
             }
             DXOUT("fragment is valid");
             this->fragment = fragment;
@@ -612,20 +621,21 @@ void HTTP::CH::Location::determine(const AHeaderHolder &holder) {
     QVOUT(this->abs_path);
     QVOUT(this->fragment);
     QVOUT(this->query_string);
+    return minor_error::ok();
 }
 
 // [Connection]
 
-void HTTP::CH::Connection::determine(const AHeaderHolder &holder) {
+minor_error HTTP::CH::Connection::determine(const AHeaderHolder &holder) {
     // Connection        = 1#connection-option
     // connection-option = token
     const AHeaderHolder::value_list_type *cons = holder.get_vals(HeaderHTTP::connection);
     if (!cons) {
-        return;
+        return minor_error::ok();
     }
     if (cons->size() == 0) {
         DXOUT("[KO] list exists, but it's empty.");
-        return;
+        return minor_error::ok();
     }
     for (AHeaderHolder::value_list_type::const_iterator it = cons->begin(); it != cons->end(); ++it) {
         light_string val_lstr = light_string(*it);
@@ -671,6 +681,7 @@ void HTTP::CH::Connection::determine(const AHeaderHolder &holder) {
         }
     }
     DXOUT("close: " << this->will_close() << ", keep-alive: " << this->will_keep_alive());
+    return minor_error::ok();
 }
 
 bool HTTP::CH::Connection::will_close() const {
@@ -683,7 +694,7 @@ bool HTTP::CH::Connection::will_keep_alive() const {
 
 // [Status]
 
-void CGIP::CH::Status::determine(const AHeaderHolder &holder) {
+minor_error CGIP::CH::Status::determine(const AHeaderHolder &holder) {
     // https://datatracker.ietf.org/doc/html/rfc3875#section-6.3.3
     // The Status header field contains a 3-digit integer result code that
     // indicates the level of success of the script's attempt to handle the
@@ -698,14 +709,14 @@ void CGIP::CH::Status::determine(const AHeaderHolder &holder) {
     const byte_string *ct = holder.get_val(HeaderHTTP::status);
     if (!ct || ct->size() == 0) {
         this->code = HTTP::STATUS_UNSPECIFIED;
-        return;
+        return minor_error::ok();
     }
     light_string lct(*ct);
     // `status-code`の捕捉
     const light_string code_ = lct.substr_while(HTTP::CharFilter::digit);
     if (code_.size() != 3) {
         QVOUT(code_);
-        throw http_error("invalid status code", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        return minor_error::make("invalid status code", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
     std::stringstream ss;
     ss << code_.str();
@@ -719,14 +730,15 @@ void CGIP::CH::Status::determine(const AHeaderHolder &holder) {
     // 1つ以上を許容しておく
     const light_string sps = lct.substr_while(HTTP::CharFilter::cgi_sp);
     if (sps.size() == 0) {
-        throw http_error("not enough spaces", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        return minor_error::make("not enough spaces", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
     lct = lct.substr(sps.size());
     // reason-phraseの捕捉
     lct = lct.rtrim(HTTP::CharFilter::sp);
     if (lct.substr_while(HTTP::CharFilter::printables).size() != lct.size()) {
         QVOUT(lct);
-        throw http_error("invalid reason-phrase", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        return minor_error::make("invalid reason-phrase", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
     this->reason = lct.str();
+    return minor_error::ok();
 }

@@ -9,6 +9,9 @@
         predefined_attrs[key] = attr;                                                                                  \
     }
 
+// ヘッダ行の長さがこれを超えるとアウト
+const size_t MaxHeaderLineSize = 8192;
+
 // [HeaderAttribute]
 
 HeaderAttribute::attr_dict_type HeaderAttribute::predefined_attrs = HeaderAttribute::attr_dict_type();
@@ -160,26 +163,24 @@ void AHeaderHolder::parse_header_lines(const light_string &lines, AHeaderHolder 
     }
 }
 
-void AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *holder) {
+minor_error AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *holder) {
 
     const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
-    // QVOUT(line);
-    // QVOUT(key);
     if (key.length() == line.length()) {
         // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
         // は無視して処理を続けます。
-        throw http_error("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
     }
     // ":"があった -> ":"の前後をキーとバリューにする
     if (key.length() == 0) {
-        throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("header key is empty", HTTP::STATUS_BAD_REQUEST);
     }
     light_string val = line.substr(key.length() + 1);
     // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。
     // 串は、下流に転送する前に空白を削除しなければなりません。
-    light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
+    const light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
     if (key_tail + 1 != key.length()) {
-        throw http_error("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
     }
     // [!] 欄値の前後の OWS は、欄値の一部ではなく、 構文解析の際に削除します
     val = val.trim(ParserHelper::OWS);
@@ -189,8 +190,7 @@ void AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *h
     } else {
         DXOUT("no holder");
     }
-    QVOUT(key);
-    QVOUT(val);
+    return minor_error::ok();
 }
 
 // [HeaderHolderHTTP]
