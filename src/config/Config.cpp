@@ -86,9 +86,9 @@ bool Config::get_exec_delete(const std::string &target) const {
     return loc.exec_delete;
 }
 
-cgi_path_map Config::get_cgi_path(const std::string &target) const {
+cgi_executer_map Config::get_cgi_path(const std::string &target) const {
     const ContextLocation &loc = longest_prefix_match_location(ctx_server_, target);
-    return loc.cgi_paths;
+    return loc.cgi_executers;
 }
 
 /**
