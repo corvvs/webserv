@@ -67,12 +67,14 @@ struct TransferEncoding : public IControlHeader {
     std::vector<HTTP::Term::TransferCoding> transfer_codings;
     // 現在のTransferCodingが "chunked" かどうか.
     bool currently_chunked;
+    minor_error merror;
 
     // 指定がないかどうか
     bool empty() const;
     // 現在のTransferCoding; empty() == true の時に呼び出してはならない.
     const Term::TransferCoding &current_coding() const;
     minor_error determine(const AHeaderHolder &holder);
+    static HTTP::byte_string normalize(const HTTP::byte_string &str);
 };
 
 struct ContentType : public IControlHeader, public IDictHolder {

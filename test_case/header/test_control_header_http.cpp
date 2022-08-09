@@ -1,6 +1,37 @@
 #include "../../src/communication/ControlHeaderHTTP.hpp"
 #include "gtest/gtest.h"
 
+TEST(control_header_http, transfer_encoding_basic_ok) {
+    const char *strs[] = {"chunked", "compress", "deflate", "gzip", NULL};
+    for (size_t i = 0; strs[i]; ++i) {
+        const HTTP::byte_string item = HTTP::strfy(strs[i]);
+        HeaderHolderHTTP holder;
+        minor_error me;
+        me = holder.parse_header_line(HTTP::strfy("transfer-encoding: ") + item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::TransferEncoding ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        VOUT(ch.current_coding().coding);
+        EXPECT_EQ(item, ch.current_coding().coding);
+    }
+}
+
+TEST(control_header_http, transfer_encoding_multiple_ok) {
+    const HTTP::byte_string item = HTTP::strfy("transfer-encoding: compress, deflate, CHUnkeD");
+    HeaderHolderHTTP holder;
+    minor_error me;
+    me = holder.parse_header_line(item, &holder);
+    EXPECT_TRUE(me.is_ok());
+    HTTP::CH::TransferEncoding ch;
+    me = ch.determine(holder);
+    EXPECT_TRUE(me.is_ok());
+    ch.transfer_codings.size();
+    EXPECT_TRUE(ch.currently_chunked);
+    EXPECT_EQ(3, ch.transfer_codings.size());
+    EXPECT_EQ(HTTP::strfy("chunked"), ch.current_coding().coding);
+}
+
 TEST(control_header_http, content_type_basic_ok) {
     const char *strs[] = {"text/plain",
                           "text/html",

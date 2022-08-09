@@ -25,6 +25,10 @@ const HTTP::Term::TransferCoding &HTTP::CH::TransferEncoding::current_coding() c
     return transfer_codings.back();
 }
 
+HTTP::byte_string HTTP::CH::TransferEncoding::normalize(const HTTP::byte_string &str) {
+    return HTTP::Utils::downcase(str);
+}
+
 minor_error HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
     // https://httpwg.org/specs/rfc7230.html#header.transfer-encoding
     // Transfer-Encoding  = 1#transfer-coding
@@ -35,6 +39,10 @@ minor_error HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
     //                    / transfer-extension
     // transfer-extension = token *( OWS ";" OWS transfer-parameter )
     // transfer-parameter = token BWS "=" BWS ( token / quoted-string )
+
+    // transfer-coding は大文字小文字関係ない.
+    // https://www.rfc-editor.org/rfc/rfc9112#section-7
+    // "All transfer-coding names are case-insensitive"
 
     const AHeaderHolder::value_list_type *tes = holder.get_vals(HeaderHTTP::transfer_encoding);
     if (!tes) {
@@ -52,22 +60,21 @@ minor_error HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
                 DXOUT("away; sp only.");
                 break;
             }
-            light_string tc_lstr = val_lstr.substr_while(HTTP::CharFilter::tchar);
-            if (tc_lstr.size() == 0) {
+            light_string coding_str = val_lstr.substr_while(HTTP::CharFilter::tchar);
+            if (coding_str.size() == 0) {
                 DXOUT("away; no value.");
                 break;
             }
 
             // 本体
-            // QVOUT(tc_lstr);
             HTTP::Term::TransferCoding tc;
-            tc.coding = tc_lstr.str();
+            tc.coding = normalize(coding_str.str());
             // QVOUT(tc.coding);
             this->transfer_codings.push_back(tc);
             // QVOUT(transfer_encoding.transfer_codings.back().coding);
 
             // 後続
-            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, tc_lstr.size());
+            val_lstr = val_lstr.substr_after(HTTP::CharFilter::sp, coding_str.size());
             if (val_lstr.size() == 0) {
                 // DXOUT("away");
                 break;
