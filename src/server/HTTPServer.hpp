@@ -42,10 +42,10 @@ public:
     // イベントループ開始
     void run();
 
+    RequestMatchingResult route(const IRequestMatchingParam &request, const config::config_vector &configs);
+
 private:
     void listen(t_socket_domain sdomain, t_socket_type stype, t_port port, const config::config_vector &configs);
-
-    IOriginator *route(const RequestHTTP &request, const config::config_vector &configs);
 };
 
 #endif

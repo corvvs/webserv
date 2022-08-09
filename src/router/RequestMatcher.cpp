@@ -139,7 +139,7 @@ void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const confi
 }
 
 bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {
-    return target.scheme == "http";
+    return target.scheme == "http" || target.scheme == "";
 }
 
 bool RequestMatcher::is_valid_path(const RequestTarget &target) {
