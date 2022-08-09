@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./html/:/var/www/html/
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+
+  apache:
+    build:
+      context: .
+      dockerfile: ./apache/Dockerfile
+    ports:
+      - "8081:80"
+    volumes:
+      - ./html:/usr/local/apache2/htdocs
+      - ./cgi/:/usr/local/apache2/cgi-bin/
+      - ./apache/conf:/usr/local/apache2/conf

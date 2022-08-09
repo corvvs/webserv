@@ -73,10 +73,16 @@ $(GTEST_LIB): $(GOOGLE_TEST)
 $(TESTER): $(OBJ_DIRS) $(DPS_DIRS) $(OBJS) $(GTEST_LIB) $(TEST_CASE_OBJ_DIRS) $(TEST_CASE_DPS_DIRS) $(TEST_CASE_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $(GTEST_LIB)  $(OBJS) $(TEST_CASE_OBJS)
 
+.PHONY: unit_test
+unit_test:$(TESTER)
+	$(TESTER)
+
+.PHONY: joint_test
+joint_test: $(NAME)
+	cd ./http_test && go test -v ./...
 
 .PHONY: run_test
-run_test: $(TESTER)
-	$(TESTER)
+run_test: unit_test
 
 .PHONY: clean
 clean:
