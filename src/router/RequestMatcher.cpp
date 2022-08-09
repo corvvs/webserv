@@ -128,16 +128,16 @@ void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const confi
     if (!is_valid_scheme(target)) {
         throw http_error("invalid scheme", HTTP::STATUS_BAD_REQUEST);
     }
-    if (is_valid_path(target)) {
+    if (!is_valid_path(target)) {
         throw http_error("invalid url target", HTTP::STATUS_BAD_REQUEST);
     }
-    if (is_valid_request_method(target, rp.get_http_method(), conf)) {
+    if (!is_valid_request_method(target, rp.get_http_method(), conf)) {
         throw http_error("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
     }
 }
 
 bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {
-    return target.scheme == "http";
+    return target.scheme == "http" || target.scheme == "";
 }
 
 bool RequestMatcher::is_valid_path(const RequestTarget &target) {
