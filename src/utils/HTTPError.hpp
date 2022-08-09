@@ -40,4 +40,8 @@ public:
 
 std::ostream &operator<<(std::ostream &ost, const minor_error &f);
 
+// 2つの引数のうち, 左側がエラーなら左側を, そうでないなら右側を返す.
+// (確実に短絡評価させないために関数にしている)
+const minor_error &erroneous(const minor_error &e1, const minor_error &e2);
+
 #endif

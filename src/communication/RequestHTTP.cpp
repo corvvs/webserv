@@ -552,33 +552,16 @@ minor_error RequestHTTP::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     // TODO: ここで何を抽出すべきか洗い出す
     minor_error me;
-    if (me.is_ok()) {
-        me = this->rp.determine_host(header_holder);
-    }
-    if (me.is_ok()) {
-        me = this->rp.content_type.determine(header_holder);
-    }
-    if (me.is_ok()) {
-        me = this->rp.content_disposition.determine(header_holder);
-    }
-    if (me.is_ok()) {
-        me = this->rp.transfer_encoding.determine(header_holder);
-    }
-    if (me.is_ok()) {
-        this->rp.determine_body_size(header_holder);
-    }
-    if (me.is_ok()) {
-        me = this->rp.connection.determine(header_holder);
-    }
-    if (me.is_ok()) {
-        me = this->rp.te.determine(header_holder);
-    }
-    if (me.is_ok()) {
-        me = this->rp.upgrade.determine(header_holder);
-    }
-    if (me.is_ok()) {
-        me = this->rp.via.determine(header_holder);
-    }
+    me = erroneous(me, this->rp.determine_host(header_holder));
+    me = erroneous(me, this->rp.content_type.determine(header_holder));
+    me = erroneous(me, this->rp.content_disposition.determine(header_holder));
+    me = erroneous(me, this->rp.transfer_encoding.determine(header_holder));
+    me = erroneous(me, this->rp.content_length.determine(header_holder));
+    this->rp.determine_body_size();
+    me = erroneous(me, this->rp.connection.determine(header_holder));
+    me = erroneous(me, this->rp.te.determine(header_holder));
+    me = erroneous(me, this->rp.upgrade.determine(header_holder));
+    me = erroneous(me, this->rp.via.determine(header_holder));
     VOUT(me);
     return me;
 }

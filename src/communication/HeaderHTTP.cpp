@@ -173,10 +173,7 @@ minor_error AHeaderHolder::parse_header_lines(const light_string &lines, AHeader
         if (header_line.length() > 0) {
             // header_line が空文字列でない
             // -> ヘッダ行としてパースを試みる
-            minor_error err = parse_header_line(header_line, holder);
-            if (me.is_ok()) {
-                me = err;
-            }
+            me = erroneous(me, parse_header_line(header_line, holder));
         }
         rest = rest.substr(res.second);
     }

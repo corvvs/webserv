@@ -58,3 +58,7 @@ std::ostream &operator<<(std::ostream &ost, const minor_error &f) {
         return ost << "[" << f.status_code() << "] " << f.message();
     }
 }
+
+const minor_error &erroneous(const minor_error &e1, const minor_error &e2) {
+    return e1.is_error() ? e1 : e2;
+}
