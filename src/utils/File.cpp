@@ -47,7 +47,7 @@ std::string get_directory_name(const std::string &file_path) {
     if (slash_pos == std::string::npos) {
         return std::string(".");
     }
-    return  file_path.substr(0, slash_pos);
+    return file_path.substr(0, slash_pos);
 }
 
 std::string read(const std::string &path) {

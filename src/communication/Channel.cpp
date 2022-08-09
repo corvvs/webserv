@@ -38,7 +38,9 @@ void Channel::notify(IObserver &observer, IObserver::observation_category cat, t
             observer.reserve_hold(con);
             observer.reserve_set(con, IObserver::OT_READ);
         }
-    } catch (...) { DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd()); }
+    } catch (...) {
+        DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd());
+    }
 }
 
 Channel::t_channel_id Channel::get_id() const {
