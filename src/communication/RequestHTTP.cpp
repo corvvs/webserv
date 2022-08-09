@@ -1,7 +1,5 @@
 #include "RequestHTTP.hpp"
 
-const HTTP::byte_string scheme_http = HTTP::strfy("http");
-
 HTTP::t_method discriminate_request_method(const HTTP::light_string &str) {
     if (str == "GET") {
         return HTTP::METHOD_GET;
@@ -109,7 +107,6 @@ RequestTarget::RequestTarget(const light_string &target) : given(target), is_err
             return;
         }
     }
-    scheme = HTTP::light_string(scheme_http);
 }
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
