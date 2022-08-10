@@ -1,6 +1,8 @@
 #include "../../src/communication/ControlHeaderHTTP.hpp"
 #include "gtest/gtest.h"
 
+// [Transfer-Encoding]
+
 TEST(control_header_http, transfer_encoding_basic_ok) {
     const char *strs[] = {"chunked", "compress", "deflate", "gzip", NULL};
     for (size_t i = 0; strs[i]; ++i) {
@@ -31,6 +33,71 @@ TEST(control_header_http, transfer_encoding_multiple_ok) {
     EXPECT_EQ(3, ch.transfer_codings.size());
     EXPECT_EQ(HTTP::strfy("chunked"), ch.current_coding().coding);
 }
+
+// [Content-Length]
+
+TEST(control_header_http, content_length_basic_ok) {
+    const HTTP::byte_string item = HTTP::strfy("987654321");
+    HeaderHolderHTTP holder;
+    minor_error me;
+    me = holder.parse_header_line(HTTP::strfy("content-length: ") + item, &holder);
+    EXPECT_TRUE(me.is_ok());
+    HTTP::CH::ContentLength ch;
+    me = ch.determine(holder);
+    EXPECT_TRUE(me.is_ok());
+    EXPECT_TRUE(ch.merror.is_ok());
+    EXPECT_EQ(987654321, ch.value);
+}
+
+TEST(control_header_http, content_length_basic_ko) {
+    const char *strs[] = {"apple", "", "12345678910", "1 2 3", NULL};
+    minor_error me;
+    for (size_t i = 0; strs[i]; ++i) {
+        HeaderHolderHTTP holder;
+        const HTTP::byte_string item = HTTP::strfy(strs[i]);
+        me                           = holder.parse_header_line(HTTP::strfy("content-length: ") + item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::ContentLength ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_TRUE(ch.merror.is_error());
+    }
+}
+
+TEST(control_header_http, content_length_multiple_ok) {
+    // 複数指定されていても, 値がすべて同じなら不問
+    HeaderHolderHTTP holder;
+    const char *strs[] = {"1234", "1234", " 1234", NULL};
+    HTTP::CH::ContentLength ch;
+    minor_error me;
+    for (size_t i = 0; strs[i]; ++i) {
+        const HTTP::byte_string item = HTTP::strfy(strs[i]);
+        me                           = holder.parse_header_line(HTTP::strfy("content-length: ") + item, &holder);
+        EXPECT_TRUE(me.is_ok());
+    }
+    me = ch.determine(holder);
+    EXPECT_TRUE(me.is_ok());
+    EXPECT_TRUE(ch.merror.is_ok());
+    EXPECT_EQ(1234, ch.value);
+}
+
+TEST(control_header_http, content_length_multiple_ko) {
+    // 複数指定されていて, 値が異なる場合はKO
+    HeaderHolderHTTP holder;
+    const char *strs[] = {"1234", "1233", " 1234", NULL};
+    HTTP::CH::ContentLength ch;
+    minor_error me;
+    for (size_t i = 0; strs[i]; ++i) {
+        const HTTP::byte_string item = HTTP::strfy(strs[i]);
+        me                           = holder.parse_header_line(HTTP::strfy("content-length: ") + item, &holder);
+        EXPECT_TRUE(me.is_ok());
+    }
+    me = ch.determine(holder);
+    EXPECT_TRUE(me.is_ok());
+    EXPECT_TRUE(ch.merror.is_error());
+}
+
+// [Content-Type]
 
 TEST(control_header_http, content_type_basic_ok) {
     const char *strs[] = {"text/plain",

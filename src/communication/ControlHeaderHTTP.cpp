@@ -106,6 +106,48 @@ minor_error HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
     return minor_error::ok();
 }
 
+// [ContentLength]
+
+HTTP::CH::ContentLength::ContentLength() : value(0) {}
+
+bool HTTP::CH::ContentLength::empty() const {
+    return lengths.size() == 0;
+}
+
+minor_error HTTP::CH::ContentLength::determine(const AHeaderHolder &holder) {
+    // https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
+    // Content-Length = 1*DIGIT
+    lengths.clear();
+    merror                                    = minor_error::ok();
+    const AHeaderHolder::value_list_type *les = holder.get_vals(HeaderHTTP::content_length);
+    if (!les) {
+        return minor_error::ok();
+    }
+    for (AHeaderHolder::value_list_type::const_iterator it = les->begin(); it != les->end(); ++it) {
+        std::pair<bool, unsigned int> res = ParserHelper::str_to_u(*it);
+        VOUT(res.first);
+        VOUT(res.second);
+        if (!res.first) {
+            // 変換に失敗 -> そういうエラー, ただし外部には返さない
+            merror = erroneous(merror, minor_error::make("non-numeric content-length", HTTP::STATUS_BAD_REQUEST));
+            continue;
+        }
+        lengths.insert(res.second);
+    }
+    if (lengths.size() == 1) {
+        // 集合 lengths のサイズがぴったり1の時
+        // -> 唯一の要素を value にセット
+        value = *(lengths.begin());
+    } else if (lengths.size() > 1) {
+        // lengths に複数の値がある時
+        // -> そういうエラー, ただし外部には返さない
+        merror = erroneous(merror, minor_error::make("multiple content-length", HTTP::STATUS_BAD_REQUEST));
+    }
+    VOUT(value);
+    VOUT(merror);
+    return minor_error::ok();
+}
+
 // [ContentType]
 
 const HTTP::byte_string HTTP::CH::ContentType::default_value = HTTP::strfy("application/octet-stream");

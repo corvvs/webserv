@@ -576,7 +576,7 @@ void RequestHTTP::check_size_limitation() {
     }
 }
 
-void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_type &holder) {
+void RequestHTTP::RoutingParameters::determine_body_size() {
     // https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length
 
     // メッセージが Transfer-Encoding: と Content-Length: をどちらも持っている場合,
@@ -623,7 +623,6 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
         // the connection to the server, discard the received response, and send a 502 (Bad Gateway) response to the
         // client. If it is in a response message received by a user agent, the user agent MUST close the connection to
         // the server and discard the received response.
-        const byte_string *cl = holder.get_val(HeaderHTTP::content_length);
 
         // Transfer-Encoding: がなく, valid な Content-Length: がある場合, その(10進の)値が本文長となる.
         // 本文長に達する前に接続が閉じられた場合, メッセージは「不完全」となる.
@@ -632,10 +631,8 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
         // expected message body length in octets. If the sender closes the connection or the recipient times out before
         // the indicated number of octets are received, the recipient MUST consider the message to be incomplete and
         // close the connection.
-        if (cl) {
-            std::pair<bool, unsigned int> res = ParserHelper::str_to_u(*cl);
-            VOUT(res.first);
-            body_size       = res.second;
+        if (content_length.merror.is_ok() && !content_length.empty()) {
+            body_size       = content_length.value;
             is_body_chunked = false;
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
             DXOUT("body_size = " << body_size);

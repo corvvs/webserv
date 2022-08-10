@@ -166,6 +166,7 @@ public:
         bool is_body_chunked;
 
         HTTP::CH::Host header_host; // リクエストマッチングに必要
+        HTTP::CH::ContentLength content_length;
         HTTP::CH::ContentType content_type;
         HTTP::CH::ContentDisposition content_disposition;
         HTTP::CH::TransferEncoding transfer_encoding;
@@ -179,7 +180,7 @@ public:
         // TODO: struct に結びつくやつは struct に移したほうがいいかも
         minor_error determine_host(const header_holder_type &holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
-        void determine_body_size(const header_holder_type &holder);
+        void determine_body_size();
 
         const RequestTarget &get_request_target() const;
         HTTP::t_method get_http_method() const;

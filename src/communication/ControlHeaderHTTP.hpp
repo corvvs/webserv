@@ -5,6 +5,7 @@
 #include "../utils/http.hpp"
 #include "HeaderHTTP.hpp"
 #include <map>
+#include <set>
 #include <vector>
 
 namespace HTTP {
@@ -75,6 +76,18 @@ struct TransferEncoding : public IControlHeader {
     const Term::TransferCoding &current_coding() const;
     minor_error determine(const AHeaderHolder &holder);
     static HTTP::byte_string normalize(const HTTP::byte_string &str);
+};
+
+struct ContentLength : public IControlHeader {
+    std::set<size_t> lengths;
+    minor_error merror;
+    size_t value;
+
+    // 指定がないかどうか
+    bool empty() const;
+    minor_error determine(const AHeaderHolder &holder);
+
+    ContentLength();
 };
 
 struct ContentType : public IControlHeader, public IDictHolder {
