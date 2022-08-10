@@ -1,5 +1,6 @@
 #include "CGI.hpp"
 #include "../communication/RoundTrip.hpp"
+#include "../utils/File.hpp"
 #include <cstring>
 #include <signal.h>
 #include <sys/stat.h>
@@ -144,7 +145,10 @@ void CGI::start_origination(IObserver &observer) {
         // if (redirect_fd(socks.second, STDERR_FILENO) < 0) {
         //     exit(1);
         // }
-
+        std::string dir_name = file::get_directory_name(HTTP::restrfy(attr.script_path_));
+        if (chdir(dir_name.c_str()) != 0) {
+            exit(1);
+        }
         // 起動
         errno  = 0;
         int rv = execve(HTTP::restrfy(attr.script_path_).c_str(), argv, mvs);
