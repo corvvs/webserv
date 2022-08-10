@@ -428,13 +428,11 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
             // IMF-fixdate or asctime?
             base = base.substr(cand_day_name.size());
             QVOUT(base);
-            VOUT(base.starts_with(", "));
             if (base.starts_with(", ")) {
                 // IMF-fixdate?
                 //   IMF-fixdate  = day-name "," SP date1 SP time-of-day SP GMT
                 base                   = base.substr(2);
                 const light_string day = base.substr_while(HTTP::CharFilter::digit);
-                QVOUT(day);
                 if (day.size() != 2) {
                     break;
                 }
@@ -444,8 +442,7 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 }
                 base                     = base.substr(1);
                 const light_string month = base.substr(0, 3);
-                QVOUT(month);
-                const int month_index    = find_index(month, month_names);
+                const int month_index = find_index(month, month_names);
                 if (month_index < 0) {
                     break;
                 }
@@ -454,9 +451,7 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                     break;
                 }
                 base = base.substr(1);
-                QVOUT(base);
                 const light_string years = base.substr_while(HTTP::CharFilter::digit);
-                QVOUT(years);
                 if (years.size() != 4) {
                     break;
                 }
@@ -466,7 +461,6 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 }
                 base                     = base.substr(1);
                 const light_string hours = base.substr_while(HTTP::CharFilter::digit);
-                QVOUT(hours);
                 if (hours.size() != 2) {
                     continue;
                 }
@@ -476,7 +470,6 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 }
                 base                       = base.substr(1);
                 const light_string minutes = base.substr_while(HTTP::CharFilter::digit);
-                QVOUT(minutes);
                 if (minutes.size() != 2) {
                     continue;
                 }
@@ -486,7 +479,6 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 }
                 base                       = base.substr(1);
                 const light_string seconds = base.substr_while(HTTP::CharFilter::digit);
-                QVOUT(seconds);
                 if (seconds.size() != 2) {
                     continue;
                 }
@@ -532,25 +524,37 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 //         break;
                 //     }
                 // }
-                struct tm tmv = {};
+                struct tm tmv                   = {};
                 const HTTP::char_string charstr = HTTP::restrfy(str.str());
-                char *rv      = strptime(charstr.c_str(), "%a, %d %b %Y %H:%M:%S %Z", &tmv);
-                bool failed = !rv;
-                VOUT(failed);
-                VOUT(tmv.tm_year);
-                VOUT(tmv.tm_mon);
-                VOUT(tmv.tm_mday);
-                VOUT(tmv.tm_hour);
-                VOUT(tmv.tm_min);
-                VOUT(tmv.tm_sec);
-                if (failed) { break; }
+                char *rv                        = strptime(charstr.c_str(), "%a, %d %b %Y %H:%M:%S %Z", &tmv);
+                bool failed                     = !(rv && *rv == '\0');
+                if (failed) {
+                    break;
+                }
                 t_time_epoch_ms ms = mktime(&tmv) * 1000;
                 VOUT(ms);
                 return std::make_pair(true, ms);
+            } else if (base.starts_with(" ")) {
+                // asctime?
+                // asctime-date = day-name SP date3 SP time-of-day SP year
+                // date3        = month SP ( 2DIGIT / ( SP 1DIGIT ))
+                // time-of-day  = hour ":" minute ":" second
+                //              ; 00:00:00 - 23:59:60 (leap second)
+
+                // asctime形式の文字列にはタイムゾーンがないので, UTCを補う必要がある.
+                // ... が, strptime は "UTC" をタイムゾーンとして解釈しないので, GMT で代用する.
+                const HTTP::char_string tz_supplied = HTTP::restrfy(str.str() + " GMT");
+                struct tm tmv = {};
+
+                // void *rv    = strptime("Sun Nov  6 08:49:37 1994", "%a %b %e %H:%M:%S %Y", &tmv);
+                char *rv    = strptime(tz_supplied.c_str(), "%a %b %e %H:%M:%S %Y %Z", &tmv);
+                bool failed = !(rv && *rv == '\0');
+                if (failed) {
+                    break;
+                }
+                t_time_epoch_ms ms = mktime(&tmv) * 1000;
+                return std::make_pair(true, ms);
             }
-        } else if (base.starts_with(" ")) {
-            // asctime?
-            // asctime-date = day-name SP date3 SP time-of-day SP year
         } else if (0 <= find_index(cand_day_name, day_names_l)) {
             //   day-name-l   = %s"Monday" / %s"Tuesday" / %s"Wednesday"
             //                / %s"Thursday" / %s"Friday" / %s"Saturday"
