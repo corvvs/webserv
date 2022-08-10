@@ -152,14 +152,14 @@ void Connection::detect_update(IObserver &observer) {
             rt.respond();
             observer.reserve_set(this, IObserver::OT_WRITE);
         } else if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
-            rt.wipeout();
-            if (rt.req()->should_keep_in_touch()) {
+            if (rt.req() && rt.req()->should_keep_in_touch()) {
                 DXOUT("KEEP");
                 observer.reserve_unset(this, IObserver::OT_WRITE);
             } else {
                 DXOUT("CLOSE");
                 shutdown_gracefully(observer);
             }
+            rt.wipeout();
         } else {
             break;
         }
