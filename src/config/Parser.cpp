@@ -449,7 +449,7 @@ void Parser::add_cgi_path(const std::vector<std::string> &args, std::stack<Conte
     ContextLocation *p                     = get_current_location(ctx);
     const extension_type extension         = args.front();
     const executer_path_type executer_path = args.back();
-    p->cgi_paths[extension]                = executer_path;
+    p->cgi_executers[extension]            = executer_path;
     p->defined_["cgi_path"]                = true;
 }
 
@@ -467,15 +467,15 @@ void Parser::inherit_main_to_srv(const ContextMain &main, ContextServer &srv) {
 void Parser::inherit_loc_to_loc(const ContextLocation &parent, ContextLocation &child) {
     child.client_max_body_size
         = child.defined_["client_max_body_size"] ? child.client_max_body_size : parent.client_max_body_size;
-    child.autoindex    = child.defined_["autoindex"] ? child.autoindex : parent.autoindex;
-    child.root         = child.defined_["root"] ? child.root : parent.root;
-    child.indexes      = child.defined_["index"] ? child.indexes : parent.indexes;
-    child.error_pages  = child.defined_["error_page"] ? child.error_pages : parent.error_pages;
-    child.upload_store = child.defined_["upload_store"] ? child.upload_store : parent.upload_store;
-    child.exec_cgi     = child.defined_["exec_cgi"] ? child.exec_cgi : parent.exec_cgi;
-    child.exec_delete  = child.defined_["exec_delete"] ? child.exec_delete : parent.exec_delete;
-    child.cgi_paths    = child.defined_["cgi_path"] ? child.cgi_paths : parent.cgi_paths;
-    child.redirect     = (parent.redirect.first == REDIRECT_INITIAL_VALUE) ? child.redirect : parent.redirect;
+    child.autoindex     = child.defined_["autoindex"] ? child.autoindex : parent.autoindex;
+    child.root          = child.defined_["root"] ? child.root : parent.root;
+    child.indexes       = child.defined_["index"] ? child.indexes : parent.indexes;
+    child.error_pages   = child.defined_["error_page"] ? child.error_pages : parent.error_pages;
+    child.upload_store  = child.defined_["upload_store"] ? child.upload_store : parent.upload_store;
+    child.exec_cgi      = child.defined_["exec_cgi"] ? child.exec_cgi : parent.exec_cgi;
+    child.exec_delete   = child.defined_["exec_delete"] ? child.exec_delete : parent.exec_delete;
+    child.cgi_executers = child.defined_["cgi_path"] ? child.cgi_executers : parent.cgi_executers;
+    child.redirect      = (parent.redirect.first == REDIRECT_INITIAL_VALUE) ? child.redirect : parent.redirect;
 }
 
 void Parser::inherit_locations(const ContextLocation &parent, std::vector<ContextLocation> &locs) {

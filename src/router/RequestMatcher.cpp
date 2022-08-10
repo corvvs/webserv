@@ -271,8 +271,8 @@ HTTP::byte_string RequestMatcher::get_path_cgi_executor(const RequestTarget &tar
     if (pos == std::string::npos) {
         return HTTP::strfy("");
     }
-    const std::string &extension   = s.substr(pos + 1);
-    const std::string &path        = HTTP::restrfy(target.path.str());
-    config::cgi_path_map cgi_paths = conf.get_cgi_path(path);
-    return HTTP::strfy(cgi_paths[extension]);
+    const std::string &extension           = s.substr(pos + 1);
+    const std::string &path                = HTTP::restrfy(target.path.str());
+    config::cgi_executer_map cgi_executers = conf.get_cgi_path(path);
+    return HTTP::strfy(cgi_executers[extension]);
 }
