@@ -498,6 +498,39 @@ minor_error HTTP::CH::Via::determine(const AHeaderHolder &holder) {
     return minor_error::ok();
 }
 
+// [Date]
+minor_error HTTP::CH::Date::determine(const AHeaderHolder &holder) {
+    // https://www.rfc-editor.org/rfc/rfc9110.html#name-date
+    // https://www.rfc-editor.org/rfc/rfc9110.html#name-date-time-formats
+    //
+    //   Date         = HTTP-date
+    // (See ParserHelpher::http_date)
+
+    merror                                     = minor_error::ok();
+    value                                      = 0;
+    const AHeaderHolder::value_list_type *vals = holder.get_vals(HeaderHTTP::date);
+    VOUT(vals);
+    if (!vals) {
+        return minor_error::ok();
+    }
+    std::set<t_time_epoch_ms> ts;
+    for (AHeaderHolder::value_list_type::const_iterator it = vals->begin(); it != vals->end(); ++it) {
+        std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(*it);
+        if (res.first) {
+            ts.insert(res.second);
+        }
+    }
+    VOUT(ts.size());
+    if (ts.size() == 1) {
+        value = *(ts.begin());
+    } else if (ts.size() > 1) {
+        merror = minor_error::make("multiple valid dates", HTTP::STATUS_BAD_REQUEST);
+    }
+    VOUT(merror);
+    VOUT(value);
+    return minor_error::ok();
+}
+
 // [Location]
 
 minor_error HTTP::CH::Location::determine(const AHeaderHolder &holder) {

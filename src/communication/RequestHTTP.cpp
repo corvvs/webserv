@@ -562,6 +562,7 @@ minor_error RequestHTTP::extract_control_headers() {
     me = erroneous(me, this->rp.te.determine(header_holder));
     me = erroneous(me, this->rp.upgrade.determine(header_holder));
     me = erroneous(me, this->rp.via.determine(header_holder));
+    me = erroneous(me, this->rp.date.determine(header_holder));
     VOUT(me);
     return me;
 }
