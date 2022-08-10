@@ -64,6 +64,9 @@ byte_string normalize_header_key(const HTTP::light_string &key);
 std::pair<bool, unsigned int> xtou(const HTTP::light_string &str);
 byte_string utos(unsigned int u, unsigned int base);
 
+// 確実に変換できることがわかっている時に使うこと
+long latoi(const HTTP::light_string &str);
+
 // string to size_t 変換
 std::pair<bool, unsigned int> str_to_u(const byte_string &str);
 std::pair<bool, unsigned int> str_to_u(const HTTP::light_string &str);
@@ -73,6 +76,9 @@ std::pair<bool, unsigned int> str_to_u(const HTTP::light_string &str);
 unsigned int quality_to_u(HTTP::light_string &quality);
 
 light_string extract_quoted_or_token(const light_string &str);
+
+// 与えられた文字列が HTTP-dateとして解釈可能なら, epoch に変換して返す.
+std::pair<bool, t_time_epoch_ms> str_to_http_date(const light_string &str);
 } // namespace ParserHelper
 
 #endif

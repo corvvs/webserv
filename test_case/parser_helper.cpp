@@ -108,3 +108,61 @@ TEST(parser_helper_str_to_u, is_minus_1) {
 // [quality_to_u]
 
 // [extract_quoted_or_token]
+
+// [str_to_http_date]
+
+TEST(parser_helper_str_to_http_date, imf_fixdate_ok1) {
+    const HTTP::byte_string str       = HTTP::strfy("Sun, 06 Nov 1994 08:49:37 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+}
+
+TEST(parser_helper_str_to_http_date, imf_fixdate_ok_unixtime_origin) {
+    const HTTP::byte_string str       = HTTP::strfy("Sun, 01 Jan 1970 00:00:00 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+    EXPECT_EQ(0, res.second);
+}
+
+TEST(parser_helper_str_to_http_date, imf_fixdate_ok_unixtime_origin_1) {
+    const HTTP::byte_string str       = HTTP::strfy("Sun, 01 Jan 1970 00:00:01 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+    EXPECT_EQ(1000, res.second);
+}
+
+TEST(parser_helper_str_to_http_date, imf_fixdate_ok_unixtime_now) {
+    const HTTP::byte_string str       = HTTP::strfy("Wed, 10 Aug 2022 02:09:46 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+    EXPECT_EQ(1660097386000, res.second);
+}
+
+TEST(parser_helper_str_to_http_date, imf_fixdate_ko) {
+    const char *strs[] = {
+        "",
+        "  ",
+        "Max, 01 Nov 1994 08:49:37 GMT",
+        "sun, 06 Nov 1994 08:49:37 GMT",
+        "Sun 06 Nov 1994 08:49:37 GMT",
+        "Sun,06 Nov 1994 08:49:37 GMT",
+        "Sun, 6 Nov 1994 08:49:37 GMT",
+        "Sun,  6 Nov 1994 08:49:37 GMT",
+        "Sun, 99 Nov 1994 08:49:37 GMT",
+        "Sun, 32 Nov 1994 08:49:37 GMT",
+        " Sun, 06 Nov 1994 08:49:37 JST",
+        "Sun , 06 Nov 1994 08:49:37 JST",
+        "Sun, 06 Nov 1994 24:49:37 JST",
+        "Sun, 06 Nov 1994 08:60:37 JST",
+        "Sun, 06 Nov 1994 08:49:60 JST",
+        "Sun, 06 Nov 1994 08:49:37 JST",
+        "Sun, 06 Nov 1994 08:49:37 GMT ",
+        "Sun, 06 Nov 1994 08:49:37 gmt",
+        NULL
+    };
+    for (int i = 0; strs[i]; ++i) {
+        const HTTP::byte_string str       = HTTP::strfy(strs[i]);
+        std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+        EXPECT_FALSE(res.first);
+    }
+}
