@@ -545,8 +545,6 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 // ... が, strptime は "UTC" をタイムゾーンとして解釈しないので, GMT で代用する.
                 const HTTP::char_string tz_supplied = HTTP::restrfy(str.str() + " GMT");
                 struct tm tmv = {};
-
-                // void *rv    = strptime("Sun Nov  6 08:49:37 1994", "%a %b %e %H:%M:%S %Y", &tmv);
                 char *rv    = strptime(tz_supplied.c_str(), "%a %b %e %H:%M:%S %Y %Z", &tmv);
                 bool failed = !(rv && *rv == '\0');
                 if (failed) {
@@ -556,10 +554,25 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 return std::make_pair(true, ms);
             }
         } else if (0 <= find_index(cand_day_name, day_names_l)) {
+            // rfc850-date?
+            //   rfc850-date  = day-name-l "," SP date2 SP time-of-day SP GMT
             //   day-name-l   = %s"Monday" / %s"Tuesday" / %s"Wednesday"
             //                / %s"Thursday" / %s"Friday" / %s"Saturday"
             //                / %s"Sunday"
-            // rfc850-date?
+            //   date2        = day "-" month "-" 2DIGIT
+            //                ; e.g., 02-Jun-82
+            //   time-of-day  = hour ":" minute ":" second
+            //                ; 00:00:00 - 23:59:60 (leap second)
+            const HTTP::char_string charstr = HTTP::restrfy(str.str());
+            struct tm tmv = {};
+            char *rv    = strptime(charstr.c_str(), "%A, %d-%b-%y %H:%M:%S %Z", &tmv);
+            bool failed = !(rv && *rv == '\0');
+            if (failed) {
+                break;
+            }
+            t_time_epoch_ms ms = mktime(&tmv) * 1000;
+            return std::make_pair(true, ms);
+
         }
     } while (0);
     return std::make_pair(false, 0);

@@ -185,6 +185,13 @@ TEST(parser_helper_str_to_http_date, asctime_ok_unixtime_origin_1) {
     EXPECT_EQ(1000, res.second);
 }
 
+TEST(parser_helper_str_to_http_date, asctime_ok_unixtime_now) {
+    const HTTP::byte_string str          = HTTP::strfy("Wed Aug 10 02:09:46 2022");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+    EXPECT_EQ(1660097386000, res.second);
+}
+
 TEST(parser_helper_str_to_http_date, asctime_ko) {
     const char *strs[] = {"Sun Nov 006 08:49:37 1994", "Sun Nov  6 08:49:37 1994 GMT", NULL};
     for (int i = 0; strs[i]; ++i) {
@@ -192,4 +199,31 @@ TEST(parser_helper_str_to_http_date, asctime_ko) {
         std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
         EXPECT_FALSE(res.first);
     }
+}
+
+TEST(parser_helper_str_to_http_date, rfc850_date_ok1) {
+    const HTTP::byte_string str          = HTTP::strfy("Sunday, 06-Nov-94 08:49:37 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+}
+
+TEST(parser_helper_str_to_http_date, rfc850_date_ok_unixtime_origin) {
+    const HTTP::byte_string str          = HTTP::strfy("Sunday, 01-Jan-70 00:00:00 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+    EXPECT_EQ(0, res.second);
+}
+
+TEST(parser_helper_str_to_http_date, rfc850_date_ok_unixtime_origin_1) {
+    const HTTP::byte_string str          = HTTP::strfy("Sunday, 01-Jan-70 00:00:01 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+    EXPECT_EQ(1000, res.second);
+}
+
+TEST(parser_helper_str_to_http_date, rfc850_date_ok_unixtime_now) {
+    const HTTP::byte_string str          = HTTP::strfy("Wednesday, 10-Aug-22 02:09:46 GMT");
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(str);
+    EXPECT_TRUE(res.first);
+    EXPECT_EQ(1660097386000, res.second);
 }
