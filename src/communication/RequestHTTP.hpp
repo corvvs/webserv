@@ -150,6 +150,7 @@ public:
         ChunkedBody::Chunk current_chunk;
         // 凍結されたかどうか
         bool is_freezed;
+        minor_error merror;
 
         ParserStatus();
     };
@@ -165,6 +166,7 @@ public:
         bool is_body_chunked;
 
         HTTP::CH::Host header_host; // リクエストマッチングに必要
+        HTTP::CH::ContentLength content_length;
         HTTP::CH::ContentType content_type;
         HTTP::CH::ContentDisposition content_disposition;
         HTTP::CH::TransferEncoding transfer_encoding;
@@ -176,9 +178,9 @@ public:
         // いろいろ抽出関数群
 
         // TODO: struct に結びつくやつは struct に移したほうがいいかも
-        void determine_host(const header_holder_type &holder);
+        minor_error determine_host(const header_holder_type &holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
-        void determine_body_size(const header_holder_type &holder);
+        void determine_body_size();
 
         const RequestTarget &get_request_target() const;
         HTTP::t_method get_http_method() const;
@@ -213,23 +215,26 @@ private:
     t_parse_progress reach_chunked_data_end(size_t len, bool is_disconnected);
     t_parse_progress reach_chunked_data_termination(size_t len, bool is_disconnected);
     t_parse_progress reach_chunked_trailer_end(size_t len, bool is_disconnected);
-    void analyze_headers(IndexRange res);
+    minor_error analyze_headers(IndexRange res);
 
     // [パース関数群]
 
     // 開始行の終了位置を探す
     bool seek_reqline_end(size_t len);
     // [begin, end) を要求行としてパースする
+    // (ここでのエラーは持続不可能とする)
     void parse_reqline(const light_string &line);
 
+    // chunkのサイズ行をチェックする
+    // (ここでのエラーは持続不可能とする)
     void parse_chunk_size_line(const light_string &line);
-    void parse_chunk_data(const light_string &data);
 
     // 要求行の整合性をチェック
+    // (ここでのエラーは持続不可能とする)
     void check_reqline_consistensy();
 
     // ヘッダから必要な情報を取る
-    void extract_control_headers();
+    minor_error extract_control_headers();
 
 public:
     RequestHTTP();

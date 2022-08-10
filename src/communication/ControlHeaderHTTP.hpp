@@ -5,6 +5,7 @@
 #include "../utils/http.hpp"
 #include "HeaderHTTP.hpp"
 #include <map>
+#include <set>
 #include <vector>
 
 namespace HTTP {
@@ -18,6 +19,13 @@ public:
     // key と value を受け取って何かする関数
     // 何をするかは実装クラス次第
     virtual void store_list_item(const parameter_key_type &key, const parameter_value_type &val) = 0;
+};
+
+class IControlHeader {
+public:
+    virtual ~IControlHeader() {}
+
+    virtual minor_error determine(const AHeaderHolder &holder) = 0;
 };
 
 namespace Term {
@@ -34,7 +42,6 @@ struct Host {
     HTTP::byte_string value;
     HTTP::byte_string host;
     HTTP::byte_string port;
-    void determine(const AHeaderHolder &holder);
 };
 
 struct Protocol {
@@ -56,20 +63,34 @@ typedef std::map<parameter_key_type, parameter_value_type> parameter_dict;
 
 typedef HTTP::Term::Host Host;
 
-struct TransferEncoding {
+struct TransferEncoding : public IControlHeader {
     // 指定されたTransferCodingが登場順に入る.
     std::vector<HTTP::Term::TransferCoding> transfer_codings;
     // 現在のTransferCodingが "chunked" かどうか.
     bool currently_chunked;
+    minor_error merror;
 
     // 指定がないかどうか
     bool empty() const;
     // 現在のTransferCoding; empty() == true の時に呼び出してはならない.
     const Term::TransferCoding &current_coding() const;
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
+    static HTTP::byte_string normalize(const HTTP::byte_string &str);
 };
 
-struct ContentType : public IDictHolder {
+struct ContentLength : public IControlHeader {
+    std::set<size_t> lengths;
+    minor_error merror;
+    size_t value;
+
+    // 指定がないかどうか
+    bool empty() const;
+    minor_error determine(const AHeaderHolder &holder);
+
+    ContentLength();
+};
+
+struct ContentType : public IControlHeader, public IDictHolder {
 
     HTTP::byte_string value;
     parameter_dict parameters;
@@ -79,45 +100,46 @@ struct ContentType : public IDictHolder {
     // 値がないときはこれに設定するのではなく, この値と**みなす**
     static const HTTP::byte_string default_value;
 
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
     void store_list_item(const parameter_key_type &key, const parameter_value_type &val);
+    static HTTP::byte_string normalize(const HTTP::byte_string &str);
 };
 
-struct ContentDisposition : public IDictHolder {
+struct ContentDisposition : public IControlHeader, public IDictHolder {
 
     HTTP::byte_string value;
     parameter_dict parameters;
 
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
     void store_list_item(const parameter_key_type &key, const parameter_value_type &val);
 };
 
-struct Connection {
+struct Connection : public IControlHeader {
     std::vector<byte_string> connection_options;
     bool keep_alive_; // keep-alive が true == 持続的接続を行う とは限らないことに注意.
     bool close_;
 
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
     bool will_keep_alive() const;
     bool will_close() const;
 };
 
-struct TE {
+struct TE : public IControlHeader {
     std::vector<HTTP::Term::TransferCoding> transfer_codings;
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
 };
 
-struct Upgrade {
+struct Upgrade : public IControlHeader {
     std::vector<HTTP::Term::Protocol> protocols;
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
 };
 
-struct Via {
+struct Via : public IControlHeader {
     std::vector<HTTP::Term::Received> receiveds;
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
 };
 
-struct Location {
+struct Location : public IControlHeader {
     HTTP::byte_string value;
     HTTP::light_string abs_path;
     HTTP::light_string query_string;
@@ -125,7 +147,7 @@ struct Location {
     HTTP::light_string authority;
     bool is_local;
 
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
 };
 
 } // namespace CH
@@ -139,11 +161,11 @@ typedef std::map<parameter_key_type, parameter_value_type> parameter_dict;
 
 struct ContentType : public HTTP::CH::ContentType {};
 
-struct Status {
+struct Status : public HTTP::IControlHeader {
     int code;
     HTTP::byte_string reason;
 
-    void determine(const AHeaderHolder &holder);
+    minor_error determine(const AHeaderHolder &holder);
 };
 
 struct Location : public HTTP::CH::Location {};

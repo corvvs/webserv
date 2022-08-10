@@ -9,6 +9,9 @@
         predefined_attrs[key] = attr;                                                                                  \
     }
 
+// ヘッダ行の長さがこれを超えるとアウト
+const size_t MaxHeaderLineSize = 8192;
+
 // [HeaderAttribute]
 
 HeaderAttribute::attr_dict_type HeaderAttribute::predefined_attrs = HeaderAttribute::attr_dict_type();
@@ -76,8 +79,19 @@ const HeaderItem::value_list_type &HeaderItem::get_vals() const {
 // [AHeaderHolder]
 
 void AHeaderHolder::add_item(const light_string &key, const light_string &val) {
-    // val の obs-foldを除去し, 全体を string に変換する.
+    // obs-fold はRFC9112で廃止された. ただし Content-Type: が "message/http"の場合は例外.
+    //   obs-fold     = OWS CRLF RWS
+    // https://www.rfc-editor.org/rfc/rfc9112.html#section-5.2
+    // A server that receives an obs-fold in a request message
+    // that is not within a "message/http" container MUST either reject the message
+    // by sending a 400 (Bad Request), preferably with a representation explaining
+    // that obsolete line folding is unacceptable, or replace each received
+    // obs-fold with one or more SP octets prior to interpreting
+    // the field value or forwarding the message downstream.
+    //
+    // val の obs-fold を除去し, 全体を string に変換する.
     // obs-fold を検知した場合, そのことを記録する
+    // (HTTPリクエストの場合はあとで400を出す)
 
     byte_string sval;
     byte_string pval = val.str();
@@ -85,9 +99,12 @@ void AHeaderHolder::add_item(const light_string &key, const light_string &val) {
     while (true) {
         IndexRange obs_fold = ParserHelper::find_obs_fold(pval, movement, val.length() - movement);
         if (obs_fold.is_invalid()) {
+            // obs-fold がない
             sval.insert(sval.end(), pval.begin() + movement, pval.begin() + obs_fold.second);
             break;
         }
+        // obs-fold が見つかった
+        encountered_obs_fold = true;
         sval.insert(sval.end(), pval.begin() + movement, pval.begin() + obs_fold.first);
         sval += ParserHelper::SP;
         VOUT(obs_fold);
@@ -142,55 +159,57 @@ AHeaderHolder::dict_type::size_type AHeaderHolder::get_dict_size() const {
     return dict.size();
 }
 
-void AHeaderHolder::parse_header_lines(const light_string &lines, AHeaderHolder *holder) {
+minor_error AHeaderHolder::parse_header_lines(const light_string &lines, AHeaderHolder *holder) {
     // TODO: HTTP, CGI, Multipartの微妙な差異を吸収する
     light_string rest(lines);
+    minor_error me;
     while (true) {
         const IndexRange res = ParserHelper::find_crlf_header_value(rest);
         if (res.is_invalid()) {
             break;
         }
+        // `rest`の[先頭,改行)
         const light_string header_line = rest.substr(0, res.first);
         if (header_line.length() > 0) {
             // header_line が空文字列でない
             // -> ヘッダ行としてパースを試みる
-            parse_header_line(header_line, holder);
+            me = erroneous(me, parse_header_line(header_line, holder));
         }
         rest = rest.substr(res.second);
     }
+    return me;
 }
 
-void AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *holder) {
-
-    const light_string key = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
-    // QVOUT(line);
-    // QVOUT(key);
-    if (key.length() == line.length()) {
-        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。 nginx
-        // は無視して処理を続けます。
-        throw http_error("no coron in a header line", HTTP::STATUS_BAD_REQUEST);
+minor_error AHeaderHolder::parse_header_line(const light_string &line, AHeaderHolder *holder) {
+    if (line.size() > MaxHeaderLineSize) {
+        throw http_error("size of header line exceeds the limit", HTTP::STATUS_HEADER_TOO_LARGE);
+    }
+    const light_string key     = line.substr_before(ParserHelper::HEADER_KV_SPLITTER);
+    const bool no_coron        = key.length() == line.length();
+    const bool started_with_ws = line.length() > 0 && HTTP::CharFilter::sp.includes(line[0]);
+    if (no_coron && !started_with_ws) {
+        // [!] Apache は : が含まれず空白から始まらない行がヘッダー部にあると、 400 応答を返します。
+        // nginx は無視して処理を続けます。
+        return minor_error::ok();
     }
     // ":"があった -> ":"の前後をキーとバリューにする
     if (key.length() == 0) {
-        throw http_error("header key is empty", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("header key is empty", HTTP::STATUS_BAD_REQUEST);
     }
     light_string val = line.substr(key.length() + 1);
     // [!] 欄名と : の間には空白は認められていません。 鯖は、空白がある場合 400 応答を返して拒絶しなければなりません。
     // 串は、下流に転送する前に空白を削除しなければなりません。
-    light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
+    const light_string::size_type key_tail = key.find_last_not_of(ParserHelper::OWS);
     if (key_tail + 1 != key.length()) {
-        throw http_error("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("trailing space on header key", HTTP::STATUS_BAD_REQUEST);
     }
     // [!] 欄値の前後の OWS は、欄値の一部ではなく、 構文解析の際に削除します
     val = val.trim(ParserHelper::OWS);
     // holder があるなら holder に渡す. あとの処理は holder に任せる.
     if (holder != NULL) {
-        holder->add_item(key, val);
-    } else {
-        DXOUT("no holder");
+        holder->add_item(key.trim(ParserHelper::OWS), val);
     }
-    QVOUT(key);
-    QVOUT(val);
+    return minor_error::ok();
 }
 
 // [HeaderHolderHTTP]

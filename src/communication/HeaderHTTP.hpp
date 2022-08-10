@@ -97,6 +97,7 @@ public:
 protected:
     list_type list;
     dict_type dict;
+    bool encountered_obs_fold;
 
 public:
     // 指定したキーに値を追加する
@@ -114,8 +115,8 @@ public:
     list_type::size_type get_list_size() const;
     dict_type::size_type get_dict_size() const;
 
-    static void parse_header_lines(const light_string &lines, AHeaderHolder *holder);
-    static void parse_header_line(const light_string &line, AHeaderHolder *holder);
+    static minor_error parse_header_lines(const light_string &lines, AHeaderHolder *holder);
+    static minor_error parse_header_line(const light_string &line, AHeaderHolder *holder);
 };
 
 class HeaderHolderHTTP : public AHeaderHolder {
