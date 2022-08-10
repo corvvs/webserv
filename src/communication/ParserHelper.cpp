@@ -442,7 +442,7 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 }
                 base                     = base.substr(1);
                 const light_string month = base.substr(0, 3);
-                const int month_index = find_index(month, month_names);
+                const int month_index    = find_index(month, month_names);
                 if (month_index < 0) {
                     break;
                 }
@@ -450,7 +450,7 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 if (!base.starts_with(" ")) {
                     break;
                 }
-                base = base.substr(1);
+                base                     = base.substr(1);
                 const light_string years = base.substr_while(HTTP::CharFilter::digit);
                 if (years.size() != 4) {
                     break;
@@ -544,9 +544,9 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
                 // asctime形式の文字列にはタイムゾーンがないので, UTCを補う必要がある.
                 // ... が, strptime は "UTC" をタイムゾーンとして解釈しないので, GMT で代用する.
                 const HTTP::char_string tz_supplied = HTTP::restrfy(str.str() + " GMT");
-                struct tm tmv = {};
-                char *rv    = strptime(tz_supplied.c_str(), "%a %b %e %H:%M:%S %Y %Z", &tmv);
-                bool failed = !(rv && *rv == '\0');
+                struct tm tmv                       = {};
+                char *rv                            = strptime(tz_supplied.c_str(), "%a %b %e %H:%M:%S %Y %Z", &tmv);
+                bool failed                         = !(rv && *rv == '\0');
                 if (failed) {
                     break;
                 }
@@ -564,15 +564,14 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
             //   time-of-day  = hour ":" minute ":" second
             //                ; 00:00:00 - 23:59:60 (leap second)
             const HTTP::char_string charstr = HTTP::restrfy(str.str());
-            struct tm tmv = {};
-            char *rv    = strptime(charstr.c_str(), "%A, %d-%b-%y %H:%M:%S %Z", &tmv);
-            bool failed = !(rv && *rv == '\0');
+            struct tm tmv                   = {};
+            char *rv                        = strptime(charstr.c_str(), "%A, %d-%b-%y %H:%M:%S %Z", &tmv);
+            bool failed                     = !(rv && *rv == '\0');
             if (failed) {
                 break;
             }
             t_time_epoch_ms ms = mktime(&tmv) * 1000;
             return std::make_pair(true, ms);
-
         }
     } while (0);
     return std::make_pair(false, 0);
