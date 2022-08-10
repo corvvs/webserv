@@ -14,7 +14,6 @@ TEST(control_header_http, transfer_encoding_basic_ok) {
         HTTP::CH::TransferEncoding ch;
         me = ch.determine(holder);
         EXPECT_TRUE(me.is_ok());
-        VOUT(ch.current_coding().coding);
         EXPECT_EQ(item, ch.current_coding().coding);
     }
 }

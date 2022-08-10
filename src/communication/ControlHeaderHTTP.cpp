@@ -102,7 +102,7 @@ minor_error HTTP::CH::TransferEncoding::determine(const AHeaderHolder &holder) {
         }
     }
     this->currently_chunked = !this->empty() && this->current_coding().coding == "chunked";
-    QVOUT(this->transfer_codings.back().coding);
+    // QVOUT(this->transfer_codings.back().coding);
     return minor_error::ok();
 }
 
@@ -125,8 +125,8 @@ minor_error HTTP::CH::ContentLength::determine(const AHeaderHolder &holder) {
     }
     for (AHeaderHolder::value_list_type::const_iterator it = les->begin(); it != les->end(); ++it) {
         std::pair<bool, unsigned int> res = ParserHelper::str_to_u(*it);
-        VOUT(res.first);
-        VOUT(res.second);
+        // VOUT(res.first);
+        // VOUT(res.second);
         if (!res.first) {
             // 変換に失敗 -> そういうエラー, ただし外部には返さない
             merror = erroneous(merror, minor_error::make("non-numeric content-length", HTTP::STATUS_BAD_REQUEST));
@@ -143,8 +143,8 @@ minor_error HTTP::CH::ContentLength::determine(const AHeaderHolder &holder) {
         // -> そういうエラー, ただし外部には返さない
         merror = erroneous(merror, minor_error::make("multiple content-length", HTTP::STATUS_BAD_REQUEST));
     }
-    VOUT(value);
-    VOUT(merror);
+    // VOUT(value);
+    // VOUT(merror);
     return minor_error::ok();
 }
 
@@ -189,7 +189,7 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     light_string::size_type type_end = lct.find_first_not_of(HTTP::CharFilter::tchar);
     if (type_end == light_string::npos) {
         // `type`がスラッシュ'/'で終わっていない
-        DXOUT("[KO] no /: \"" << lct << "\"");
+        // DXOUT("[KO] no /: \"" << lct << "\"");
         return minor_error::ok();
     }
     // [`/`の捕捉]
@@ -205,11 +205,11 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     light_string subtype_str(lct, type_end + 1, subtype_end);
     if (subtype_str.size() == 0) {
         // スラッシュ'/'のあとに`subtype`がない
-        DXOUT("[KO] no subtype after /: \"" << lct << "\"");
+        // DXOUT("[KO] no subtype after /: \"" << lct << "\"");
         return minor_error::ok();
     }
     this->value = normalize(lct.substr(0, subtype_end).str());
-    QVOUT(value);
+    // QVOUT(value);
     // [`parameter`の捕捉]
     // parameter  = 1*tchar "=" ( 1*tchar / quoted-string )
     light_string parameters_str(lct, subtype_end);
@@ -231,7 +231,7 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
             }
         }
     }
-    QVOUT(boundary);
+    // QVOUT(boundary);
     return minor_error::ok();
 }
 
