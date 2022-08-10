@@ -31,7 +31,7 @@ func TestErrorPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := client.NewClient(tt.request, "8080")
+			c, err := client.NewClient("default", tt.request, webservPort)
 			if err != nil {
 				t.Fatal(err)
 			}
