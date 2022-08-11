@@ -2,6 +2,8 @@
 #include "../communication/RequestHTTP.hpp"
 #include "../config/Config.hpp"
 #include "../utils/HTTPError.hpp"
+#include "../utils/LightString.hpp"
+#include "../utils/UtilsString.hpp"
 #include <sys/stat.h>
 
 RequestMatcher::RequestMatcher() {}
@@ -195,6 +197,14 @@ bool RequestMatcher::is_regular_file(const std::string &path) const {
     return S_ISREG(st.st_mode);
 }
 
+bool RequestMatcher::is_directory(const std::string &path) const {
+    struct stat st;
+    if (stat(path.c_str(), &st) < 0) {
+        return false;
+    }
+    return S_ISDIR(st.st_mode);
+}
+
 RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &target,
                                                            const config::Config &conf) const {
     const std::string &path                         = HTTP::restrfy(target.path.str());
@@ -255,14 +265,22 @@ long RequestMatcher::get_client_max_body_size(const RequestTarget &target, const
 HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target, const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.path.str());
 
-    const std::string root           = conf.get_root(path);
-    const std::string resource_path  = root + path;
-    std::vector<std::string> indexes = conf.get_index(path);
+    const std::string root                   = conf.get_root(path);
+    const HTTP::byte_string resource_path_bs = HTTP::Utils::join_path(HTTP::strfy(root), target.path);
+    const std::string resource_path          = HTTP::restrfy(resource_path_bs);
+    if (!is_directory(resource_path)) {
+        if (is_regular_file(resource_path)) {
+            return resource_path_bs;
+        }
+        return HTTP::strfy("");
+    }
 
+    std::vector<std::string> indexes = conf.get_index(path);
     for (std::vector<std::string>::iterator it = indexes.begin(); it != indexes.end(); ++it) {
-        const std::string &cur = resource_path + *it;
+        const HTTP::byte_string cur_bs = HTTP::Utils::join_path(resource_path_bs, HTTP::strfy(*it));
+        const std::string cur          = HTTP::restrfy(cur_bs);
         if (is_regular_file(cur)) {
-            return HTTP::strfy(cur);
+            return cur_bs;
         }
     }
     return HTTP::strfy("");

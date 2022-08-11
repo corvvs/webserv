@@ -38,6 +38,7 @@ private:
     bool get_is_autoindex(const RequestTarget &target, const config::Config &conf);
 
     bool is_regular_file(const std::string &path) const;
+    bool is_directory(const std::string &path) const;
 
     long get_client_max_body_size(const RequestTarget &target, const config::Config &conf) const;
     redirect_pair get_redirect(const RequestTarget &target, const config::Config &conf) const;
