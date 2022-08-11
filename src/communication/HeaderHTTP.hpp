@@ -27,6 +27,7 @@ const HTTP::byte_string te                  = ParserHelper::normalize_header_key
 const HTTP::byte_string vary                = ParserHelper::normalize_header_key(HTTP::strfy("Vary"));
 const HTTP::byte_string upgrade             = ParserHelper::normalize_header_key(HTTP::strfy("Upgrade"));
 const HTTP::byte_string via                 = ParserHelper::normalize_header_key(HTTP::strfy("Via"));
+const HTTP::byte_string date                = ParserHelper::normalize_header_key(HTTP::strfy("Date"));
 // for CGI
 const HTTP::byte_string status   = HTTP::strfy("status");
 const HTTP::byte_string location = HTTP::strfy("location");

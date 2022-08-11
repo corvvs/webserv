@@ -1,4 +1,5 @@
 #include "ParserHelper.hpp"
+#include <ctime>
 #include <iomanip>
 #include <limits>
 
@@ -222,6 +223,14 @@ std::pair<bool, unsigned int> ParserHelper::xtou(const HTTP::light_string &str) 
     return std::pair<bool, unsigned int>(true, n);
 }
 
+long ParserHelper::latoi(const light_string &str) {
+    long v;
+    std::stringstream ss;
+    ss << str.str();
+    ss >> v;
+    return v;
+}
+
 ParserHelper::byte_string ParserHelper::utos(unsigned int u, unsigned int base) {
     // std::setbase の引数は 8, 10, 16のみ
     assert(base == 8 || base == 10 || base == 16);
@@ -315,4 +324,255 @@ ParserHelper::light_string ParserHelper::extract_quoted_or_token(const light_str
         // token          = 1*tchar
         return str.substr_while(HTTP::CharFilter::tchar);
     }
+}
+
+const char *day_names[] = {
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun",
+    NULL,
+};
+
+const char *day_names_l[] = {
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+    NULL,
+};
+
+const char *month_names[] = {
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+    NULL,
+};
+
+// const unsigned int days_of_month[] = {
+//     31,
+//     28,
+//     31,
+//     30,
+//     31,
+//     30,
+//     31,
+//     31,
+//     30,
+//     31,
+//     30,
+//     31,
+// };
+
+int find_index(const HTTP::light_string &str, const char **list) {
+    for (int i = 0; list[i]; ++i) {
+        if (str == list[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_string &str) {
+    //   HTTP-date    = IMF-fixdate / obs-date
+    //   obs-date     = rfc850-date / asctime-date
+    //
+    //   IMF-fixdate  = day-name "," SP date1 SP time-of-day SP GMT
+    //   ; fixed length/zone/capitalization subset of the format
+    //   ; see Section 3.3 of [RFC5322]
+    //   date1        = day SP month SP year
+    //                ; e.g., 02 Jun 1982
+    //   day          = 2DIGIT
+    //   month        = %s"Jan" / %s"Feb" / %s"Mar" / %s"Apr"
+    //                / %s"May" / %s"Jun" / %s"Jul" / %s"Aug"
+    //                / %s"Sep" / %s"Oct" / %s"Nov" / %s"Dec"
+    //   year         = 4DIGIT
+    //   GMT          = %s"GMT"
+    //   time-of-day  = hour ":" minute ":" second
+    //                ; 00:00:00 - 23:59:60 (leap second)
+    //   hour         = 2DIGIT
+    //   minute       = 2DIGIT
+    //   second       = 2DIGIT
+    //
+    //   rfc850-date  = day-name-l "," SP date2 SP time-of-day SP GMT
+    //   date2        = day "-" month "-" 2DIGIT
+    //                ; e.g., 02-Jun-82
+    //
+    //
+    // asctime-date = day-name SP date3 SP time-of-day SP year
+    // date3        = month SP ( 2DIGIT / ( SP 1DIGIT ))
+    //             ; e.g., Jun  2
+    do {
+        light_string base                = str;
+        const light_string cand_day_name = base.substr_while(HTTP::CharFilter::alpha);
+        VOUT(cand_day_name);
+        VOUT(find_index(cand_day_name, day_names));
+        if (0 <= find_index(cand_day_name, day_names)) {
+            //   day-name     = %s"Mon" / %s"Tue" / %s"Wed"
+            //                / %s"Thu" / %s"Fri" / %s"Sat" / %s"Sun"
+            // IMF-fixdate or asctime?
+            base = base.substr(cand_day_name.size());
+            QVOUT(base);
+            if (base.starts_with(", ")) {
+                // IMF-fixdate?
+                //   IMF-fixdate  = day-name "," SP date1 SP time-of-day SP GMT
+                base                   = base.substr(2);
+                const light_string day = base.substr_while(HTTP::CharFilter::digit);
+                if (day.size() != 2) {
+                    break;
+                }
+                base = base.substr(day.size());
+                if (!base.starts_with(" ")) {
+                    break;
+                }
+                base                     = base.substr(1);
+                const light_string month = base.substr(0, 3);
+                const int month_index    = find_index(month, month_names);
+                if (month_index < 0) {
+                    break;
+                }
+                base = base.substr(month.size());
+                if (!base.starts_with(" ")) {
+                    break;
+                }
+                base                     = base.substr(1);
+                const light_string years = base.substr_while(HTTP::CharFilter::digit);
+                if (years.size() != 4) {
+                    break;
+                }
+                base = base.substr(years.size());
+                if (!base.starts_with(" ")) {
+                    break;
+                }
+                base                     = base.substr(1);
+                const light_string hours = base.substr_while(HTTP::CharFilter::digit);
+                if (hours.size() != 2) {
+                    continue;
+                }
+                base = base.substr(hours.size());
+                if (!base.starts_with(":")) {
+                    break;
+                }
+                base                       = base.substr(1);
+                const light_string minutes = base.substr_while(HTTP::CharFilter::digit);
+                if (minutes.size() != 2) {
+                    continue;
+                }
+                base = base.substr(minutes.size());
+                if (!base.starts_with(":")) {
+                    break;
+                }
+                base                       = base.substr(1);
+                const light_string seconds = base.substr_while(HTTP::CharFilter::digit);
+                if (seconds.size() != 2) {
+                    continue;
+                }
+                base = base.substr(seconds.size());
+                if (!base.starts_with(" ")) {
+                    break;
+                }
+                base = base.substr(1);
+                if (!base.starts_with("GMT")) {
+                    break;
+                }
+                base = base.substr(3);
+                if (base.size() != 0) {
+                    break;
+                }
+                // const unsigned int dd = latoi(day), yy = latoi(years), hh = latoi(hours), mm = latoi(minutes),
+                //                    ss = latoi(seconds);
+                // // 時
+                // if (24 <= hh) {
+                //     break;
+                // }
+                // // 分
+                // if (60 <= mm) {
+                //     break;
+                // }
+                // // 秒
+                // if (60 <= ss) {
+                //     break;
+                // }
+                // // 日数
+                // if (month_index != 1) {
+                //     // 2月以外
+                //     if (days_of_month[month_index] <= dd) {
+                //         break;
+                //     }
+                // } else {
+                //     // 2月
+                //     const bool is_leap_year = yy % 400 == 0 || (yy % 4 == 0 && yy % 100 != 0);
+                //     if (is_leap_year && 29 < dd) {
+                //         break;
+                //     }
+                //     if (!is_leap_year && 28 < dd) {
+                //         break;
+                //     }
+                // }
+                struct tm tmv                   = {};
+                const HTTP::char_string charstr = HTTP::restrfy(str.str());
+                char *rv                        = strptime(charstr.c_str(), "%a, %d %b %Y %H:%M:%S %Z", &tmv);
+                bool failed                     = !(rv && *rv == '\0');
+                if (failed) {
+                    break;
+                }
+                t_time_epoch_ms ms = mktime(&tmv) * 1000;
+                VOUT(ms);
+                return std::make_pair(true, ms);
+            } else if (base.starts_with(" ")) {
+                // asctime?
+                // asctime-date = day-name SP date3 SP time-of-day SP year
+                // date3        = month SP ( 2DIGIT / ( SP 1DIGIT ))
+                // time-of-day  = hour ":" minute ":" second
+                //              ; 00:00:00 - 23:59:60 (leap second)
+
+                // asctime形式の文字列にはタイムゾーンがないので, UTCを補う必要がある.
+                // ... が, strptime は "UTC" をタイムゾーンとして解釈しないので, GMT で代用する.
+                const HTTP::char_string tz_supplied = HTTP::restrfy(str.str() + " GMT");
+                struct tm tmv                       = {};
+                char *rv                            = strptime(tz_supplied.c_str(), "%a %b %e %H:%M:%S %Y %Z", &tmv);
+                bool failed                         = !(rv && *rv == '\0');
+                if (failed) {
+                    break;
+                }
+                t_time_epoch_ms ms = mktime(&tmv) * 1000;
+                return std::make_pair(true, ms);
+            }
+        } else if (0 <= find_index(cand_day_name, day_names_l)) {
+            // rfc850-date?
+            //   rfc850-date  = day-name-l "," SP date2 SP time-of-day SP GMT
+            //   day-name-l   = %s"Monday" / %s"Tuesday" / %s"Wednesday"
+            //                / %s"Thursday" / %s"Friday" / %s"Saturday"
+            //                / %s"Sunday"
+            //   date2        = day "-" month "-" 2DIGIT
+            //                ; e.g., 02-Jun-82
+            //   time-of-day  = hour ":" minute ":" second
+            //                ; 00:00:00 - 23:59:60 (leap second)
+            const HTTP::char_string charstr = HTTP::restrfy(str.str());
+            struct tm tmv                   = {};
+            char *rv                        = strptime(charstr.c_str(), "%A, %d-%b-%y %H:%M:%S %Z", &tmv);
+            bool failed                     = !(rv && *rv == '\0');
+            if (failed) {
+                break;
+            }
+            t_time_epoch_ms ms = mktime(&tmv) * 1000;
+            return std::make_pair(true, ms);
+        }
+    } while (0);
+    return std::make_pair(false, 0);
 }

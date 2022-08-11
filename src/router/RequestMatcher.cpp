@@ -3,6 +3,8 @@
 #include "../config/Config.hpp"
 #include "../utils/File.hpp"
 #include "../utils/HTTPError.hpp"
+#include "../utils/LightString.hpp"
+#include "../utils/UtilsString.hpp"
 #include <sys/stat.h>
 
 RequestMatcher::RequestMatcher() {}
@@ -43,7 +45,7 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 RequestMatchingResult
 RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf) {
     cgi_resource_pair resource;
-    resource              = get_cgi_resource(target);
+    resource              = get_cgi_resource(target, conf);
     res.path_local        = resource.first;
     res.path_after        = resource.second;
     res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
@@ -196,15 +198,19 @@ RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &
 }
 
 // ファイルの権限を順番に見ていき、ファイルが存在した時点で、分割する
-RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const RequestTarget &target) const {
+RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const RequestTarget &target,
+                                                                   const config::Config &conf) const {
     HTTP::byte_string resource_path;
     HTTP::byte_string path_info;
-
-    light_string path = target.path;
-    for (size_t i = 0;; i = path.find("/", i)) {
-        light_string cur = path.substr(0, i);
-        if (file::is_file(HTTP::restrfy(cur.str()))) {
-            resource_path = cur.str();
+    const std::string root = conf.get_root(HTTP::restrfy(target.path.str()));
+    // ルートとパスをくっつける
+    HTTP::byte_string full_path = HTTP::Utils::join_path(HTTP::strfy(root), target.path.str());
+    light_string path           = full_path;
+    // ルート部分の末尾から見ていく
+    for (size_t i = root.size();; i = path.find("/", i)) {
+        HTTP::byte_string cur = path.substr(0, i).str();
+        if (file::is_file(HTTP::restrfy(cur))) {
+            resource_path = cur;
             if (i != HTTP::npos) {
                 path_info = path.substr(i, path.size()).str();
             }
@@ -243,14 +249,22 @@ long RequestMatcher::get_client_max_body_size(const RequestTarget &target, const
 HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target, const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.path.str());
 
-    const std::string root           = conf.get_root(path);
-    const std::string resource_path  = root + path;
-    std::vector<std::string> indexes = conf.get_index(path);
+    const std::string root                   = conf.get_root(path);
+    const HTTP::byte_string resource_path_bs = HTTP::Utils::join_path(HTTP::strfy(root), target.path);
+    const std::string resource_path          = HTTP::restrfy(resource_path_bs);
+    if (!file::is_dir(resource_path)) {
+        if (file::is_file(resource_path)) {
+            return resource_path_bs;
+        }
+        return HTTP::strfy("");
+    }
 
+    std::vector<std::string> indexes = conf.get_index(path);
     for (std::vector<std::string>::iterator it = indexes.begin(); it != indexes.end(); ++it) {
-        const std::string &cur = resource_path + *it;
+        const HTTP::byte_string cur_bs = HTTP::Utils::join_path(resource_path_bs, HTTP::strfy(*it));
+        const std::string cur          = HTTP::restrfy(cur_bs);
         if (file::is_file(cur)) {
-            return HTTP::strfy(cur);
+            return cur_bs;
         }
     }
     return HTTP::strfy("");

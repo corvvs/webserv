@@ -268,3 +268,21 @@ TEST(control_header_http, content_type_bounary) {
         EXPECT_EQ(HTTP::strfy(""), ch.boundary.str());
     }
 }
+
+// [Date]
+
+TEST(control_header_http, date_basic_ok) {
+    const char *strs[]
+        = {"Mon, 10 Aug 2022 02:09:46 GMT", "Mon Aug 10 02:09:46 2022", "Monday, 10-Aug-22 02:09:46 GMT", NULL};
+    for (size_t i = 0; strs[i]; ++i) {
+        const HTTP::byte_string item = HTTP::strfy(strs[i]);
+        HeaderHolderHTTP holder;
+        minor_error me;
+        me = holder.parse_header_line(HTTP::strfy("Date: ") + item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::Date ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        EXPECT_EQ(1660097386000, ch.value);
+    }
+}
