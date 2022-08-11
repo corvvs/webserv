@@ -37,8 +37,6 @@ private:
     bool get_is_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
     bool get_is_autoindex(const RequestTarget &target, const config::Config &conf);
 
-    bool is_regular_file(const std::string &path) const;
-
     long get_client_max_body_size(const RequestTarget &target, const config::Config &conf) const;
     redirect_pair get_redirect(const RequestTarget &target, const config::Config &conf) const;
     cgi_resource_pair get_cgi_resource(const RequestTarget &target) const;

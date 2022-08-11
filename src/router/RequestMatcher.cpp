@@ -1,6 +1,7 @@
 #include "RequestMatcher.hpp"
 #include "../communication/RequestHTTP.hpp"
 #include "../config/Config.hpp"
+#include "../utils/File.hpp"
 #include "../utils/HTTPError.hpp"
 #include <sys/stat.h>
 
@@ -187,14 +188,6 @@ bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &c
     return conf.get_exec_cgi(path);
 }
 
-bool RequestMatcher::is_regular_file(const std::string &path) const {
-    struct stat st;
-    if (stat(path.c_str(), &st) < 0) {
-        return false;
-    }
-    return S_ISREG(st.st_mode);
-}
-
 RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &target,
                                                            const config::Config &conf) const {
     const std::string &path                         = HTTP::restrfy(target.path.str());
@@ -210,7 +203,7 @@ RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const Request
     light_string path = target.path;
     for (size_t i = 0;; i = path.find("/", i)) {
         light_string cur = path.substr(0, i);
-        if (is_regular_file(HTTP::restrfy(cur.str()))) {
+        if (file::is_file(HTTP::restrfy(cur.str()))) {
             resource_path = cur.str();
             if (i != HTTP::npos) {
                 path_info = path.substr(i, path.size()).str();
@@ -256,7 +249,7 @@ HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target
 
     for (std::vector<std::string>::iterator it = indexes.begin(); it != indexes.end(); ++it) {
         const std::string &cur = resource_path + *it;
-        if (is_regular_file(cur)) {
+        if (file::is_file(cur)) {
             return HTTP::strfy(cur);
         }
     }

@@ -38,9 +38,9 @@ std::string error_message(const ErrorType &type) {
             return "Permission denied";
         case UNKNOWN:
             return "Invalid file type";
+        default:
+            return "Unknown error";
     }
-    //    コンパイルを通すため
-    return "no reach";
 }
 
 std::string get_directory_name(const std::string &file_path) {
@@ -57,6 +57,46 @@ std::string read(const std::string &path) {
     std::ifstream input_file(path);
     std::string data((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
     return data;
+}
+
+bool is_dir(const std::string &path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        return false;
+    }
+    return S_ISDIR(st.st_mode);
+}
+
+bool is_file(const std::string &path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        return false;
+    }
+    return S_ISREG(st.st_mode);
+}
+
+bool is_readable(const std::string &path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        return false;
+    }
+    return S_ISREG(st.st_mode) && (st.st_mode & S_IRUSR);
+}
+
+bool is_writable(const std::string &path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        return false;
+    }
+    return S_ISREG(st.st_mode) && (st.st_mode & S_IWUSR);
+}
+
+bool is_executable(const std::string &path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        return false;
+    }
+    return S_ISREG(st.st_mode) && (st.st_mode & S_IXUSR);
 }
 
 } // namespace file
