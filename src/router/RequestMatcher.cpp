@@ -42,7 +42,7 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 RequestMatchingResult
 RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf) {
     cgi_resource_pair resource;
-    resource              = get_cgi_resource(target);
+    resource              = get_cgi_resource(target, conf);
     res.path_local        = resource.first;
     res.path_after        = resource.second;
     res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
@@ -203,15 +203,20 @@ RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &
 }
 
 // ファイルの権限を順番に見ていき、ファイルが存在した時点で、分割する
-RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const RequestTarget &target) const {
+RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const RequestTarget &target,
+                                                                   const config::Config &conf) const {
     HTTP::byte_string resource_path;
     HTTP::byte_string path_info;
+    const std::string root = conf.get_root(HTTP::restrfy(target.path.str()));
+    // ルートとパスをくっつける
+    HTTP::byte_string full_path = HTTP::Utils::join_path(HTTP::strfy(root), target.path.str());
+    light_string path           = full_path;
+    // ルート部分の末尾から見ていく
+    for (size_t i = root.size();; i = path.find("/", i)) {
 
-    light_string path = target.path;
-    for (size_t i = 0;; i = path.find("/", i)) {
-        light_string cur = path.substr(0, i);
-        if (is_regular_file(HTTP::restrfy(cur.str()))) {
-            resource_path = cur.str();
+        HTTP::byte_string cur = path.substr(0, i).str();
+        if (is_regular_file(HTTP::restrfy(cur))) {
+            resource_path = cur;
             if (i != HTTP::npos) {
                 path_info = path.substr(i, path.size()).str();
             }
