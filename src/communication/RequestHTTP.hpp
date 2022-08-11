@@ -174,6 +174,7 @@ public:
         HTTP::CH::TE te;
         HTTP::CH::Upgrade upgrade;
         HTTP::CH::Via via;
+        HTTP::CH::Date date;
 
         // いろいろ抽出関数群
 

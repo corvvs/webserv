@@ -139,6 +139,13 @@ struct Via : public IControlHeader {
     minor_error determine(const AHeaderHolder &holder);
 };
 
+struct Date : public IControlHeader {
+    t_time_epoch_ms value;
+    minor_error merror;
+
+    minor_error determine(const AHeaderHolder &holder);
+};
+
 struct Location : public IControlHeader {
     HTTP::byte_string value;
     HTTP::light_string abs_path;
