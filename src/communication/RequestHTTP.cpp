@@ -773,7 +773,7 @@ RequestHTTP::light_string RequestHTTP::freeze() {
     }
     this->ps.is_freezed = true;
     lifetime.deactivate();
-    return light_string(bytebuffer, mid);
+    return light_string(bytebuffer, this->ps.end_of_body);
 }
 
 bool RequestHTTP::should_keep_in_touch() const {

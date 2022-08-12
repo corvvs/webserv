@@ -42,6 +42,30 @@ public:
         Attribute();
     };
 
+    class NetworkBuffer {
+    public:
+        typedef std::list<byte_string> extra_buffer_type;
+
+    private:
+        byte_string read_buffer;
+        extra_buffer_type extra_data_buffer;
+        ssize_t read_size;
+
+    public:
+        NetworkBuffer();
+
+        // ソケットから内部バッファにデータを受信する
+        ssize_t receive(SocketConnected &sock);
+        // 内部バッファの先頭チャンクを取り出す
+        const byte_string &top_front() const;
+        // 内部バッファの先頭チャンクを除去する
+        void pop_front();
+        // 内部バッファの先頭にデータを追加する
+        void push_front(const light_string &data);
+        // 再実行すべきか
+        bool should_redo() const;
+    };
+
 private:
     Attribute attr;
 
@@ -58,10 +82,7 @@ private:
 
     Lifetime lifetime;
 
-    // 余剰データバッファ
-    // あるリクエストが終端以降のデータを持っている場合, それを受け取って保持しておく
-    // 次のリクエストがきたら, 受信データより優先的にこのデータを使ってリクエストを処理する
-    extra_buffer_type extra_data_buffer;
+    NetworkBuffer net_buffer;
 
     void perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
     void perform_receiving(IObserver &observer);
