@@ -47,9 +47,11 @@ public:
         typedef std::list<byte_string> extra_buffer_type;
 
     private:
-        byte_string read_buffer;
-        extra_buffer_type extra_data_buffer;
         ssize_t read_size;
+        // ソケットからのデータが入るバッファ
+        byte_string read_buffer;
+        // 「余ったデータ」が入るバッファ
+        extra_buffer_type extra_data_buffer;
 
     public:
         NetworkBuffer();

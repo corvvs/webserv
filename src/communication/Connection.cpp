@@ -111,6 +111,11 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
                     assert(false);
             }
             if (!rt.is_freezed() && net_buffer.should_redo()) {
+                // - リクエストが凍結されていない
+                // - NetworkBuffer に余ったデータがある
+                // なら, イベントハンドラをもう一度やり直す.
+                // ただし, イベントを Read に切り替える.
+                // (HTTPパイプライン)
                 cat = IObserver::OT_READ;
                 continue;
             }
