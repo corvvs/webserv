@@ -167,7 +167,7 @@ http { \
             return 301 https://42tokyo.jp/; \
 \
             location /42tokyo/not/reach/ { \
-                return 42 \"can not reach\"; \
+                return 420 \"can not reach\"; \
             } \
         } \
     } \
