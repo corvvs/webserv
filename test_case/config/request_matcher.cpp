@@ -108,6 +108,7 @@ TEST_F(request_matcher_test, method_validation) {
 http { \
     server { \
         listen 80; \
+        root ./tests; \
         location /get/ { \
             limit_except GET {} \
         } \
@@ -166,7 +167,7 @@ http { \
             return 301 https://42tokyo.jp/; \
 \
             location /42tokyo/not/reach/ { \
-                return 42 \"can not reach\" \
+                return 42 \"can not reach\"; \
             } \
         } \
     } \
@@ -180,7 +181,7 @@ http { \
         TestParam tp(HTTP::METHOD_GET, "/42tokyo/", HTTP::V_1_1, "localhost", "80");
         EXPECT_NO_THROW({
             const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("/https://42tokyo.jp/"), res.redirect_location);
+            EXPECT_EQ(HTTP::strfy("https://42tokyo.jp/"), res.redirect_location);
             EXPECT_EQ(HTTP::t_status(301), res.status_code);
         });
     }
@@ -189,7 +190,7 @@ http { \
         TestParam tp(HTTP::METHOD_GET, "/42tokyo/not/reach/", HTTP::V_1_1, "localhost", "80");
         EXPECT_NO_THROW({
             const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("/https://42tokyo.jp/"), res.redirect_location);
+            EXPECT_EQ(HTTP::strfy("https://42tokyo.jp/"), res.redirect_location);
             EXPECT_EQ(HTTP::t_status(301), res.status_code);
         });
     }
