@@ -22,6 +22,8 @@ ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock) {
     if (read_size > 0) {
         // read_buffer にデータがあるならそれを待避させる
         extra_data_buffer.push_back(read_buffer);
+        read_size = 0;
+        read_buffer.resize(read_size);
         return extra_data_buffer.front().size();
     }
 
