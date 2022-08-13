@@ -175,7 +175,7 @@ void RoundTrip::respond_error(const http_error &err) {
     DXOUT(err.get_status() << ":" << err.what());
     destroy_response();
     in_error_responding = true;
-    ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err);
+    ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err, true);
     res->start();
     response_ = res;
 }

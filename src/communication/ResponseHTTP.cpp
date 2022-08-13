@@ -10,8 +10,8 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
     , is_error_(false)
     , lifetime(Lifetime::make_response())
     , sent_size(0)
-    , data_consumer_(data_consumer) {
-    VOUT(data_consumer_);
+    , data_consumer_(data_consumer)
+    , should_close_(false) {
     if (headers != NULL) {
         for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
             feed_header(it->first, it->second);
@@ -20,13 +20,14 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
     lifetime.activate();
 }
 
-ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error)
+ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error, bool should_close)
     : version_(version)
     , status_(error.get_status())
     , is_error_(true)
     , lifetime(Lifetime::make_response())
     , sent_size(0)
-    , data_consumer_(NULL) {
+    , data_consumer_(NULL)
+    , should_close_(should_close) {
     lifetime.activate();
     local_datalist.inject("", 0, true);
     local_datalist.determine_sending_mode();
@@ -65,6 +66,9 @@ HTTP::byte_string ResponseHTTP::serialize_former_part() {
 }
 
 void ResponseHTTP::start() {
+    if (should_close_) {
+        feed_header(HeaderHTTP::connection, HTTP::strfy("close"));
+    }
     consumer()->start(serialize_former_part());
 }
 
@@ -118,6 +122,10 @@ bool ResponseHTTP::is_error() const {
 
 bool ResponseHTTP::is_timeout(t_time_epoch_ms now) const {
     return lifetime.is_timeout(now);
+}
+
+bool ResponseHTTP::should_close() const {
+    return should_close_;
 }
 
 IResponseDataConsumer *ResponseHTTP::consumer() {

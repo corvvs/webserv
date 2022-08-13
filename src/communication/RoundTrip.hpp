@@ -75,11 +75,10 @@ public:
     bool is_terminatable() const;
     // predicate: レスポンスを送信中か
     bool is_responding() const;
-
-    // タイムアウトしているかどうか
+    // predicate: タイムアウトしているかどうか
     bool is_timeout(t_time_epoch_ms now) const;
 
-    // predicate: ラウンドトリップがリクエストを持っていないならリクエストを作成する
+    // ラウンドトリップがリクエストを持っていないならリクエストを作成する
     void start_if_needed();
 
     // データを注入する
@@ -95,8 +94,7 @@ public:
     void route(Connection &connection);
     // オリジネーションを開始する
     void originate(IObserver &observer);
-    // リクエストを凍結, つまりデータの注入を受け付けなくする.
-    // 余ったデータを返す
+    // リクエストを凍結, つまりデータの注入を受け付けなくし, 余ったデータを返す.
     light_string freeze_request();
     // 再ルーティングを行う
     void reroute(Connection &connection);

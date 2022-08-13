@@ -778,7 +778,10 @@ RequestHTTP::light_string RequestHTTP::freeze() {
 
 bool RequestHTTP::should_keep_in_touch() const {
     // TODO: 仮実装
-    return false;
+    if (this->rp.connection.close_) {
+        return false;
+    }
+    return true;
 }
 
 RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars() const {

@@ -91,12 +91,11 @@ t_port Connection::get_port() const {
 }
 
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    if (dying) {
-        return;
-    }
-
     try {
         do {
+            if (dying) {
+                return;
+            }
             switch (phase) {
                 case CONNECTION_ESTABLISHED:
                     perform_reaction(observer, cat, epoch);
@@ -104,6 +103,16 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
                         return;
                     }
                     detect_update(observer);
+                    if (!rt.is_freezed() && net_buffer.should_redo()) {
+                        // - リクエストが凍結されていない
+                        // - NetworkBuffer に余ったデータがある
+                        // なら, イベントハンドラをもう一度やり直す.
+                        // ただし, イベントを Read に切り替える.
+                        // (HTTPパイプライン)
+                        DXOUT("REDO");
+                        cat = IObserver::OT_READ;
+                        continue;
+                    }
                     break;
                 case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
                     perform_shutting_down(observer);
@@ -111,15 +120,6 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
                 default:
                     DXOUT("unexpected phase: " << phase);
                     assert(false);
-            }
-            if (!rt.is_freezed() && net_buffer.should_redo()) {
-                // - リクエストが凍結されていない
-                // - NetworkBuffer に余ったデータがある
-                // なら, イベントハンドラをもう一度やり直す.
-                // ただし, イベントを Read に切り替える.
-                // (HTTPパイプライン)
-                cat = IObserver::OT_READ;
-                continue;
             }
             break;
         } while (1);
@@ -167,11 +167,7 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-
     const ssize_t received_size = net_buffer.receive(*sock);
-    if (received_size == 0) {
-        DXOUT("sock closed?");
-    }
     if (received_size <= 0) {
         // なにも受信できなかったか, 受信エラーが起きた場合
         die(observer);
@@ -210,12 +206,12 @@ void Connection::detect_update(IObserver &observer) {
             rt.respond();
             observer.reserve_set(this, IObserver::OT_WRITE);
         } else if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
-            if (rt.req() && rt.req()->should_keep_in_touch()) {
-                DXOUT("KEEP");
-                observer.reserve_unset(this, IObserver::OT_WRITE);
-            } else {
+            if (rt.res() == NULL || rt.res()->should_close()) {
                 DXOUT("CLOSE");
                 shutdown_gracefully(observer);
+            } else {
+                DXOUT("KEEP");
+                observer.reserve_unset(this, IObserver::OT_WRITE);
             }
             rt.wipeout();
         } else {
