@@ -44,7 +44,7 @@ private:
                                             const config::Config &conf,
                                             const HTTP::byte_string &cgi_path) const;
 
-    RequestMatchingResult::CgiResource make_cgi_resource(const RequestTarget &target, const config::Config &conf) const;
+    RequestMatchingResult::CGIResource make_cgi_resource(const RequestTarget &target, const config::Config &conf) const;
     HTTP::byte_string make_resource_path(const RequestTarget &target, const config::Config &conf) const;
 };
 

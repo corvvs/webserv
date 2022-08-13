@@ -26,7 +26,7 @@ struct RequestMatchingResult {
      * cgi_script : /cgi.rb
      * path_info  : /pathinfo
      */
-    struct CgiResource {
+    struct CGIResource {
         HTTP::byte_string root;
         HTTP::byte_string script_name;
         HTTP::byte_string path_info;
@@ -34,7 +34,7 @@ struct RequestMatchingResult {
 
     const RequestTarget *target;
 
-    CgiResource cgi_resource;
+    CGIResource cgi_resource;
 
     // 種別
     ResultType result_type;

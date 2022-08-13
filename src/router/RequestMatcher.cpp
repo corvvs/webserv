@@ -57,14 +57,14 @@ RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &targ
  * cgi_script : /cgi.rb
  * path_info  : /pathinfo
  */
-RequestMatchingResult::CgiResource RequestMatcher::make_cgi_resource(const RequestTarget &target,
+RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const RequestTarget &target,
                                                                      const config::Config &conf) const {
     const std::string root = conf.get_root(HTTP::restrfy(target.path.str()));
     // ルートとパスをくっつける
     const HTTP::byte_string full_path = HTTP::Utils::join_path(HTTP::strfy(root), target.path.str());
     const light_string path           = full_path;
 
-    RequestMatchingResult::CgiResource resource;
+    RequestMatchingResult::CGIResource resource;
     size_t before_idx = root.size();
     for (size_t i = root.size();; i = path.find("/", i)) {
         HTTP::byte_string cur = path.substr(0, i).str();
