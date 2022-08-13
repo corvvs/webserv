@@ -1,6 +1,6 @@
 #include "Context.hpp"
+#include "../utils/File.hpp"
 #include <sys/stat.h>
-
 namespace config {
 
 static cgi_executer_map setup_executer_map();
@@ -35,17 +35,6 @@ ContextLocation::~ContextLocation(void) {}
 ContextLimitExcept::ContextLimitExcept(void) {}
 ContextLimitExcept::~ContextLimitExcept(void) {}
 
-static bool is_executable(const std::string &path) {
-    struct stat sb;
-    if (stat(path.c_str(), &sb) < 0) {
-        return false;
-    }
-    if (S_ISREG(sb.st_mode) && ((sb.st_mode & S_IXUSR))) {
-        return true;
-    }
-    return false;
-}
-
 // 事前に探しておくCGIのエグゼキュータのリスト
 static executer_vector setup_search_executers() {
     executer_vector v;
@@ -72,7 +61,7 @@ static cgi_executer_map setup_executer_map() {
             const std::string path     = HTTP::restrfy(paths[i].str()) + "/" + executer;
 
             // 実行可能な場合、cgiのpathを追加する
-            if (is_executable(path)) {
+            if (file::is_executable(path)) {
                 extension_type extension = search_executers[j].first;
                 executers[extension]     = path;
             }

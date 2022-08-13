@@ -1,6 +1,7 @@
 #include "RequestMatcher.hpp"
 #include "../communication/RequestHTTP.hpp"
 #include "../config/Config.hpp"
+#include "../utils/File.hpp"
 #include "../utils/HTTPError.hpp"
 #include "../utils/LightString.hpp"
 #include "../utils/UtilsString.hpp"
@@ -189,22 +190,6 @@ bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &c
     return conf.get_exec_cgi(path);
 }
 
-bool RequestMatcher::is_regular_file(const std::string &path) const {
-    struct stat st;
-    if (stat(path.c_str(), &st) < 0) {
-        return false;
-    }
-    return S_ISREG(st.st_mode);
-}
-
-bool RequestMatcher::is_directory(const std::string &path) const {
-    struct stat st;
-    if (stat(path.c_str(), &st) < 0) {
-        return false;
-    }
-    return S_ISDIR(st.st_mode);
-}
-
 RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &target,
                                                            const config::Config &conf) const {
     const std::string &path                         = HTTP::restrfy(target.path.str());
@@ -223,9 +208,8 @@ RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const Request
     light_string path           = full_path;
     // ルート部分の末尾から見ていく
     for (size_t i = root.size();; i = path.find("/", i)) {
-
         HTTP::byte_string cur = path.substr(0, i).str();
-        if (is_regular_file(HTTP::restrfy(cur))) {
+        if (file::is_file(HTTP::restrfy(cur))) {
             resource_path = cur;
             if (i != HTTP::npos) {
                 path_info = path.substr(i, path.size()).str();
@@ -268,8 +252,8 @@ HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target
     const std::string root                   = conf.get_root(path);
     const HTTP::byte_string resource_path_bs = HTTP::Utils::join_path(HTTP::strfy(root), target.path);
     const std::string resource_path          = HTTP::restrfy(resource_path_bs);
-    if (!is_directory(resource_path)) {
-        if (is_regular_file(resource_path)) {
+    if (!file::is_dir(resource_path)) {
+        if (file::is_file(resource_path)) {
             return resource_path_bs;
         }
         return HTTP::strfy("");
@@ -279,7 +263,7 @@ HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target
     for (std::vector<std::string>::iterator it = indexes.begin(); it != indexes.end(); ++it) {
         const HTTP::byte_string cur_bs = HTTP::Utils::join_path(resource_path_bs, HTTP::strfy(*it));
         const std::string cur          = HTTP::restrfy(cur_bs);
-        if (is_regular_file(cur)) {
+        if (file::is_file(cur)) {
             return cur_bs;
         }
     }
