@@ -108,7 +108,7 @@ t_port Connection::get_port() const {
 
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     try {
-        do {
+        for (;;) {
             if (dying) {
                 return;
             }
@@ -129,16 +129,16 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
                         cat = IObserver::OT_READ;
                         continue;
                     }
-                    break;
+                    return;
                 case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
                     perform_shutting_down(observer);
-                    break;
+                    return;
                 default:
                     DXOUT("unexpected phase: " << phase);
                     assert(false);
             }
-            break;
-        } while (1);
+            return;
+        }
     } catch (const http_error &err) { // 受信中のHTTPエラー
         DXOUT("error occurred");
         if (phase == CONNECTION_SHUTTING_DOWN || rt.is_responding()) {
@@ -221,7 +221,7 @@ void Connection::detect_update(IObserver &observer) {
         } else if (rt.is_responsive()) { // レスポンス開始
             rt.respond();
             observer.reserve_set(this, IObserver::OT_WRITE);
-        } else if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
+        } else if (rt.is_terminatable()) { // ラウンドトリップが終了できる場合 -> ラウンドトリップ終了
             if (rt.res() == NULL || rt.res()->should_close()) {
                 DXOUT("CLOSE");
                 shutdown_gracefully(observer);
@@ -233,6 +233,8 @@ void Connection::detect_update(IObserver &observer) {
         } else {
             break;
         }
+
+        rt.emit_fatal_error();
     }
 }
 

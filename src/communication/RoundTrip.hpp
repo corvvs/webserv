@@ -106,6 +106,8 @@ public:
 
     // 構成要素全てをdeleteし, 初期状態に戻す.
     void wipeout();
+    // 回復不可能なエラーを抱えているなら例外にして投げる
+    void emit_fatal_error();
 };
 
 #endif

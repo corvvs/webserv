@@ -221,3 +221,11 @@ void RoundTrip::destroy_response() {
     delete response_;
     response_ = NULL;
 }
+
+void RoundTrip::emit_fatal_error() {
+    // レスポンスがすでに存在する状態でリクエストがエラーを抱えているなら,
+    // それを http_error に変えて送出
+    if (response_ != NULL && request_ != NULL && request_->current_error().is_error()) {
+        throw http_error(request_->purge_error());
+    }
+}
