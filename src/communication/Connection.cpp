@@ -3,6 +3,7 @@
 #include "RoundTrip.hpp"
 #include <cassert>
 #define MAX_REQLINE_END 8192
+#define MAX_EXTRA_AMOUNT 1048576
 
 // [[Attribute]]
 
@@ -14,17 +15,19 @@ Connection::Attribute::Attribute() {
 
 // [[NetwotkBuffer]]
 
-Connection::NetworkBuffer::NetworkBuffer() : read_size(0) {
+Connection::NetworkBuffer::NetworkBuffer() : read_size(0), extra_amount(0) {
     read_buffer.resize(MAX_REQLINE_END);
 }
 
 ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock) {
     if (read_size > 0) {
         // read_buffer にデータがあるならそれを待避させる
-        extra_data_buffer.push_back(read_buffer);
+        extra_buffer.push_back(read_buffer);
+        extra_amount += extra_buffer.back().size();
+        check_extra_overflow();
         read_size = 0;
         read_buffer.resize(read_size);
-        return extra_data_buffer.front().size();
+        return extra_buffer.front().size();
     }
 
     read_buffer.resize(MAX_REQLINE_END);
@@ -33,22 +36,26 @@ ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock) {
     if (read_size >= 0) {
         read_buffer.resize(read_size);
     }
-    if (extra_data_buffer.size() > 0) {
-        return extra_data_buffer.front().size();
+    if (extra_buffer.size() > 0) {
+        return extra_buffer.front().size();
     }
     return read_size;
 }
 
 const Connection::byte_string &Connection::NetworkBuffer::top_front() const {
-    if (extra_data_buffer.size() > 0) {
-        return extra_data_buffer.front();
+    if (extra_buffer.size() > 0) {
+        VOUT(extra_buffer.front().size());
+        BVOUT(extra_buffer.front());
+        return extra_buffer.front();
     }
     return read_buffer;
 }
 
 void Connection::NetworkBuffer::pop_front() {
-    if (extra_data_buffer.size() > 0) {
-        extra_data_buffer.pop_front();
+    if (extra_buffer.size() > 0) {
+        extra_amount -= extra_buffer.front().size();
+        extra_buffer.pop_front();
+        VOUT(extra_amount);
     } else {
         read_buffer.resize(0);
         read_size = 0;
@@ -57,12 +64,21 @@ void Connection::NetworkBuffer::pop_front() {
 
 void Connection::NetworkBuffer::push_front(const light_string &data) {
     if (data.size() > 0) {
-        extra_data_buffer.push_front(data.str());
+        extra_buffer.push_front(data.str());
+        extra_amount += extra_buffer.front().size();
+        check_extra_overflow();
     }
 }
 
 bool Connection::NetworkBuffer::should_redo() const {
-    return extra_data_buffer.size() > 0 || read_size > 0;
+    return extra_buffer.size() > 0 || read_size > 0;
+}
+
+void Connection::NetworkBuffer::check_extra_overflow() {
+    VOUT(extra_amount);
+    if (extra_amount > MAX_EXTRA_AMOUNT) {
+        throw http_error("pipeline is full", HTTP::STATUS_PAYLOAD_TOO_LARGE);
+    }
 }
 
 // [[Connection]]
@@ -196,7 +212,7 @@ void Connection::detect_update(IObserver &observer) {
             rt.route(*this);
         } else if (rt.is_freezable()) { // リクエストが凍結可能なら凍結実施
             const light_string extra_data = rt.freeze_request();
-            // 注入したデータのうち余った分を extra_data_buffer に入れる
+            // 注入したデータのうち余った分を extra_buffer に入れる
             net_buffer.push_front(extra_data);
         } else if (rt.is_originatable()) { // オリジネーション開始
             rt.originate(observer);
