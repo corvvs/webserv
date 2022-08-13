@@ -47,7 +47,6 @@ http { \
         EXPECT_NO_THROW({
             const RequestMatchingResult res = rm.request_match(configs[hp], tp);
             EXPECT_EQ(HTTP::strfy("./error_page/404.html"), res.path_local);
-            EXPECT_EQ(HTTP::strfy(""), res.path_after);
         });
     }
 
@@ -56,7 +55,6 @@ http { \
         EXPECT_NO_THROW({
             const RequestMatchingResult res = rm.request_match(configs[hp], tp);
             EXPECT_EQ(HTTP::strfy("./error_page/405.html"), res.path_local);
-            EXPECT_EQ(HTTP::strfy(""), res.path_after);
         });
     }
 
@@ -65,7 +63,6 @@ http { \
         EXPECT_NO_THROW({
             const RequestMatchingResult res = rm.request_match(configs[hp], tp);
             EXPECT_EQ(HTTP::strfy("./error_page/500.html"), res.path_local);
-            EXPECT_EQ(HTTP::strfy(""), res.path_after);
         });
     }
 }
