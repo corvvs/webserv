@@ -22,7 +22,7 @@ public:
 private:
     HTTP::t_version version_;
     HTTP::t_status status_;
-    bool is_error_;
+    minor_error merror;
     Lifetime lifetime;
     // 送信済みマーカー
     size_t sent_size;
@@ -43,8 +43,10 @@ public:
                  HTTP::t_status status,
                  const header_list_type *headers,
                  IResponseDataConsumer *data_consumer);
-    // エラー応答を構築する
-    ResponseHTTP(HTTP::t_version version, http_error error, bool should_close);
+    // unrecovarable エラー応答を構築する
+    ResponseHTTP(HTTP::t_version version, const http_error &error, bool should_close);
+    // recovarable エラー応答を構築する
+    ResponseHTTP(HTTP::t_version version, const minor_error &error, bool should_close);
 
     ~ResponseHTTP();
 
