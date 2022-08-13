@@ -1,5 +1,6 @@
 #include "FilePoster.hpp"
 #include "../event/time.hpp"
+#include "../utils/File.hpp"
 #include <sys/stat.h>
 #include <unistd.h>
 #define WRITE_SIZE 1024
@@ -62,22 +63,18 @@ void FilePoster::post_files() {
 }
 
 void FilePoster::check_target_directory() {
-    struct stat st;
-    errno = 0;
     QVOUT(directory_path_);
-    const int result = stat(directory_path_.c_str(), &st);
-    if (result != 0) {
-        switch (errno) {
-            case ENOENT:
-                throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
-            case EACCES:
-                throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
-            default:
-                throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
-        }
+    errno = 0;
+    if (file::is_dir(directory_path_)) {
+        return;
     }
-    if (!S_ISDIR(st.st_mode)) {
-        throw http_error("not for a directory", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+    switch (errno) {
+        case ENOENT:
+            throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+        case EACCES:
+            throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
+        default:
+            throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
 }
 

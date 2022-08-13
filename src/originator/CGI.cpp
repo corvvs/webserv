@@ -80,29 +80,17 @@ void CGI::inject_socketlike(ISocketLike *socket_like) {
 }
 
 void CGI::check_executable() const {
-    // 存在 -> stat のエラー
-    // 通常ファイルか -> stat S_ISREF
-    // 実行権限 -> stat
-    struct stat st;
-    errno            = 0;
-    const int result = stat(HTTP::restrfy(attr.script_path_).c_str(), &st);
-    if (result != 0) {
-        switch (errno) {
-            case ENOENT:
-                throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
-            case EACCES:
-                throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
-            default:
-                throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
-        }
+    errno = 0;
+    if (file::is_executable(HTTP::restrfy(attr.script_path_))) {
+        return;
     }
-    const bool is_regular_file = S_ISREG(st.st_mode);
-    if (!is_regular_file) {
-        throw http_error("is not normal file", HTTP::STATUS_FORBIDDEN);
-    }
-    const bool is_executable = (st.st_mode & S_IXUSR);
-    if (!is_executable) {
-        throw http_error("is not executable", HTTP::STATUS_FORBIDDEN);
+    switch (errno) {
+        case ENOENT:
+            throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+        case EACCES:
+            throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
+        default:
+            throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
 }
 
