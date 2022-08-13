@@ -4,53 +4,17 @@
 #include "../../src/config/Parser.hpp"
 #include "../../src/router/RequestMatcher.hpp"
 #include "../../src/utils/File.hpp"
+#include "TestParam.hpp"
 #include "gtest/gtest.h"
 #include <iostream>
 #include <vector>
-
-class TestParam : public IRequestMatchingParam {
-private:
-    HTTP::t_method method_;
-    HTTP::t_version version_;
-    HTTP::CH::Host host_;
-    RequestTarget target_;
-
-    HTTP::byte_string path_;
-
-public:
-    TestParam(HTTP::t_method method,
-              const HTTP::char_string &path,
-              HTTP::t_version version,
-              const HTTP::char_string &host,
-              const HTTP::char_string &port)
-        : method_(method), version_(version), path_(HTTP::strfy(path)) {
-        target_    = RequestTarget(path_);
-        host_.host = HTTP::strfy(host);
-        host_.port = HTTP::strfy(port);
-        QVOUT(target_.given);
-        QVOUT(target_.path);
-    }
-
-    const RequestTarget &get_request_target() const {
-        return target_;
-    };
-    HTTP::t_method get_http_method() const {
-        return method_;
-    }
-    HTTP::t_version get_http_version() const {
-        return version_;
-    }
-    const HTTP::CH::Host &get_host() const {
-        return host_;
-    }
-};
 
 namespace {
 class config_original : public testing::Test {
 protected:
     config_original() {}
     virtual ~config_original() {}
-    void SetUpBasedOnStr(const std::string &data) {
+    void setup_based_on_str(const std::string &data) {
         configs = parser.parse(data);
     }
 
@@ -72,7 +36,7 @@ http { \
     } \
 } \
 ";
-    SetUpBasedOnStr(config_data);
+    setup_based_on_str(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
@@ -95,7 +59,7 @@ http { \
     } \
 } \
 ";
-    SetUpBasedOnStr(config_data);
+    setup_based_on_str(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
     EXPECT_EQ(false, conf.get_exec_delete("/"));
@@ -119,7 +83,7 @@ http { \
     } \
 } \
 ";
-    SetUpBasedOnStr(config_data);
+    setup_based_on_str(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
 
@@ -163,7 +127,7 @@ http { \
     } \
 } \
 ";
-    SetUpBasedOnStr(config_data);
+    setup_based_on_str(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
     RequestMatcher rm;
@@ -206,7 +170,7 @@ http { \
     } \
 } \
 ";
-    SetUpBasedOnStr(config_data);
+    setup_based_on_str(config_data);
     const config::host_port_pair hp = std::make_pair("0.0.0.0", 80);
     const config::Config conf       = configs[hp].front();
     RequestMatcher rm;
