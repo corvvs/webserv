@@ -44,29 +44,23 @@ http { \
 
     {
         TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./error_page/404.html"), res.path_local);
-            EXPECT_EQ(HTTP::strfy(""), res.path_after);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./error_page/404.html"), res.path_local);
+        EXPECT_EQ(HTTP::strfy(""), res.path_after);
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "/405.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./error_page/405.html"), res.path_local);
-            EXPECT_EQ(HTTP::strfy(""), res.path_after);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./error_page/405.html"), res.path_local);
+        EXPECT_EQ(HTTP::strfy(""), res.path_after);
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "///500.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./error_page/500.html"), res.path_local);
-            EXPECT_EQ(HTTP::strfy(""), res.path_after);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./error_page/500.html"), res.path_local);
+        EXPECT_EQ(HTTP::strfy(""), res.path_after);
     }
 }
 
@@ -83,23 +77,27 @@ http { \
     const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
 
     {
-        TestParam tp(HTTP::METHOD_GET, "../", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp), http_error);
+        TestParam tp(HTTP::METHOD_GET, "/../", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("invalid url target", HTTP::STATUS_BAD_REQUEST), res.error);
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "/xxx/../../", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp), http_error);
+        RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("invalid url target", HTTP::STATUS_BAD_REQUEST), res.error);
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "/xxx/../xxx/../../", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp), http_error);
+        RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("invalid url target", HTTP::STATUS_BAD_REQUEST), res.error);
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "/xxx/yyy/../../../", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp), http_error);
+        RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("invalid url target", HTTP::STATUS_BAD_REQUEST), res.error);
     }
 }
 
@@ -126,35 +124,63 @@ http { \
     const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
 
     {
-        TestParam tp(HTTP::METHOD_UNKNOWN, "/", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp), http_error);
+        TestParam tp_unknown(HTTP::METHOD_UNKNOWN, "/", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_unknown);
+        EXPECT_EQ(minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED), res.error);
     }
 
     {
         TestParam tp_get(HTTP::METHOD_GET, "/get/", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_get);
+        EXPECT_EQ(minor_error::ok(), res.error);
+    }
+
+    {
         TestParam tp_post(HTTP::METHOD_POST, "/get/", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_post);
+        EXPECT_EQ(minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED), res.error);
+    }
+
+    {
         TestParam tp_delete(HTTP::METHOD_DELETE, "/get/", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW(rm.request_match(configs[hp], tp_get));
-        EXPECT_THROW(rm.request_match(configs[hp], tp_post), http_error);
-        EXPECT_THROW(rm.request_match(configs[hp], tp_delete), http_error);
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_delete);
+        EXPECT_EQ(minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED), res.error);
     }
 
     {
         TestParam tp_get(HTTP::METHOD_GET, "/post/", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_get);
+        EXPECT_EQ(minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED), res.error);
+    }
+
+    {
         TestParam tp_post(HTTP::METHOD_POST, "/post/", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_post);
+        EXPECT_EQ(minor_error::ok(), res.error);
+    }
+
+    {
         TestParam tp_delete(HTTP::METHOD_DELETE, "/post/", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp_get), http_error);
-        EXPECT_NO_THROW(rm.request_match(configs[hp], tp_post));
-        EXPECT_THROW(rm.request_match(configs[hp], tp_delete), http_error);
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_delete);
+        EXPECT_EQ(minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED), res.error);
     }
 
     {
         TestParam tp_get(HTTP::METHOD_GET, "/delete/", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_get);
+        EXPECT_EQ(minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED), res.error);
+    }
+
+    {
         TestParam tp_post(HTTP::METHOD_POST, "/delete/", HTTP::V_1_1, "localhost", "80");
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_post);
+        EXPECT_EQ(minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED), res.error);
+    }
+
+    {
         TestParam tp_delete(HTTP::METHOD_DELETE, "/delete/", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp_get), http_error);
-        EXPECT_THROW(rm.request_match(configs[hp], tp_post), http_error);
-        EXPECT_NO_THROW(rm.request_match(configs[hp], tp_delete));
+        RequestMatchingResult res = rm.request_match(configs[hp], tp_delete);
+        EXPECT_EQ(minor_error::ok(), res.error);
     }
 }
 
@@ -179,20 +205,16 @@ http { \
 
     {
         TestParam tp(HTTP::METHOD_GET, "/42tokyo/", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("https://42tokyo.jp/"), res.redirect_location);
-            EXPECT_EQ(HTTP::t_status(301), res.status_code);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("https://42tokyo.jp/"), res.redirect_location);
+        EXPECT_EQ(HTTP::t_status(301), res.status_code);
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "/42tokyo/not/reach/", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("https://42tokyo.jp/"), res.redirect_location);
-            EXPECT_EQ(HTTP::t_status(301), res.status_code);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("https://42tokyo.jp/"), res.redirect_location);
+        EXPECT_EQ(HTTP::t_status(301), res.status_code);
     }
 }
 

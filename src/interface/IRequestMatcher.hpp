@@ -2,6 +2,7 @@
 #define IREQUESTMATCHER_HPP
 #include "../communication/RequestHTTP.hpp"
 #include "../config/Config.hpp"
+#include "../utils/HTTPError.hpp"
 #include "../utils/LightString.hpp"
 #include "../utils/http.hpp"
 #include <map>
@@ -19,6 +20,8 @@ struct RequestMatchingResult {
         RT_AUTO_INDEX,
         RT_ECHO
     };
+
+    minor_error error;
 
     const RequestTarget *target;
 

@@ -2,6 +2,7 @@
 #define REQUESTMATCHER_HPP
 #include "../config/Config.hpp"
 #include "../interface/IRequestMatcher.hpp"
+#include "../utils/HTTPError.hpp"
 #include "../utils/LightString.hpp"
 
 class RequestMatcher : public IRequestMatcher {
@@ -27,7 +28,7 @@ private:
 
     config::Config get_config(const std::vector<config::Config> &configs, const IRequestMatchingParam &rp);
 
-    void check_routable(const IRequestMatchingParam &rp, const config::Config &conf);
+    minor_error check_routable(const IRequestMatchingParam &rp, const config::Config &conf);
     bool is_valid_scheme(const RequestTarget &target);
     bool is_valid_path(const RequestTarget &target);
     bool is_valid_request_method(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
