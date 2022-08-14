@@ -92,7 +92,7 @@ bool is_valid_return(const std::vector<std::string> &args) {
     std::istringstream iss(args.front());
     long n;
     iss >> n;
-    return 0 <= n && n <= 999;
+    return 100 <= n && n <= 599;
 }
 
 bool is_valid_client_max_body_size(const std::vector<std::string> &args) {

@@ -46,7 +46,8 @@ private:
                                             const config::Config &conf,
                                             const HTTP::byte_string &cgi_path) const;
 
-    HTTP::byte_string make_resource_path(const RequestTarget &target, const config::Config &conf) const;
+    std::pair<HTTP::byte_string, bool> make_resource_path(const RequestTarget &target,
+                                                          const config::Config &conf) const;
 };
 
 #endif
