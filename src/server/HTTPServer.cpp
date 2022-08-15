@@ -8,7 +8,7 @@ RequestMatchingResult MockMatcher::request_match(const std::vector<config::Confi
     (void)configs;
     const RequestTarget &given_target = param.get_request_target();
     RequestMatchingResult result(&given_target);
-    const HTTP::light_string &path  = given_target.path;
+    const HTTP::light_string path   = given_target.dpath();
     HTTP::light_string::size_type i = path.rfind(".rb");
     if (i != HTTP::light_string::npos && i + strlen(".rb") == path.size()) {
         result.result_type = RequestMatchingResult::RT_CGI;
@@ -17,7 +17,7 @@ RequestMatchingResult MockMatcher::request_match(const std::vector<config::Confi
     } else {
         result.result_type = RequestMatchingResult::RT_FILE;
     }
-    result.path_local           = HTTP::strfy(".") + given_target.path.str();
+    result.path_local           = HTTP::strfy(".") + given_target.dpath();
     result.path_cgi_executor    = HTTP::strfy("/usr/bin/ruby");
     result.status_code          = HTTP::STATUS_MOVED_PERMANENTLY;
     result.redirect_location    = HTTP::strfy("/mmmmm");

@@ -68,7 +68,7 @@ public:
     LightString &operator=(const string_class &rhs) {
         base  = &rhs;
         first = 0;
-        last  = rhs.length();
+        last  = rhs.size();
         return *this;
     }
 
