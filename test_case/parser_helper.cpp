@@ -316,7 +316,8 @@ TEST(parser_helper_decode_pct_encoded, invalid_unexpected) {
 }
 
 TEST(parser_helper_decode_pct_encoded, natural_google_search) {
-    const HTTP::byte_string str = HTTP::strfy("https://www.google.com/search?client=firefox-b-d&q=%E3%82%AB%E3%82%BF%E3%83%A9%E3%83%B3%E6%95%B0");
+    const HTTP::byte_string str = HTTP::strfy(
+        "https://www.google.com/search?client=firefox-b-d&q=%E3%82%AB%E3%82%BF%E3%83%A9%E3%83%B3%E6%95%B0");
     const HTTP::byte_string exp = HTTP::strfy("https://www.google.com/search?client=firefox-b-d&q=カタラン数");
     const HTTP::byte_string ans = ParserHelper::decode_pct_encoded(str);
     EXPECT_EQ(exp, ans);
