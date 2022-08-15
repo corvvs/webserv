@@ -59,6 +59,8 @@ struct RequestMatchingResult {
     HTTP::byte_string redirect_location;
 
     long client_max_body_size;
+
+    RequestMatchingResult(const RequestTarget *target);
 };
 class IRequestMatcher {
 public:

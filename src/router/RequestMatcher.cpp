@@ -7,6 +7,8 @@
 #include "../utils/UtilsString.hpp"
 #include <sys/stat.h>
 
+RequestMatchingResult::RequestMatchingResult(const RequestTarget *target_) : target(target_), client_max_body_size(0) {}
+
 RequestMatcher::RequestMatcher() {}
 RequestMatcher::~RequestMatcher() {}
 
@@ -24,8 +26,8 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
     check_routable(rp, conf);
 
-    RequestMatchingResult res;
     const RequestTarget &target = rp.get_request_target();
+    RequestMatchingResult res(&target);
     if (is_redirect(target, conf)) {
         RequestMatcher::redirect_pair pair = get_redirect(target, conf);
         res.status_code                    = pair.first;

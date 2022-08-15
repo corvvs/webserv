@@ -87,8 +87,7 @@ void RoundTrip::route(Connection &connection) {
         originator_          = new ErrorPageGenerator(me, result);
         DXOUT("purged error: " << me);
     } else {
-        const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
-        originator_                        = make_originator(result, *request_);
+        originator_ = make_originator(result, *request_);
         request_->set_max_body_size(result.client_max_body_size);
     }
     originator_->inject_socketlike(&connection);
