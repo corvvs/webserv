@@ -576,3 +576,37 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
     } while (0);
     return std::make_pair(false, 0);
 }
+
+HTTP::byte_string ParserHelper::decode_pct_encoded(const byte_string &str) {
+    return decode_pct_encoded(light_string(str));
+}
+
+HTTP::byte_string ParserHelper::decode_pct_encoded(const light_string &str) {
+
+    byte_string decoded;
+    light_string work = str;
+    for (; work.size() > 0;) {
+        const light_string prefix = work.substr_before("%");
+        if (prefix.size() > 0) {
+            decoded += prefix.str();
+            work = work.substr(prefix.size());
+        } else {
+            assert(work.size() > 0);
+            assert(work[0] == '%');
+            if (work.size() >= 3) {
+                const light_string hex = work.substr(1, 2).substr_while(HTTP::CharFilter::hexdig);
+                if (hex.size() == 2) {
+                    std::pair<bool, unsigned int> res = ParserHelper::xtou(hex);
+                    if (res.first) {
+                        decoded.push_back(res.second);
+                        work = work.substr(3);
+                        continue;
+                    }
+                }
+            }
+            decoded += HTTP::strfy("%");
+            work = work.substr(1);
+        }
+    }
+    return decoded;
+}

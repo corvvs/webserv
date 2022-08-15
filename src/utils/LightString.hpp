@@ -380,6 +380,10 @@ public:
         return size() >= n && substr(0, n) == str;
     }
 
+    bool starts_with(const filter_type &fil, size_type n) const {
+        return size() >= n && substr(0, n).find_first_not_of(fil) == npos;
+    }
+
     bool ends_with(const LightString &str) const {
         size_type n = str.size();
         return size() >= n && substr(size() - n, n) == str;
@@ -393,6 +397,10 @@ public:
     bool ends_with(const T *str) const {
         size_type n = strlen(str);
         return size() >= n && substr(size() - n, n) == str;
+    }
+
+    bool ends_with(const filter_type &fil, size_type n) const {
+        return size() >= n && substr(size() - n, n).find_first_not_of(fil) == npos;
     }
 };
 
