@@ -81,6 +81,4 @@ TEST(LRU_cache_test, erase_test) {
     EXPECT_FALSE(cacher.exists("c"));
 }
 
-TEST(LRU_cache_test, LRU_is_correct) {}
-
 } // namespace
