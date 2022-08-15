@@ -81,10 +81,10 @@ void RoundTrip::route(Connection &connection) {
     assert(request_ != NULL);
     reroute_count += 1;
     const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
-    if (request_->current_error().is_error()) {
+    if (request_->current_error().is_error() || true) {
         // TODO: リクエストがエラーを抱えている場合にエラーレスポンスを作る
         const minor_error me = request_->purge_error();
-        originator_          = new ErrorPageGenerator(me, result);
+        originator_          = new ErrorPageGenerator(me, result.status_page_dict);
         DXOUT("purged error: " << me);
     } else {
         originator_ = make_originator(result, *request_);
@@ -105,7 +105,7 @@ bool RoundTrip::is_originatable() const {
 
 void RoundTrip::originate(IObserver &observer) {
     DXOUT("[originate]");
-    originator_->start_origination(observer);
+    originator_->start_origination(&observer);
 }
 
 bool RoundTrip::is_freezable() const {
@@ -174,17 +174,21 @@ bool RoundTrip::is_timeout(t_time_epoch_ms now) const {
 
 void RoundTrip::respond() {
     DXOUT("[respond]");
-    response_ = originator_->respond(*request_);
+    response_ = originator_->respond(request_);
 }
 
-void RoundTrip::respond_error(const http_error &err) {
+void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
     DXOUT("[respond_error]");
     DXOUT(err.get_status() << ":" << err.what());
     destroy_response();
     in_error_responding = true;
-    ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err, true);
-    res->start();
-    response_ = res;
+
+    destroy_originator();
+    // TODO: ほんとはここで「デフォルトのエラーページdict」があるとよい
+    const RequestMatchingResult::status_dict_type blank_dict;
+    originator_ = new ErrorPageGenerator(err, blank_dict, true);
+    originator_->start_origination(&observer);
+    response_ = originator_->respond(request_);
 }
 
 bool RoundTrip::is_terminatable() const {

@@ -231,7 +231,7 @@ bool AutoIndexer::is_responsive() const {
     return originated_;
 }
 
-void AutoIndexer::start_origination(IObserver &observer) {
+void AutoIndexer::start_origination(IObserver *observer) {
     (void)observer;
     scan_from_directory();
 }
@@ -240,7 +240,7 @@ void AutoIndexer::leave() {
     delete this;
 }
 
-ResponseHTTP *AutoIndexer::respond(const RequestHTTP &request) {
+ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
@@ -256,7 +256,7 @@ ResponseHTTP *AutoIndexer::respond(const RequestHTTP &request) {
     }
     // MIMEタイプ設定
     headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::strfy("text/html")));
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &headers, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }

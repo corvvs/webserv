@@ -19,10 +19,11 @@ protected:
     ResponseDataList response_data;
 
     // ファイルからデータを読み出しておく
-    void read_from_file();
+    minor_error read_from_file();
 
 public:
     FileReader(const RequestMatchingResult &match_result);
+    FileReader(const char_string &path);
     ~FileReader();
 
     virtual void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
@@ -31,9 +32,9 @@ public:
     virtual bool is_reroutable() const;
     virtual bool is_responsive() const;
     virtual bool is_origination_started() const;
-    virtual void start_origination(IObserver &observer);
+    virtual void start_origination(IObserver *observer);
     virtual void leave();
-    virtual ResponseHTTP *respond(const RequestHTTP &request);
+    virtual ResponseHTTP *respond(const RequestHTTP *request);
 };
 
 #endif

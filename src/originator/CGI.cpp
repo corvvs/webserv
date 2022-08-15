@@ -94,7 +94,7 @@ void CGI::check_executable() const {
     }
 }
 
-void CGI::start_origination(IObserver &observer) {
+void CGI::start_origination(IObserver *observer) {
     check_executable();
     set_content(attr.configuration_provider_.get_body());
 
@@ -148,12 +148,12 @@ void CGI::start_origination(IObserver &observer) {
     attr.cgi_pid = pid;
     attr.sock    = socks.first;
     close(socks.second);
-    attr.observer = &observer;
+    attr.observer = observer;
     DXOUT("START OBSERVATION");
-    observer.reserve_hold(this);
+    observer->reserve_hold(this);
     DXOUT("< START OBSERVATION");
-    observer.reserve_set(this, IObserver::OT_READ);
-    observer.reserve_set(this, IObserver::OT_WRITE);
+    observer->reserve_set(this, IObserver::OT_READ);
+    observer->reserve_set(this, IObserver::OT_WRITE);
     status.is_started = true;
     lifetime.activate();
 }
@@ -515,9 +515,9 @@ void CGI::after_injection(bool is_disconnected) {
                     status.is_responsive = true;
                 }
                 status.is_complete = true;
-                VOUT(ps.start_of_body);
-                VOUT(ps.end_of_body);
-                BVOUT(bytebuffer);
+                // VOUT(ps.start_of_body);
+                // VOUT(ps.end_of_body);
+                // BVOUT(bytebuffer);
                 return;
             }
 
@@ -647,7 +647,7 @@ size_t CGI::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP &request) {
+ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
@@ -706,10 +706,10 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
                 break;
         }
     }
-    ResponseHTTP res(request.get_http_version(), response_status, &headers, &status.response_data);
+    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 
     // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, NULL);
+    ResponseHTTP *r = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, NULL, false);
     ResponseHTTP::swap(res, *r);
     r->start();
     return r;

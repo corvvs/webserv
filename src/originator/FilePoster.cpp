@@ -218,7 +218,7 @@ bool FilePoster::is_responsive() const {
     return originated_;
 }
 
-void FilePoster::start_origination(IObserver &observer) {
+void FilePoster::start_origination(IObserver *observer) {
     (void)observer;
     post_files();
 }
@@ -227,9 +227,9 @@ void FilePoster::leave() {
     delete this;
 }
 
-ResponseHTTP *FilePoster::respond(const RequestHTTP &request) {
+ResponseHTTP *FilePoster::respond(const RequestHTTP *request) {
     response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, false);
     res->start();
     return res;
 }

@@ -146,7 +146,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
             shutdown_gracefully(observer);
         } else {
             // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
-            rt.respond_error(err);
+            rt.respond_error(observer, err);
             observer.reserve_set(this, IObserver::OT_WRITE);
         }
     }

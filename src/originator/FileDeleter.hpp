@@ -30,9 +30,9 @@ public:
     bool is_reroutable() const;
     bool is_responsive() const;
     bool is_origination_started() const;
-    void start_origination(IObserver &observer);
+    void start_origination(IObserver *observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    ResponseHTTP *respond(const RequestHTTP *request);
 };
 
 #endif

@@ -40,7 +40,7 @@ void FileWriter::write_to_file() {
         written_size = write(fd, &content_to_write_[write_head], write_max);
         if (written_size < 0) {
             close(fd);
-            throw http_error("read error", HTTP::STATUS_FORBIDDEN);
+            throw http_error("write error", HTTP::STATUS_FORBIDDEN);
         }
         write_head += written_size;
         if (written_size == 0) {
@@ -75,7 +75,7 @@ bool FileWriter::is_responsive() const {
     return originated_;
 }
 
-void FileWriter::start_origination(IObserver &observer) {
+void FileWriter::start_origination(IObserver *observer) {
     (void)observer;
     write_to_file();
 }
@@ -84,9 +84,9 @@ void FileWriter::leave() {
     delete this;
 }
 
-ResponseHTTP *FileWriter::respond(const RequestHTTP &request) {
+ResponseHTTP *FileWriter::respond(const RequestHTTP *request) {
     response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, false);
     res->start();
     return res;
 }

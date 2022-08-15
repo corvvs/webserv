@@ -174,9 +174,9 @@ public:
     bool is_reroutable() const;
     bool is_responsive() const;
     bool is_origination_started() const;
-    void start_origination(IObserver &observer);
+    void start_origination(IObserver *observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    ResponseHTTP *respond(const RequestHTTP *request);
     bool is_timeout(t_time_epoch_ms now) const;
 
     // 内部バッファにバイト列を追加する
