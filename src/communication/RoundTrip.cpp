@@ -81,7 +81,7 @@ void RoundTrip::route(Connection &connection) {
     assert(request_ != NULL);
     reroute_count += 1;
     const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
-    if (request_->current_error().is_error() || true) {
+    if (request_->current_error().is_error()) {
         // TODO: リクエストがエラーを抱えている場合にエラーレスポンスを作る
         const minor_error me = request_->purge_error();
         originator_          = new ErrorPageGenerator(me, result.status_page_dict);
