@@ -37,19 +37,10 @@ void RoundTrip::start_if_needed() {
     lifetime.activate();
 }
 
-bool RoundTrip::inject_data(const u8t *received_buffer, ssize_t received_size, extra_buffer_type &extra_buffer) {
-    if (received_buffer != NULL) {
-        start_if_needed();
-        request_->inject_bytestring(received_buffer, received_buffer + received_size);
-        return received_size == 0;
-    } else {
-        assert(extra_buffer.size() > 0);
-        const extra_buffer_type::size_type n = std::min(extra_buffer.size(), (extra_buffer_type::size_type)1024);
-        bool is_disconnected                 = (extra_buffer.size() == n);
-        request_->inject_bytestring(extra_buffer.begin(), extra_buffer.begin() + n);
-        extra_buffer.erase(extra_buffer.begin(), extra_buffer.begin() + n);
-        return is_disconnected;
-    }
+bool RoundTrip::inject_data(const char *received_buffer, ssize_t received_size) {
+    start_if_needed();
+    request_->inject_bytestring(received_buffer, received_buffer + received_size);
+    return received_size == 0;
 }
 
 bool RoundTrip::is_routable() const {
@@ -90,8 +81,16 @@ void RoundTrip::route(Connection &connection) {
     assert(request_ != NULL);
     reroute_count += 1;
     const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
-    originator_                        = make_originator(result, *request_);
-    request_->set_max_body_size(result.client_max_body_size);
+    if (request_->current_error().is_error()) {
+        // TODO: リクエストがエラーを抱えている場合にエラーレスポンスを作る
+        const minor_error me = request_->purge_error();
+        originator_          = new ErrorPageGenerator(me, result);
+        DXOUT("purged error: " << me);
+    } else {
+        const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
+        originator_                        = make_originator(result, *request_);
+        request_->set_max_body_size(result.client_max_body_size);
+    }
     originator_->inject_socketlike(&connection);
 }
 
@@ -184,7 +183,7 @@ void RoundTrip::respond_error(const http_error &err) {
     DXOUT(err.get_status() << ":" << err.what());
     destroy_response();
     in_error_responding = true;
-    ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err);
+    ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err, true);
     res->start();
     response_ = res;
 }
@@ -221,4 +220,12 @@ void RoundTrip::destroy_originator() {
 void RoundTrip::destroy_response() {
     delete response_;
     response_ = NULL;
+}
+
+void RoundTrip::emit_fatal_error() {
+    // レスポンスがすでに存在する状態でリクエストがエラーを抱えているなら,
+    // それを http_error に変えて送出
+    if (response_ != NULL && request_ != NULL && request_->current_error().is_error()) {
+        throw http_error(request_->purge_error());
+    }
 }

@@ -75,11 +75,10 @@ public:
     bool is_terminatable() const;
     // predicate: レスポンスを送信中か
     bool is_responding() const;
-
-    // タイムアウトしているかどうか
+    // predicate: タイムアウトしているかどうか
     bool is_timeout(t_time_epoch_ms now) const;
 
-    // predicate: ラウンドトリップがリクエストを持っていないならリクエストを作成する
+    // ラウンドトリップがリクエストを持っていないならリクエストを作成する
     void start_if_needed();
 
     // データを注入する
@@ -87,7 +86,7 @@ public:
     // そうでないなら extra_buffer の先頭から一定量が注入される.
     // (この時, extra_buffer が空であってはならない)
     // 接続が閉じたとみられるかどうかを返す
-    bool inject_data(const u8t *received_buffer, ssize_t received_size, extra_buffer_type &extra_buffer);
+    bool inject_data(const char *received_buffer, ssize_t received_size);
 
     void notify_originator(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
 
@@ -95,8 +94,7 @@ public:
     void route(Connection &connection);
     // オリジネーションを開始する
     void originate(IObserver &observer);
-    // リクエストを凍結, つまりデータの注入を受け付けなくする.
-    // 余ったデータを返す
+    // リクエストを凍結, つまりデータの注入を受け付けなくし, 余ったデータを返す.
     light_string freeze_request();
     // 再ルーティングを行う
     void reroute(Connection &connection);
@@ -108,6 +106,8 @@ public:
 
     // 構成要素全てをdeleteし, 初期状態に戻す.
     void wipeout();
+    // 回復不可能なエラーを抱えているなら例外にして投げる
+    void emit_fatal_error();
 };
 
 #endif

@@ -90,9 +90,9 @@ public:
         if (!base || first == last) {
             return HTTP::strfy("");
         }
-        // QVOUT(*base);
-        // VOUT(first);
-        // VOUT(last);
+        if (first == 0 && last == base->size()) {
+            return *base;
+        }
         return string_class(base->begin() + first, base->begin() + last);
     }
 

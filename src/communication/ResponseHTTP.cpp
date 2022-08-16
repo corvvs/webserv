@@ -7,11 +7,10 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
                            IResponseDataConsumer *data_consumer)
     : version_(version)
     , status_(status)
-    , is_error_(false)
     , lifetime(Lifetime::make_response())
     , sent_size(0)
-    , data_consumer_(data_consumer) {
-    VOUT(data_consumer_);
+    , data_consumer_(data_consumer)
+    , should_close_(false) {
     if (headers != NULL) {
         for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
             feed_header(it->first, it->second);
@@ -20,13 +19,27 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
     lifetime.activate();
 }
 
-ResponseHTTP::ResponseHTTP(HTTP::t_version version, http_error error)
+ResponseHTTP::ResponseHTTP(HTTP::t_version version, const http_error &error, bool should_close)
     : version_(version)
     , status_(error.get_status())
-    , is_error_(true)
+    , merror(minor_error(error.what(), error.get_status()))
     , lifetime(Lifetime::make_response())
     , sent_size(0)
-    , data_consumer_(NULL) {
+    , data_consumer_(NULL)
+    , should_close_(should_close) {
+    lifetime.activate();
+    local_datalist.inject("", 0, true);
+    local_datalist.determine_sending_mode();
+}
+
+ResponseHTTP::ResponseHTTP(HTTP::t_version version, const minor_error &error, bool should_close)
+    : version_(version)
+    , status_(error.status_code())
+    , merror(error)
+    , lifetime(Lifetime::make_response())
+    , sent_size(0)
+    , data_consumer_(NULL)
+    , should_close_(should_close) {
     lifetime.activate();
     local_datalist.inject("", 0, true);
     local_datalist.determine_sending_mode();
@@ -43,7 +56,7 @@ void ResponseHTTP::set_status(HTTP::t_status status) {
 }
 
 void ResponseHTTP::feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val) {
-    if (header_dict.find(key) != header_dict.end() && !is_error_) {
+    if (header_dict.find(key) != header_dict.end() && !is_error()) {
         throw std::runtime_error("Invalid Response: Duplicate header");
     }
     header_dict[key] = val;
@@ -65,6 +78,9 @@ HTTP::byte_string ResponseHTTP::serialize_former_part() {
 }
 
 void ResponseHTTP::start() {
+    if (should_close_) {
+        feed_header(HeaderHTTP::connection, HTTP::strfy("close"));
+    }
     consumer()->start(serialize_former_part());
 }
 
@@ -102,7 +118,7 @@ bool ResponseHTTP::is_complete() const {
 void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) {
     std::swap(lhs.version_, rhs.version_);
     std::swap(lhs.status_, rhs.status_);
-    std::swap(lhs.is_error_, rhs.is_error_);
+    std::swap(lhs.merror, rhs.merror);
     std::swap(lhs.sent_size, rhs.sent_size);
     std::swap(lhs.header_list, rhs.header_list);
     std::swap(lhs.header_dict, rhs.header_dict);
@@ -113,11 +129,15 @@ void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) {
 }
 
 bool ResponseHTTP::is_error() const {
-    return is_error_;
+    return merror.is_error();
 }
 
 bool ResponseHTTP::is_timeout(t_time_epoch_ms now) const {
     return lifetime.is_timeout(now);
+}
+
+bool ResponseHTTP::should_close() const {
+    return should_close_;
 }
 
 IResponseDataConsumer *ResponseHTTP::consumer() {

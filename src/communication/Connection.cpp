@@ -3,6 +3,7 @@
 #include "RoundTrip.hpp"
 #include <cassert>
 #define MAX_REQLINE_END 8192
+#define MAX_EXTRA_AMOUNT 1048576
 
 // [[Attribute]]
 
@@ -10,6 +11,74 @@ Connection::Attribute::Attribute() {
     http_version  = HTTP::DEFAULT_HTTP_VERSION;
     is_persistent = true;
     timeout       = 60 * 1000;
+}
+
+// [[NetwotkBuffer]]
+
+Connection::NetworkBuffer::NetworkBuffer() : read_size(0), extra_amount(0) {
+    read_buffer.resize(MAX_REQLINE_END);
+}
+
+ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock) {
+    if (read_size > 0) {
+        // read_buffer にデータがあるならそれを待避させる
+        extra_buffer.push_back(read_buffer);
+        extra_amount += extra_buffer.back().size();
+        check_extra_overflow();
+        read_size = 0;
+        read_buffer.resize(read_size);
+        return extra_buffer.front().size();
+    }
+
+    read_buffer.resize(MAX_REQLINE_END);
+    char *rb  = &read_buffer.front();
+    read_size = sock.receive(rb, MAX_REQLINE_END, 0);
+    if (read_size >= 0) {
+        read_buffer.resize(read_size);
+    }
+    if (extra_buffer.size() > 0) {
+        return extra_buffer.front().size();
+    }
+    return read_size;
+}
+
+const Connection::byte_string &Connection::NetworkBuffer::top_front() const {
+    if (extra_buffer.size() > 0) {
+        VOUT(extra_buffer.front().size());
+        BVOUT(extra_buffer.front());
+        return extra_buffer.front();
+    }
+    return read_buffer;
+}
+
+void Connection::NetworkBuffer::pop_front() {
+    if (extra_buffer.size() > 0) {
+        extra_amount -= extra_buffer.front().size();
+        extra_buffer.pop_front();
+        VOUT(extra_amount);
+    } else {
+        read_buffer.resize(0);
+        read_size = 0;
+    }
+}
+
+void Connection::NetworkBuffer::push_front(const light_string &data) {
+    if (data.size() > 0) {
+        extra_buffer.push_front(data.str());
+        extra_amount += extra_buffer.front().size();
+        check_extra_overflow();
+    }
+}
+
+bool Connection::NetworkBuffer::should_redo() const {
+    return extra_buffer.size() > 0 || read_size > 0;
+}
+
+void Connection::NetworkBuffer::check_extra_overflow() {
+    VOUT(extra_amount);
+    if (extra_amount > MAX_EXTRA_AMOUNT) {
+        throw http_error("pipeline is full", HTTP::STATUS_PAYLOAD_TOO_LARGE);
+    }
 }
 
 // [[Connection]]
@@ -38,38 +107,45 @@ t_port Connection::get_port() const {
 }
 
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    if (dying) {
-        return;
-    }
-    // VOUT(phase);
-    // VOUT(cat);
-    // VOUT(get_fd());
-    // VOUT(get_port());
     try {
-        switch (phase) {
-            case CONNECTION_ESTABLISHED:
-                perform_reaction(observer, cat, epoch);
-                if (cat == IObserver::OT_TIMEOUT) {
+        for (;;) {
+            if (dying) {
+                return;
+            }
+            switch (phase) {
+                case CONNECTION_ESTABLISHED:
+                    perform_reaction(observer, cat, epoch);
+                    if (cat == IObserver::OT_TIMEOUT) {
+                        return;
+                    }
+                    detect_update(observer);
+                    if (!rt.is_freezed() && net_buffer.should_redo()) {
+                        // - リクエストが凍結されていない
+                        // - NetworkBuffer に余ったデータがある
+                        // なら, イベントハンドラをもう一度やり直す.
+                        // ただし, イベントを Read に切り替える.
+                        // (HTTPパイプライン)
+                        DXOUT("REDO");
+                        cat = IObserver::OT_READ;
+                        continue;
+                    }
                     return;
-                }
-                detect_update(observer);
-                break;
-            case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
-                perform_shutting_down(observer);
-                break;
-            default:
-                DXOUT("unexpected phase: " << phase);
-                assert(false);
+                case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
+                    perform_shutting_down(observer);
+                    return;
+                default:
+                    DXOUT("unexpected phase: " << phase);
+                    assert(false);
+            }
+            return;
         }
     } catch (const http_error &err) { // 受信中のHTTPエラー
         DXOUT("error occurred");
         if (phase == CONNECTION_SHUTTING_DOWN || rt.is_responding()) {
-            // レスポンス送信中のHTTPエラー
-            // -> 全てを諦めて終了
+            // レスポンス送信中のHTTPエラー -> 全てを諦めて終了
             shutdown_gracefully(observer);
         } else {
-            // レスポンス送信前のHTTPmakeエラー
-            // -> エラーレスポンス送信開始
+            // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
             rt.respond_error(err);
             observer.reserve_set(this, IObserver::OT_WRITE);
         }
@@ -107,20 +183,11 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-    u8t buf[MAX_REQLINE_END];
-    const ssize_t received_size = sock->receive(&buf, MAX_REQLINE_END, 0);
-    if (received_size == 0) {
-        DXOUT("sock closed?");
-    }
+    const ssize_t received_size = net_buffer.receive(*sock);
     if (received_size <= 0) {
         // なにも受信できなかったか, 受信エラーが起きた場合
         die(observer);
         return;
-    }
-    if (rt.is_freezed()) {
-        // インバウンド閉鎖中
-        // -> 受信したデータを extra_data_buffer 末尾に追加する
-        extra_data_buffer.insert(extra_data_buffer.end(), buf, buf + received_size);
     }
 
     // データ注入
@@ -129,7 +196,9 @@ void Connection::perform_receiving(IObserver &observer) {
     if (!rt.is_freezed()) {
         rt.start_if_needed();
         lifetime.activate();
-        bool is_disconnected = rt.inject_data(buf, received_size, extra_data_buffer);
+        const light_string buf = net_buffer.top_front();
+        bool is_disconnected   = rt.inject_data(&buf[0], buf.size());
+        net_buffer.pop_front();
         rt.req()->after_injection(is_disconnected);
         rt.req()->check_size_limitation();
     }
@@ -143,7 +212,8 @@ void Connection::detect_update(IObserver &observer) {
             rt.route(*this);
         } else if (rt.is_freezable()) { // リクエストが凍結可能なら凍結実施
             const light_string extra_data = rt.freeze_request();
-            extra_data_buffer.insert(extra_data_buffer.begin(), extra_data.begin(), extra_data.end());
+            // 注入したデータのうち余った分を extra_buffer に入れる
+            net_buffer.push_front(extra_data);
         } else if (rt.is_originatable()) { // オリジネーション開始
             rt.originate(observer);
         } else if (rt.is_reroutable()) { // 再ルーティング
@@ -151,18 +221,20 @@ void Connection::detect_update(IObserver &observer) {
         } else if (rt.is_responsive()) { // レスポンス開始
             rt.respond();
             observer.reserve_set(this, IObserver::OT_WRITE);
-        } else if (rt.is_terminatable()) { // レスポンスを終了できる場合 -> ラウンドトリップ終了
-            rt.wipeout();
-            if (rt.req()->should_keep_in_touch()) {
-                DXOUT("KEEP");
-                observer.reserve_unset(this, IObserver::OT_WRITE);
-            } else {
+        } else if (rt.is_terminatable()) { // ラウンドトリップが終了できる場合 -> ラウンドトリップ終了
+            if (rt.res() == NULL || rt.res()->should_close()) {
                 DXOUT("CLOSE");
                 shutdown_gracefully(observer);
+            } else {
+                DXOUT("KEEP");
+                observer.reserve_unset(this, IObserver::OT_WRITE);
             }
+            rt.wipeout();
         } else {
             break;
         }
+
+        rt.emit_fatal_error();
     }
 }
 
