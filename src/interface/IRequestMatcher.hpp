@@ -2,6 +2,7 @@
 #define IREQUESTMATCHER_HPP
 #include "../communication/RequestHTTP.hpp"
 #include "../config/Config.hpp"
+#include "../utils/HTTPError.hpp"
 #include "../utils/LightString.hpp"
 #include "../utils/http.hpp"
 #include <map>
@@ -20,7 +21,22 @@ struct RequestMatchingResult {
         RT_ECHO
     };
 
+    minor_error error;
+    /**
+     * リクエスト: `/cgi-bin/cgi.rb/pathinfo`
+     * root       : /cgi-bin
+     * cgi_script : /cgi.rb
+     * path_info  : /pathinfo
+     */
+    struct CGIResource {
+        HTTP::byte_string root;
+        HTTP::byte_string script_name;
+        HTTP::byte_string path_info;
+    };
+
     const RequestTarget *target;
+
+    CGIResource cgi_resource;
 
     // 種別
     ResultType result_type;
@@ -29,12 +45,7 @@ struct RequestMatchingResult {
     bool is_executable;
 
     // リクエストターゲットにマッチしたローカルファイルのパス
-    // CGIでいう`SCRIPT_NAME`に相当
     HTTP::byte_string path_local;
-
-    // リクエストターゲットのうちファイルパスにマッチするパートより後の部分
-    // CGIでいう`PATH_INFO`に相当
-    HTTP::byte_string path_after;
 
     // リクエスト先がCGIである場合、かつエグゼキュータが特定できた場合、エグゼキュータのパスが入る。
     HTTP::byte_string path_cgi_executor;

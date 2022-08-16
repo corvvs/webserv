@@ -3,7 +3,9 @@
 
 bool HTTP::Validator::is_valid_header_host(const light_string &str) {
     // host = uri-host [ ":" port ]
-
+    if (str.size() == 0) {
+        return false;
+    }
     const light_string::size_type ket = str.find_last_of("]");
     const light_string port_part      = (ket == npos) ? str : str.substr(ket + 1);
     light_string::size_type sep       = port_part.find_last_of(":");

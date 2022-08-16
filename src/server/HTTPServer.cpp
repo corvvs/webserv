@@ -18,7 +18,6 @@ RequestMatchingResult MockMatcher::request_match(const std::vector<config::Confi
     }
     result.target               = &param.get_request_target();
     result.path_local           = HTTP::strfy(".") + param.get_request_target().path.str();
-    result.path_after           = HTTP::strfy("");
     result.path_cgi_executor    = HTTP::strfy("/usr/bin/ruby");
     result.status_code          = HTTP::STATUS_MOVED_PERMANENTLY;
     result.redirect_location    = HTTP::strfy("/mmmmm");
