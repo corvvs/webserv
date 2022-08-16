@@ -632,7 +632,10 @@ void RequestHTTP::RoutingParameters::determine_body_size() {
         // expected message body length in octets. If the sender closes the connection or the recipient times out before
         // the indicated number of octets are received, the recipient MUST consider the message to be incomplete and
         // close the connection.
-        if (content_length.merror.is_ok() && !content_length.empty()) {
+        if (content_length.merror.is_error()) {
+            throw http_error("multiple content-length", HTTP::STATUS_BAD_REQUEST);
+        }
+        if (!content_length.empty()) {
             body_size       = content_length.value;
             is_body_chunked = false;
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
@@ -773,12 +776,15 @@ RequestHTTP::light_string RequestHTTP::freeze() {
     }
     this->ps.is_freezed = true;
     lifetime.deactivate();
-    return light_string(bytebuffer, mid);
+    return light_string(bytebuffer, this->ps.end_of_body);
 }
 
 bool RequestHTTP::should_keep_in_touch() const {
     // TODO: 仮実装
-    return false;
+    if (this->rp.connection.close_) {
+        return false;
+    }
+    return true;
 }
 
 RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars() const {
@@ -787,4 +793,17 @@ RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars
 
 const IRequestMatchingParam &RequestHTTP::get_request_matching_param() const {
     return rp;
+}
+
+minor_error RequestHTTP::purge_error() {
+    if (ps.merror.is_ok()) {
+        return ps.merror;
+    }
+    minor_error to_purge = ps.merror;
+    ps.merror            = minor_error::ok();
+    return to_purge;
+}
+
+const minor_error &RequestHTTP::current_error() const {
+    return ps.merror;
 }
