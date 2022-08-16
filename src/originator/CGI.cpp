@@ -43,6 +43,7 @@ const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
 const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
 const CGI::byte_string CGI::META_PATH_INFO         = HTTP::strfy("PATH_INFO");
 const CGI::byte_string CGI::META_SCRIPT_NAME       = HTTP::strfy("SCRIPT_NAME");
+const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
     : attr(Attribute(match_result, request))
@@ -60,7 +61,8 @@ CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvi
     } else {
         metavar_[META_SCRIPT_NAME] = match_result.cgi_resource.script_name;
     }
-    metavar_[META_PATH_INFO] = match_result.cgi_resource.path_info;
+    metavar_[META_PATH_INFO]    = match_result.cgi_resource.path_info;
+    metavar_[META_QUERY_STRING] = match_result.target->query.str();
 }
 
 CGI::~CGI() {
