@@ -62,8 +62,8 @@ IOriginator *make_originator(const RequestMatchingResult &result, const RequestH
             return new CGI(result, request);
         case RequestMatchingResult::RT_FILE_DELETE:
             return new FileDeleter(result);
-        case RequestMatchingResult::RT_FILE_PUT:
-            return new FileWriter(result, request.get_plain_message());
+        case RequestMatchingResult::RT_FILE_POST:
+            return new FilePoster(result, request);
         case RequestMatchingResult::RT_AUTO_INDEX:
             return new AutoIndexer(result);
         case RequestMatchingResult::RT_EXTERNAL_REDIRECTION:

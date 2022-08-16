@@ -98,25 +98,22 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const RequestTarget &target,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
-    std::pair<HTTP::byte_string, bool> path = make_resource_path(target, conf);
-    if (path.first.empty()) {
+    std::pair<HTTP::byte_string, bool> path_isdir = make_resource_path(target, conf);
+    if (path_isdir.first.empty()) {
         throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
     }
-    res.path_local  = path.first;
+    res.path_local  = path_isdir.first;
     res.result_type = RequestMatchingResult::RT_FILE;
-    if (path.second) {
-        if (get_is_autoindex(target, conf)) {
+    if (path_isdir.second) {
+        if (get_is_executable(target, method, conf) && method == HTTP::METHOD_POST) {
+            res.result_type = RequestMatchingResult::RT_FILE_POST;
+        } else if (get_is_autoindex(target, conf)) {
             res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
-        } else {
-            throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
         }
     } else if (get_is_executable(target, method, conf)) {
         switch (method) {
             case HTTP::METHOD_DELETE:
                 res.result_type = RequestMatchingResult::RT_FILE_DELETE;
-                break;
-            case HTTP::METHOD_POST:
-                res.result_type = RequestMatchingResult::RT_FILE_POST;
                 break;
             case HTTP::METHOD_PUT:
                 res.result_type = RequestMatchingResult::RT_FILE_PUT;
@@ -124,7 +121,10 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
             default:
                 break;
         }
+    } else {
+        throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
     }
+    VOUT(res.result_type);
     return res;
 }
 
