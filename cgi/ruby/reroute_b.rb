@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
 $stdout.puts [
-  "location: /tests/ok.txt",
+  "location: /cgi/ruby/reroute_a.rb",
   "",
 ]

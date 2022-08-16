@@ -416,6 +416,8 @@ bool CGI::is_reroutable() const {
 
 bool CGI::is_responsive() const {
     // レスポンス可能であり, CGIレスポンスタイプが確定していてローカルリダイレクトでない
+    VOUT(status.is_responsive);
+    VOUT(rp.get_response_type());
     return status.is_responsive && rp.get_response_type() != CGIRES_UNKNOWN
            && rp.get_response_type() != CGIRES_REDIRECT_LOCAL;
 }
@@ -676,6 +678,7 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     HTTP::t_status response_status         = HTTP::STATUS_OK;
     VOUT(response_type);
     VOUT(rp.status.code);
+    ResponseHTTP::header_list_type headers;
     switch (response_type) {
         case CGIRES_DOCUMENT:
             // ドキュメント応答
@@ -688,16 +691,17 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
         case CGIRES_REDIRECT_CLIENT:
             // クライアントリダイレクト
             response_status = HTTP::STATUS_FOUND;
+            headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
             break;
         case CGIRES_REDIRECT_CLIENT_DOCUMENT:
             // クライアントリダイレクト ドキュメント付き
             response_status = (HTTP::t_status)rp.status.code;
+            headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
             break;
         default:
             assert(false);
     }
 
-    ResponseHTTP::header_list_type headers;
     // [伝送に関する決め事]
     // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
     // それはそうとして, chunkedで送るか, そうでないかを決める
@@ -715,17 +719,17 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
                 headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
             }
         }
-        switch (sm) {
-            case ResponseDataList::SM_CHUNKED:
-                headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
-                break;
-            case ResponseDataList::SM_NOT_CHUNKED:
-                headers.push_back(std::make_pair(HeaderHTTP::content_length,
-                                                 ParserHelper::utos(status.response_data.current_total_size(), 10)));
-                break;
-            default:
-                break;
-        }
+    }
+    switch (sm) {
+        case ResponseDataList::SM_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+            break;
+        case ResponseDataList::SM_NOT_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::content_length,
+                                             ParserHelper::utos(status.response_data.current_total_size(), 10)));
+            break;
+        default:
+            break;
     }
     ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 
