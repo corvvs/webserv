@@ -44,23 +44,26 @@ http { \
 
     {
         TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "localhost", "80");
-        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-        EXPECT_EQ(HTTP::strfy("./error_page/404.html"), res.path_local);
-        EXPECT_EQ(HTTP::strfy(""), res.path_after);
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_EQ(HTTP::strfy("./error_page/404.html"), res.path_local);
+        });
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "/405.html", HTTP::V_1_1, "localhost", "80");
-        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-        EXPECT_EQ(HTTP::strfy("./error_page/405.html"), res.path_local);
-        EXPECT_EQ(HTTP::strfy(""), res.path_after);
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_EQ(HTTP::strfy("./error_page/405.html"), res.path_local);
+        });
     }
 
     {
         TestParam tp(HTTP::METHOD_GET, "///500.html", HTTP::V_1_1, "localhost", "80");
-        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-        EXPECT_EQ(HTTP::strfy("./error_page/500.html"), res.path_local);
-        EXPECT_EQ(HTTP::strfy(""), res.path_after);
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_EQ(HTTP::strfy("./error_page/500.html"), res.path_local);
+        });
     }
 }
 
@@ -215,6 +218,35 @@ http { \
         const RequestMatchingResult res = rm.request_match(configs[hp], tp);
         EXPECT_EQ(HTTP::strfy("https://42tokyo.jp/"), res.redirect_location);
         EXPECT_EQ(HTTP::t_status(301), res.status_code);
+    }
+}
+
+TEST_F(request_matcher_test, auto_index) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        autoindex on; \
+        root ./ ; \
+    } \
+} \
+";
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+    {
+        TestParam tp(HTTP::METHOD_GET, "/error_page", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(RequestMatchingResult::RT_AUTO_INDEX, res.result_type);
+    }
+    {
+        TestParam tp(HTTP::METHOD_GET, "/error_page/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(RequestMatchingResult::RT_AUTO_INDEX, res.result_type);
+    }
+    {
+        TestParam tp(HTTP::METHOD_GET, "/error_page/404.html", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(RequestMatchingResult::RT_FILE, res.result_type);
     }
 }
 

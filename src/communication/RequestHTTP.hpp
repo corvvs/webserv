@@ -293,6 +293,12 @@ public:
 
     header_holder_type::joined_dict_type get_cgi_meta_vars() const;
     const IRequestMatchingParam &get_request_matching_param() const;
+
+    // 「現在抱えているエラー」を返す.
+    // ** 副作用として「現在抱えているエラー」はOKになる. **
+    minor_error purge_error();
+    // 「現在抱えているエラー」を返す.
+    const minor_error &current_error() const;
 };
 
 #endif

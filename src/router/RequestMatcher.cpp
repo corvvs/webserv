@@ -48,29 +48,66 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
 RequestMatchingResult
 RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf) {
-    cgi_resource_pair resource;
-    resource              = get_cgi_resource(target, conf);
-    res.path_local        = resource.first;
-    res.path_after        = resource.second;
+    res.cgi_resource      = make_cgi_resource(target, conf);
     res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
     res.result_type       = RequestMatchingResult::RT_CGI;
     return res;
+}
+
+/**
+ * 以下の形式でパスを分割する
+ * リクエスト: `/cgi-bin/cgi.rb/pathinfo`
+ * root       : /cgi-bin
+ * cgi_script : /cgi.rb
+ * path_info  : /pathinfo
+ */
+RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const RequestTarget &target,
+                                                                     const config::Config &conf) const {
+    const std::string root = conf.get_root(HTTP::restrfy(target.path.str()));
+    // ルートとパスをくっつける
+    const HTTP::byte_string full_path = HTTP::Utils::join_path(HTTP::strfy(root), target.path.str());
+    const light_string path           = full_path;
+
+    RequestMatchingResult::CGIResource resource;
+    size_t before_idx = root.size();
+    for (size_t i = root.size();; i = path.find("/", i)) {
+        HTTP::byte_string cur = path.substr(0, i).str();
+        if (file::is_file(HTTP::restrfy(cur))) {
+            resource.root        = path.substr(0, before_idx).str();
+            resource.script_name = path.substr(before_idx, i - before_idx).str();
+            if (i != HTTP::npos) {
+                resource.path_info = path.substr(i, path.size()).str();
+            }
+            break;
+        }
+        if (i == HTTP::npos) {
+            break;
+        }
+        before_idx = i;
+        i += 1;
+    }
+    if (resource.script_name.empty()) {
+        throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+    }
+    return resource;
 }
 
 RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const RequestTarget &target,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
-    HTTP::byte_string path = make_resource_path(target, conf);
-    if (path.empty()) {
-        res.error = minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
-        return res;
+    std::pair<HTTP::byte_string, bool> path = make_resource_path(target, conf);
+    if (path.first.empty()) {
+        throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
     }
-
-    res.path_local  = path;
+    res.path_local  = path.first;
     res.result_type = RequestMatchingResult::RT_FILE;
-    if (get_is_autoindex(target, conf)) {
-        res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+    if (path.second) {
+        if (get_is_autoindex(target, conf)) {
+            res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+        } else {
+            throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+        }
     } else if (get_is_executable(target, method, conf)) {
         switch (method) {
             case HTTP::METHOD_DELETE:
@@ -205,37 +242,6 @@ RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &
     return std::make_pair(redirect.first, HTTP::strfy(redirect.second));
 }
 
-// ファイルの権限を順番に見ていき、ファイルが存在した時点で、分割する
-RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const RequestTarget &target,
-                                                                   const config::Config &conf) const {
-    HTTP::byte_string resource_path;
-    HTTP::byte_string path_info;
-    const std::string root = conf.get_root(HTTP::restrfy(target.path.str()));
-    // ルートとパスをくっつける
-    HTTP::byte_string full_path = HTTP::Utils::join_path(HTTP::strfy(root), target.path.str());
-    light_string path           = full_path;
-    // ルート部分の末尾から見ていく
-    for (size_t i = root.size();; i = path.find("/", i)) {
-        HTTP::byte_string cur = path.substr(0, i).str();
-        if (file::is_file(HTTP::restrfy(cur))) {
-            resource_path = cur;
-            if (i != HTTP::npos) {
-                path_info = path.substr(i, path.size()).str();
-            }
-            break;
-        }
-        if (i == HTTP::npos) {
-            break;
-        }
-        i += 1;
-    }
-    // TODO: マージ後に修正する
-    if (resource_path.empty()) {
-        //        res.error = minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
-    }
-    return std::make_pair(resource_path, path_info);
-}
-
 RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(const RequestTarget &target,
                                                                              const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.path.str());
@@ -255,7 +261,8 @@ long RequestMatcher::get_client_max_body_size(const RequestTarget &target, const
 }
 
 // 対応するrootを連結する + indexに対応するファイルを探す
-HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target, const config::Config &conf) const {
+std::pair<HTTP::byte_string, bool> RequestMatcher::make_resource_path(const RequestTarget &target,
+                                                                      const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.path.str());
 
     const std::string root                   = conf.get_root(path);
@@ -263,9 +270,9 @@ HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target
     const std::string resource_path          = HTTP::restrfy(resource_path_bs);
     if (!file::is_dir(resource_path)) {
         if (file::is_file(resource_path)) {
-            return resource_path_bs;
+            return std::make_pair(resource_path_bs, false);
         }
-        return HTTP::strfy("");
+        return std::make_pair(HTTP::strfy(""), false);
     }
 
     std::vector<std::string> indexes = conf.get_index(path);
@@ -273,10 +280,10 @@ HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target
         const HTTP::byte_string cur_bs = HTTP::Utils::join_path(resource_path_bs, HTTP::strfy(*it));
         const std::string cur          = HTTP::restrfy(cur_bs);
         if (file::is_file(cur)) {
-            return cur_bs;
+            return std::make_pair(cur_bs, false);
         }
     }
-    return HTTP::strfy("");
+    return std::make_pair(resource_path_bs, true);
 }
 
 HTTP::byte_string RequestMatcher::get_path_cgi_executor(const RequestTarget &target,
