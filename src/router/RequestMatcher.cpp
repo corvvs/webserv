@@ -24,10 +24,16 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
     const config::Config &conf = get_config(configs, rp);
 
-    check_routable(rp, conf);
-
     const RequestTarget &target = rp.get_request_target();
     RequestMatchingResult res(&target);
+    res.client_max_body_size = get_client_max_body_size(target, conf);
+    res.status_page_dict     = get_status_page_dict(target, conf);
+
+    res.error = check_routable(rp, conf);
+    if (res.error.is_error()) {
+        return res;
+    }
+
     if (is_redirect(target, conf)) {
         RequestMatcher::redirect_pair pair = get_redirect(target, conf);
         res.status_code                    = pair.first;
@@ -173,21 +179,22 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
     return configs.front();
 }
 
-void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config &conf) {
+minor_error RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config &conf) {
     const RequestTarget &target = rp.get_request_target();
 
     if (target.is_error) {
         throw http_error("target has an error", HTTP::STATUS_BAD_REQUEST);
     }
     if (!is_valid_scheme(target)) {
-        throw http_error("invalid scheme", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("invalid scheme", HTTP::STATUS_BAD_REQUEST);
     }
     if (!is_valid_path(target)) {
-        throw http_error("invalid url target", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("invalid url target", HTTP::STATUS_BAD_REQUEST);
     }
     if (!is_valid_request_method(target, rp.get_http_method(), conf)) {
-        throw http_error("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
+        return minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
     }
+    return minor_error::ok();
 }
 
 bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {

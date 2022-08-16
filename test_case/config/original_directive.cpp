@@ -177,7 +177,12 @@ http { \
 
     {
         TestParam tp(HTTP::METHOD_GET, "/ruby/not_exist.rb/path/after", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp), http_error);
+        EXPECT_THROW(
+            {
+                RequestMatchingResult res = rm.request_match(configs[hp], tp);
+                EXPECT_TRUE(res.error.is_error());
+            },
+            http_error);
     }
 }
 
