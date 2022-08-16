@@ -55,7 +55,9 @@ CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvi
     metavar_[META_REQUEST_METHOD]    = HTTP::method_str(attr.configuration_provider_.get_method());
     metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(attr.configuration_provider_.get_http_version());
     metavar_[META_CONTENT_TYPE]      = attr.configuration_provider_.get_content_type();
-    if (match_result.cgi_resource.script_name != HTTP::strfy("/")) {
+    if (match_result.cgi_resource.script_name == HTTP::strfy("/")) {
+        metavar_[META_SCRIPT_NAME] = HTTP::strfy("");
+    } else {
         metavar_[META_SCRIPT_NAME] = match_result.cgi_resource.script_name;
     }
     metavar_[META_PATH_INFO] = match_result.cgi_resource.path_info;
