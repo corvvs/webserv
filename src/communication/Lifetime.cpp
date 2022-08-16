@@ -48,7 +48,7 @@ bool Lifetime::is_timeout(t_time_epoch_ms now) const {
 }
 
 const t_time_epoch_ms Lifetime::LIFETIME_CONNECTION_ACTIVE   = 0;
-const t_time_epoch_ms Lifetime::LIFETIME_CONNECTION_INACTIVE = 1 * SECOND_IN_MS;
+const t_time_epoch_ms Lifetime::LIFETIME_CONNECTION_INACTIVE = 5 * SECOND_IN_MS;
 Lifetime Lifetime::make_connection() {
     return Lifetime(LIFETIME_CONNECTION_ACTIVE, LIFETIME_CONNECTION_INACTIVE);
 }
@@ -65,7 +65,7 @@ Lifetime Lifetime::make_request() {
     return Lifetime(LIFETIME_REQUEST_ACTIVE, LIFETIME_REQUEST_INACTIVE);
 }
 
-const t_time_epoch_ms Lifetime::LIFETIME_REQUEST_HEADER_ACTIVE   = 10 * SECOND_IN_MS;
+const t_time_epoch_ms Lifetime::LIFETIME_REQUEST_HEADER_ACTIVE   = 15 * SECOND_IN_MS;
 const t_time_epoch_ms Lifetime::LIFETIME_REQUEST_HEADER_INACTIVE = 0;
 Lifetime Lifetime::make_request_header() {
     return Lifetime(LIFETIME_REQUEST_HEADER_ACTIVE, LIFETIME_REQUEST_HEADER_INACTIVE);

@@ -173,8 +173,11 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
 void Connection::perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     switch (cat) {
         case IObserver::OT_TIMEOUT:
-            if (lifetime.is_timeout(epoch) || rt.is_timeout(epoch)) {
+            if (lifetime.is_timeout(epoch)) {
                 throw http_error("connection timed out", HTTP::STATUS_TIMEOUT);
+            }
+            if (rt.is_timeout(epoch)) {
+                throw http_error("roundtrip timed out", HTTP::STATUS_TIMEOUT);
             }
             break;
         // オリジネータへの通知
