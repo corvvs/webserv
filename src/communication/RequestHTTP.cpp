@@ -517,6 +517,10 @@ void RequestHTTP::check_reqline_consistensy() {
         default:
             throw http_error("request target's form is unknown", HTTP::STATUS_BAD_REQUEST);
     }
+    if (this->rp.given_request_target.is_error) {
+        this->ps.merror
+            = erroneous(this->ps.merror, minor_error("request target is invalid", HTTP::STATUS_BAD_REQUEST));
+    }
     DXOUT("OK.");
 }
 
