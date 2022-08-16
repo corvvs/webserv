@@ -100,6 +100,7 @@ void CGI::check_executable() const {
         case EACCES:
             throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
         default:
+            VOUT(errno);
             throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
 }
@@ -419,6 +420,10 @@ bool CGI::is_responsive() const {
            && rp.get_response_type() != CGIRES_REDIRECT_LOCAL;
 }
 
+HTTP::byte_string CGI::reroute_path() const {
+    return rp.location.value;
+}
+
 void CGI::leave() {
     DXOUT("leaving.");
     if (attr.observer != NULL) {
@@ -498,6 +503,7 @@ void CGI::after_injection(bool is_disconnected) {
                 // ※「chunked が使用可能」という条件が本来は必要.
                 // なぜなら chunked は最初のtransfer-encodingでなければならないからだが,
                 // ここではオリジネーションをしているので必然的に最後になる.
+                VOUT(rp.get_response_type());
                 if (rp.get_response_type() != CGIRES_REDIRECT_LOCAL) {
                     status.is_responsive = true;
                 }
@@ -548,6 +554,7 @@ void CGI::extract_control_headers() {
 }
 
 void CGI::check_cgi_response_consistensy() {
+    VOUT(rp.get_response_type());
     switch (rp.get_response_type()) {
         case CGIRES_DOCUMENT: {
             // 特に何もチェックしなくて良さそう
@@ -555,6 +562,7 @@ void CGI::check_cgi_response_consistensy() {
         }
         case CGIRES_REDIRECT_LOCAL: {
             // CGIヘッダが2つ以上ある
+            DXOUT("LOCAL?");
             const AHeaderHolder::list_type &head_list = from_script_header_holder.get_list();
             if (head_list.size() != 1) {
                 throw http_error("local-redirection doesn't have only one cgi header",
@@ -613,6 +621,9 @@ void CGI::check_cgi_response_consistensy() {
 }
 
 CGI::t_cgi_response_type CGI::RoutingParameters::get_response_type() const {
+    // QVOUT(content_type.value);
+    // QVOUT(location.value);
+    // QVOUT(location.is_local);
     if (content_type.value.size() > 0) {
         if (location.value.size() == 0) {
             return CGIRES_DOCUMENT;

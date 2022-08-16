@@ -122,6 +122,10 @@ public:
     struct RoutingParameters : public ARoutingParameters, public IRequestMatchingParam {
         // TODO: リクエストマッチングに必要なものを外部に公開する
         RequestTarget given_request_target; // リクエストマッチングに必要
+        // リルート用パラメータ
+        bool use_reroute;
+        byte_string reroute_path;
+        RequestTarget reroute_request_target;
 
         HTTP::t_method http_method; // リクエストマッチングに必要
         HTTP::t_version http_version;
@@ -150,6 +154,8 @@ public:
         HTTP::t_method get_http_method() const;
         HTTP::t_version get_http_version() const;
         const HTTP::CH::Host &get_host() const;
+
+        RoutingParameters();
     };
 
 private:
@@ -248,6 +254,8 @@ public:
     bool is_freezed() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
+
+    void inject_reroute_path(const HTTP::byte_string &path);
 
     // 各種サイズの制限を調べる
     // 違反していれば対応する例外を投げる(すべてunrecovarable扱い)

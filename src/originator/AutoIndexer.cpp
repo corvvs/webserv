@@ -227,6 +227,11 @@ bool AutoIndexer::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string AutoIndexer::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool AutoIndexer::is_responsive() const {
     return originated_;
 }

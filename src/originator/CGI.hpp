@@ -175,6 +175,7 @@ public:
     void inject_socketlike(ISocketLike *socket_like);
     bool is_originatable() const;
     bool is_reroutable() const;
+    HTTP::byte_string reroute_path() const;
     bool is_responsive() const;
     bool is_origination_started() const;
     void start_origination(IObserver *observer);
@@ -186,8 +187,8 @@ public:
     template <class InputItr>
     void inject_bytestring(const InputItr begin, const InputItr end) {
         bytebuffer.insert(bytebuffer.end(), begin, end);
-        VOUT(bytebuffer.size());
-        BVOUT(bytebuffer);
+        // VOUT(bytebuffer.size());
+        // BVOUT(bytebuffer);
     }
 
     void after_injection(bool is_disconnected);

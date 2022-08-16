@@ -27,6 +27,11 @@ bool Echoer::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string Echoer::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool Echoer::is_responsive() const {
     return originated_;
 }

@@ -29,6 +29,7 @@ public:
     bool is_originatable() const;
     bool is_origination_started() const;
     bool is_reroutable() const;
+    HTTP::byte_string reroute_path() const;
     bool is_responsive() const;
     void start_origination(IObserver *observer);
     ResponseHTTP *respond(const RequestHTTP *request);

@@ -71,6 +71,11 @@ bool FileWriter::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string FileWriter::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool FileWriter::is_responsive() const {
     return originated_;
 }

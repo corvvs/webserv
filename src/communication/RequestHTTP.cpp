@@ -31,9 +31,7 @@ RequestHTTP::ParserStatus::ParserStatus()
     , end_of_header(0)
     , start_of_body(0)
     , end_of_body(0)
-    ,
-
-    is_freezed(false) {}
+    , is_freezed(false) {}
 
 RequestHTTP::RequestHTTP()
     : mid(0)
@@ -43,8 +41,6 @@ RequestHTTP::RequestHTTP()
     , rp() {
     DXOUT("[create_request]");
     this->ps.parse_progress = PP_REQLINE_START;
-    this->rp.http_method    = HTTP::METHOD_UNKNOWN;
-    this->rp.http_version   = HTTP::V_UNKNOWN;
     bytebuffer.reserve(MAX_REQLINE_END);
     lifetime.activate();
     lifetime_header.activate();
@@ -480,6 +476,13 @@ minor_error RequestHTTP::extract_control_headers() {
     return me;
 }
 
+void RequestHTTP::inject_reroute_path(const HTTP::byte_string &path) {
+    rp.reroute_path           = path;
+    rp.reroute_request_target = RequestTarget(rp.reroute_path);
+    rp.use_reroute            = true;
+    VOUT(rp.reroute_request_target);
+}
+
 void RequestHTTP::check_size_limitation() {
     // ボディ
     if (client_max_body_size > 0) {
@@ -489,6 +492,11 @@ void RequestHTTP::check_size_limitation() {
         }
     }
 }
+
+// [RequestHTTP::RoutingParameters]
+
+RequestHTTP::RoutingParameters::RoutingParameters()
+    : use_reroute(false), http_method(HTTP::METHOD_UNKNOWN), http_version(HTTP::V_UNKNOWN), is_body_chunked(false) {}
 
 void RequestHTTP::RoutingParameters::determine_body_size() {
     // https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length
@@ -596,7 +604,11 @@ minor_error RequestHTTP::RoutingParameters::determine_host(const header_holder_t
 }
 
 const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const {
-    return given_request_target;
+    if (use_reroute) {
+        return reroute_request_target;
+    } else {
+        return given_request_target;
+    }
 }
 
 HTTP::t_method RequestHTTP::RoutingParameters::get_http_method() const {

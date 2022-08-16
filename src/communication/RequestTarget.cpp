@@ -18,7 +18,7 @@ void RequestTarget::decompose(const light_string &target) {
 
     // formの識別
     assert(target.size() > 0);
-    light_string temp = target;
+    light_string temp = given;
     if (temp[0] == '/') {
         form = FORM_ORIGIN;
     } else if (temp == "*") {

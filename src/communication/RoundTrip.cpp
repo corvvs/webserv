@@ -138,8 +138,12 @@ void RoundTrip::reroute(Connection &connection) {
     }
 
     // TODO: 古いオリジネータの内容を考慮する
+    assert(originator_ != NULL);
+    request_->inject_reroute_path(originator_->reroute_path());
+
     const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
-    IOriginator *reoriginator          = make_originator(result, *request_);
+    VOUT(result.result_type);
+    IOriginator *reoriginator = make_originator(result, *request_);
     request_->set_max_body_size(result.client_max_body_size);
 
     originator_->leave();
@@ -180,6 +184,7 @@ void RoundTrip::respond() {
 void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
     DXOUT("[respond_error]");
     DXOUT(err.get_status() << ":" << err.what());
+    VOUT(response_);
     destroy_response();
     in_error_responding = true;
 
