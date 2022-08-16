@@ -48,9 +48,9 @@ public:
         }
 
         // 存在する場合
-        const_iterator it   = iter_map_[key];
-        const key_type &k   = it->first;
-        const value_type &v = it->second;
+        const_iterator it  = iter_map_[key];
+        const key_type k   = it->first;
+        const value_type v = it->second;
 
         // アクセスリストから削除
         access_list_.erase(it);
