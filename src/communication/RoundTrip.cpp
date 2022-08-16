@@ -105,7 +105,7 @@ bool RoundTrip::is_originatable() const {
 
 void RoundTrip::originate(IObserver &observer) {
     DXOUT("[originate]");
-    originator_->start_origination(&observer);
+    originator_->start_origination(observer);
 }
 
 bool RoundTrip::is_freezable() const {
@@ -192,7 +192,7 @@ void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
     // TODO: ほんとはここで「デフォルトのエラーページdict」があるとよい
     const RequestMatchingResult::status_dict_type blank_dict;
     originator_ = new ErrorPageGenerator(err, blank_dict, true);
-    originator_->start_origination(&observer);
+    originator_->start_origination(observer);
     response_ = originator_->respond(request_);
 }
 

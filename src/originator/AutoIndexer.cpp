@@ -240,7 +240,7 @@ bool AutoIndexer::is_responsive() const {
     return originated_;
 }
 
-void AutoIndexer::start_origination(IObserver *observer) {
+void AutoIndexer::start_origination(IObserver &observer) {
     (void)observer;
     scan_from_directory();
 }

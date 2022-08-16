@@ -49,7 +49,7 @@ public:
     virtual bool is_responsive() const = 0;
 
     // オリジネーションを開始する
-    virtual void start_origination(IObserver *observer) = 0;
+    virtual void start_origination(IObserver &observer) = 0;
 
     // レスポンスをヒープに確保し, 送信可能な状態にして返す
     virtual ResponseHTTP *respond(const RequestHTTP *request) = 0;

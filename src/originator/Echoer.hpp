@@ -31,7 +31,7 @@ public:
     bool is_reroutable() const;
     HTTP::byte_string reroute_path() const;
     bool is_responsive() const;
-    void start_origination(IObserver *observer);
+    void start_origination(IObserver &observer);
     ResponseHTTP *respond(const RequestHTTP *request);
     void leave();
 };

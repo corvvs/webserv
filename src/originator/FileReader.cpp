@@ -76,7 +76,7 @@ bool FileReader::is_responsive() const {
     return originated_;
 }
 
-void FileReader::start_origination(IObserver *observer) {
+void FileReader::start_origination(IObserver &observer) {
     (void)observer;
     if (originated_) {
         return;

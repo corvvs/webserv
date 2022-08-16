@@ -36,7 +36,7 @@ bool Redirector::is_responsive() const {
     return originated_;
 }
 
-void Redirector::start_origination(IObserver *observer) {
+void Redirector::start_origination(IObserver &observer) {
     (void)observer;
     // オリジネーションとしての特定の動作はないので何もない
 }
