@@ -3,6 +3,7 @@
 #include "../Interfaces.hpp"
 #include "../config/Config.hpp"
 #include "../socket/SocketConnected.hpp"
+#include "../utils/FileCacher.hpp"
 #include "Lifetime.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
@@ -41,6 +42,8 @@ private:
     // エラーレスポンス中かどうか
     bool in_error_responding;
 
+    // オリジネーターを生成する
+    IOriginator *make_originator(const RequestMatchingResult &result, const RequestHTTP &request);
     void destroy_request();
     void destroy_originator();
     void destroy_response();
@@ -54,6 +57,8 @@ public:
     RequestHTTP *req();
     IOriginator *orig();
     ResponseHTTP *res();
+
+    FileCacher cacher_;
 
     // [predicates]
 

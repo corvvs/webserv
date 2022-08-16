@@ -65,7 +65,7 @@ void RoundTrip::notify_originator(IObserver &observer, IObserver::observation_ca
     originator_->notify(observer, cat, epoch);
 }
 
-IOriginator *make_originator(const RequestMatchingResult &result, const RequestHTTP &request) {
+IOriginator *RoundTrip::make_originator(const RequestMatchingResult &result, const RequestHTTP &request) {
     switch (result.result_type) {
         case RequestMatchingResult::RT_CGI:
             return new CGI(result, request);
@@ -82,7 +82,7 @@ IOriginator *make_originator(const RequestMatchingResult &result, const RequestH
         default:
             break;
     }
-    return new FileReader(result);
+    return new FileReader(result, &cacher_);
 }
 
 void RoundTrip::route(Connection &connection) {

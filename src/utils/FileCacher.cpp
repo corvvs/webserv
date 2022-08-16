@@ -74,9 +74,8 @@ std::pair<minor_error, const FileCacher::entry_type *> FileCacher::fetch(const s
         return std::make_pair(minor_error::make("data too large to cache", HTTP::STATUS_BAD_REQUEST),
                               static_cast<entry_type *>(NULL));
     }
-    cache_const_iterator it         = cache_.fetch(path);
-    const FileCacheData &cache_data = it->second;
-
+    cache_const_iterator res        = cache_.fetch(path);
+    const FileCacheData &cache_data = res->second;
     // 作成したキャッシュを返す
     return std::make_pair(minor_error::ok(), &cache_data);
 }
