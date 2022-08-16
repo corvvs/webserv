@@ -50,7 +50,7 @@ private:
     // キャッシュするデータの上限値
     static const long MAX_CACHE_DATA_SIZE = 1024 * 5;
     // キャッシュする配列の上限値
-    static const long MAX_CACHE_ARRAY_SIZE = 2;
+    static const long MAX_CACHE_ARRAY_SIZE = 10;
 
     // 利用順にもとづいてキャッシュを作る
     cache_type cache_;
