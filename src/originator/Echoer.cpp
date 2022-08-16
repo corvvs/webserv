@@ -31,7 +31,7 @@ bool Echoer::is_responsive() const {
     return originated_;
 }
 
-void Echoer::start_origination(IObserver *observer) {
+void Echoer::start_origination(IObserver &observer) {
     (void)observer;
     originated_ = true;
 }

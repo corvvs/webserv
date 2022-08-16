@@ -21,7 +21,7 @@ public:
                        bool should_close = false);
     ~ErrorPageGenerator();
 
-    void start_origination(IObserver *observer);
+    void start_origination(IObserver &observer);
     void leave();
     ResponseHTTP *respond(const RequestHTTP *request);
 };

@@ -49,7 +49,7 @@ void ErrorPageGenerator::generate_html() {
     response_data.inject("", 0, true);
 }
 
-void ErrorPageGenerator::start_origination(IObserver *observer) {
+void ErrorPageGenerator::start_origination(IObserver &observer) {
     (void)observer;
     if (originated_) {
         return;

@@ -59,7 +59,7 @@ bool FileDeleter::is_responsive() const {
     return originated_;
 }
 
-void FileDeleter::start_origination(IObserver *observer) {
+void FileDeleter::start_origination(IObserver &observer) {
     (void)observer;
     delete_file();
 }

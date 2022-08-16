@@ -32,7 +32,7 @@ public:
     virtual bool is_reroutable() const;
     virtual bool is_responsive() const;
     virtual bool is_origination_started() const;
-    virtual void start_origination(IObserver *observer);
+    virtual void start_origination(IObserver &observer);
     virtual void leave();
     virtual ResponseHTTP *respond(const RequestHTTP *request);
 };
