@@ -59,6 +59,22 @@ std::string read(const std::string &path) {
     return data;
 }
 
+time_t get_last_update_time(const std::string &path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        return -1;
+    }
+    return st.st_mtime;
+}
+
+long get_size(const std::string &path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        return -1;
+    }
+    return st.st_size;
+}
+
 bool is_dir(const std::string &path) {
     struct stat st;
     if (stat(path.c_str(), &st) != 0) {
