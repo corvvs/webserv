@@ -193,4 +193,59 @@ http { \
     }
 }
 
+TEST_F(request_matcher_test, pct_encoded) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        location /tests/ { \
+            root ./; \
+        } \
+\
+        location /tests/ふぉーてぃーつー/ { \
+            root ./; \
+        } \
+    } \
+} \
+";
+
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/tests/%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
+        });
+    }
+
+    {
+        // 先頭以外のスラッシュを"%2F"に置換
+        TestParam tp(HTTP::METHOD_GET, "/tests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
+        });
+    }
+
+    {
+        // 先頭のスラッシュを"%2F"に置換 → ヒットしなくなる
+        TestParam tp(HTTP::METHOD_GET, "%2Ftests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
+        EXPECT_THROW(rm.request_match(configs[hp], tp);, http_error);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET,
+                     "/tests/%E3%81%B5%E3%81%89%E3%83%BC%E3%81%A6%E3%81%83%E3%83%BC%E3%81%A4%E3%83%BC/banana.txt",
+                     HTTP::V_1_1,
+                     "localhost",
+                     "80");
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_EQ(HTTP::strfy("./tests/ふぉーてぃーつー/banana.txt"), res.path_local);
+        });
+    }
+}
+
 } // namespace
