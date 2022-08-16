@@ -1,5 +1,5 @@
-#ifndef ERRORHTTP_HPP
-#define ERRORHTTP_HPP
+#ifndef HTTPERROR_HPP
+#define HTTPERROR_HPP
 #include "http.hpp"
 #include "test_common.hpp"
 #include <exception>
