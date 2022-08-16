@@ -1,6 +1,6 @@
 #include "FileReader.hpp"
 #include <unistd.h>
-#define READ_SIZE 1024
+#define READ_SIZE 1048576
 
 FileReader::FileReader(const RequestMatchingResult &match_result)
     : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false) {}
