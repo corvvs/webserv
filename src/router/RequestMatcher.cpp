@@ -99,6 +99,9 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
     std::pair<HTTP::byte_string, bool> path_isdir = make_resource_path(target, conf);
+    if (target.form != RequestTarget::FORM_ORIGIN) {
+        throw http_error("form of a target is not an origin-form", HTTP::STATUS_BAD_REQUEST);
+    }
     if (path_isdir.first.empty()) {
         throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
     }
@@ -109,6 +112,9 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
             res.result_type = RequestMatchingResult::RT_FILE_POST;
         } else if (get_is_autoindex(target, conf)) {
             res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+        } else {
+            DXOUT("PMDD");
+            throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
         }
     } else if (get_is_executable(target, method, conf)) {
         switch (method) {
@@ -121,10 +127,7 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
             default:
                 break;
         }
-    } else {
-        throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
     }
-    VOUT(res.result_type);
     return res;
 }
 
@@ -173,6 +176,9 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
 void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config &conf) {
     const RequestTarget &target = rp.get_request_target();
 
+    if (target.is_error) {
+        throw http_error("target has an error", HTTP::STATUS_BAD_REQUEST);
+    }
     if (!is_valid_scheme(target)) {
         throw http_error("invalid scheme", HTTP::STATUS_BAD_REQUEST);
     }
@@ -225,12 +231,18 @@ bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
 }
 
 bool RequestMatcher::is_redirect(const RequestTarget &target, const config::Config &conf) {
+    if (target.form != RequestTarget::FORM_ORIGIN) {
+        return false;
+    }
     const std::string &path                         = HTTP::restrfy(target.dpath());
     std::pair<HTTP::t_status, std::string> redirect = conf.get_redirect(path);
     return redirect.first != HTTP::STATUS_REDIRECT_INIT;
 }
 
 bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &conf) {
+    if (target.form != RequestTarget::FORM_ORIGIN) {
+        return false;
+    }
     const std::string &path = HTTP::restrfy(target.dpath());
     return conf.get_exec_cgi(path);
 }
@@ -268,7 +280,6 @@ std::pair<HTTP::byte_string, bool> RequestMatcher::make_resource_path(const Requ
     const std::string root                   = conf.get_root(path);
     const HTTP::byte_string resource_path_bs = HTTP::Utils::join_path(HTTP::strfy(root), target.dpath());
     const std::string resource_path          = HTTP::restrfy(resource_path_bs);
-    QVOUT(resource_path);
     if (!file::is_dir(resource_path)) {
         if (file::is_file(resource_path)) {
             return std::make_pair(resource_path_bs, false);
@@ -280,7 +291,6 @@ std::pair<HTTP::byte_string, bool> RequestMatcher::make_resource_path(const Requ
     for (std::vector<std::string>::iterator it = indexes.begin(); it != indexes.end(); ++it) {
         const HTTP::byte_string cur_bs = HTTP::Utils::join_path(resource_path_bs, HTTP::strfy(*it));
         const std::string cur          = HTTP::restrfy(cur_bs);
-        QVOUT(cur);
         if (file::is_file(cur)) {
             return std::make_pair(cur_bs, false);
         }
