@@ -37,7 +37,6 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
     }
     res.client_max_body_size = get_client_max_body_size(target, conf);
     res.status_page_dict     = get_status_page_dict(target, conf);
-
     if (is_cgi(target, conf)) {
         return routing_cgi(res, target, conf);
     }
@@ -61,27 +60,32 @@ RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &targ
  */
 RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const RequestTarget &target,
                                                                      const config::Config &conf) const {
-    const std::string root = conf.get_root(HTTP::restrfy(target.dpath()));
+    const HTTP::byte_string root = HTTP::strfy(conf.get_root(HTTP::restrfy(target.dpath())));
     // ルートとパスをくっつける
-    const HTTP::byte_string full_path = HTTP::Utils::join_path(HTTP::strfy(root), target.dpath());
-    const light_string path           = full_path;
-
+    const HTTP::light_string root_stripped    = HTTP::Utils::rstrip_path(root);
+    const HTTP::light_string path_stripped    = HTTP::Utils::lstrip_path(target.dpath());
+    const HTTP::byte_string full_request_path = HTTP::Utils::join_path(root_stripped, path_stripped);
+    const light_string path                   = full_request_path;
     RequestMatchingResult::CGIResource resource;
-    size_t before_idx = root.size();
-    for (size_t i = root.size();; i = path.find("/", i)) {
-        HTTP::byte_string cur = path.substr(0, i).str();
-        if (file::is_file(HTTP::restrfy(cur))) {
-            resource.root        = path.substr(0, before_idx).str();
-            resource.script_name = path.substr(before_idx, i - before_idx).str();
+    resource.root = root_stripped.str();
+    for (size_t i = root_stripped.size();; i = path.find("/", i)) {
+        HTTP::light_string cur = path.substr(0, i);
+        HTTP::byte_string cb   = cur.str();
+        if (file::is_file(HTTP::restrfy(cb))) {
+            resource.fullpath    = cb;
+            resource.script_name = cur.substr(root_stripped.size()).str();
             if (i != HTTP::npos) {
-                resource.path_info = path.substr(i, path.size()).str();
+                resource.path_info = path.substr(i).str();
             }
+            QVOUT(resource.fullpath);
+            QVOUT(resource.root);
+            QVOUT(resource.script_name);
+            QVOUT(resource.path_info);
             break;
         }
         if (i == HTTP::npos) {
             break;
         }
-        before_idx = i;
         i += 1;
     }
     if (resource.script_name.empty()) {
