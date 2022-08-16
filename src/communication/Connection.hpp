@@ -107,7 +107,7 @@ private:
     bool is_timeout(t_time_epoch_ms now) const;
 
 public:
-    Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs);
+    Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs, FileCacher &cacher);
     ~Connection();
 
     t_fd get_fd() const;

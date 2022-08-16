@@ -18,7 +18,7 @@ protected:
     char_string file_path_;
     bool originated_;
     ResponseDataList response_data;
-    FileCacher *cacher_;
+    FileCacher &cacher_;
 
     // ファイルからデータを読み出しておく
     void read_from_file();
@@ -26,7 +26,7 @@ protected:
     bool read_from_cache();
 
 public:
-    FileReader(const RequestMatchingResult &match_result, FileCacher *cacher);
+    FileReader(const RequestMatchingResult &match_result, FileCacher &cacher);
     ~FileReader();
 
     virtual void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);

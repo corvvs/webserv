@@ -83,12 +83,15 @@ void Connection::NetworkBuffer::check_extra_overflow() {
 
 // [[Connection]]
 
-Connection::Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs)
+Connection::Connection(IRouter *router,
+                       SocketConnected *sock_given,
+                       const config::config_vector &configs,
+                       FileCacher &cacher)
     : attr(Attribute())
     , phase(CONNECTION_ESTABLISHED)
     , dying(false)
     , sock(sock_given)
-    , rt(*router, configs)
+    , rt(*router, configs, cacher)
     , lifetime(Lifetime::make_connection()) {
     DXOUT("[established] " << sock->get_fd());
 }

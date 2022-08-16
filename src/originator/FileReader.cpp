@@ -2,7 +2,7 @@
 #include <unistd.h>
 #define READ_SIZE 1024
 
-FileReader::FileReader(const RequestMatchingResult &match_result, FileCacher *cacher)
+FileReader::FileReader(const RequestMatchingResult &match_result, FileCacher &cacher)
     : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
 
 FileReader::~FileReader() {}
@@ -15,7 +15,7 @@ void FileReader::notify(IObserver &observer, IObserver::observation_category cat
 }
 
 bool FileReader::read_from_cache() {
-    std::pair<minor_error, const FileCacher::entry_type *> res = cacher_->fetch(file_path_.c_str());
+    std::pair<minor_error, const FileCacher::entry_type *> res = cacher_.fetch(file_path_.c_str());
     if (res.first.is_ok()) {
         // Deep copyする
         byte_string file_data = res.second->data;

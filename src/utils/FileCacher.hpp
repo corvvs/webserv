@@ -38,8 +38,8 @@ public:
     // その過程でエラーが起きた場合, それをfirstに入れて返す(secondはNULL).
     std::pair<minor_error, const entry_type *> fetch(const std::string &path);
 
-    void erase_cache(const std::string &path);
-    bool add_cache(const std::string &path);
+    void erase(const std::string &path);
+    bool add(const std::string &path);
 
 private:
     typedef std::string path_type;
@@ -50,7 +50,7 @@ private:
     // キャッシュするデータの上限値
     static const long MAX_CACHE_DATA_SIZE = 1024 * 5;
     // キャッシュする配列の上限値
-    static const long MAX_CACHE_ARRAY_SIZE = 10;
+    static const long MAX_CACHE_ARRAY_SIZE = 2;
 
     // 利用順にもとづいてキャッシュを作る
     cache_type cache_;

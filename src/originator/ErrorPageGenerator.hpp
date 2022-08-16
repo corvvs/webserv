@@ -1,5 +1,6 @@
-#ifndef ERROR_PAGE_GENERATOR_HPP
-#define ERROR_PAGE_GENERATOR_HPP
+#ifndef ERRORPAGEGENERATOR_HPP
+#define ERRORPAGEGENERATOR_HPP
+#include "../utils/FileCacher.hpp"
 #include "FileReader.hpp"
 
 class ErrorPageGenerator : public FileReader {
@@ -15,7 +16,7 @@ private:
     void generate_html();
 
 public:
-    ErrorPageGenerator(const minor_error &error, const RequestMatchingResult &match_result);
+    ErrorPageGenerator(const minor_error &error, const RequestMatchingResult &match_result, FileCacher &cacher);
     ~ErrorPageGenerator();
 
     void start_origination(IObserver &observer);

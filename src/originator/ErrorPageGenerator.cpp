@@ -1,8 +1,10 @@
 #include "ErrorPageGenerator.hpp"
 #include <unistd.h>
 
-ErrorPageGenerator::ErrorPageGenerator(const minor_error &err, const RequestMatchingResult &match_result)
-    : FileReader(match_result), error(err) {
+ErrorPageGenerator::ErrorPageGenerator(const minor_error &err,
+                                       const RequestMatchingResult &match_result,
+                                       FileCacher &cacher)
+    : FileReader(match_result, cacher), error(err) {
     const RequestMatchingResult::status_dict_type dict          = match_result.status_page_dict;
     RequestMatchingResult::status_dict_type::const_iterator res = dict.find(err.status_code());
     if (res != dict.end()) {
