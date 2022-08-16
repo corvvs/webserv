@@ -219,7 +219,7 @@ bool FilePoster::is_responsive() const {
     return originated_;
 }
 
-void FilePoster::start_origination(IObserver *observer) {
+void FilePoster::start_origination(IObserver &observer) {
     (void)observer;
     post_files();
 }

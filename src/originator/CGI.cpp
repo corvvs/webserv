@@ -104,7 +104,7 @@ void CGI::check_executable() const {
     }
 }
 
-void CGI::start_origination(IObserver *observer) {
+void CGI::start_origination(IObserver &observer) {
     check_executable();
     set_content(attr.configuration_provider_.get_body());
 
@@ -158,12 +158,12 @@ void CGI::start_origination(IObserver *observer) {
     attr.cgi_pid = pid;
     attr.sock    = socks.first;
     close(socks.second);
-    attr.observer = observer;
+    attr.observer = &observer;
     DXOUT("START OBSERVATION");
-    observer->reserve_hold(this);
+    observer.reserve_hold(this);
     DXOUT("< START OBSERVATION");
-    observer->reserve_set(this, IObserver::OT_READ);
-    observer->reserve_set(this, IObserver::OT_WRITE);
+    observer.reserve_set(this, IObserver::OT_READ);
+    observer.reserve_set(this, IObserver::OT_WRITE);
     status.is_started = true;
     lifetime.activate();
 }

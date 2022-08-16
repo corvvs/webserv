@@ -75,7 +75,7 @@ bool FileWriter::is_responsive() const {
     return originated_;
 }
 
-void FileWriter::start_origination(IObserver *observer) {
+void FileWriter::start_origination(IObserver &observer) {
     (void)observer;
     write_to_file();
 }
