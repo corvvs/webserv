@@ -61,15 +61,15 @@ std::vector<HTTP::light_string> split(const HTTP::light_string &lstr, const byte
 byte_string normalize_header_key(const byte_string &key);
 byte_string normalize_header_key(const HTTP::light_string &key);
 
-std::pair<bool, unsigned int> xtou(const HTTP::light_string &str);
-byte_string utos(unsigned int u, unsigned int base);
+std::pair<bool, unsigned long> xtou(const HTTP::light_string &str);
+byte_string utos(unsigned long u, unsigned int base);
 
 // 確実に変換できることがわかっている時に使うこと
 long latoi(const HTTP::light_string &str);
 
 // string to size_t 変換
-std::pair<bool, unsigned int> str_to_u(const byte_string &str);
-std::pair<bool, unsigned int> str_to_u(const HTTP::light_string &str);
+std::pair<bool, unsigned long> str_to_u(const byte_string &str);
+std::pair<bool, unsigned long> str_to_u(const HTTP::light_string &str);
 
 // quality("q=0.05" の右辺側みたいな形式の文字列)を1000倍したunsigned intに変換
 // qualityとしてvalidなもののみ渡すこと.

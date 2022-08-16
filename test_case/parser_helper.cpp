@@ -60,48 +60,48 @@ TEST(parser_helper_is_sp, is_sp) {
 
 // [str_to_u]
 TEST(parser_helper_str_to_u, is_0) {
-    const HTTP::byte_string str       = HTTP::strfy("0");
-    std::pair<bool, unsigned int> res = ParserHelper::str_to_u(str);
+    const HTTP::byte_string str        = HTTP::strfy("0");
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(str);
     EXPECT_EQ(true, res.first);
     EXPECT_EQ(0, res.second);
 }
 
 TEST(parser_helper_str_to_u, is_1) {
-    const HTTP::byte_string str       = HTTP::strfy("1");
-    std::pair<bool, unsigned int> res = ParserHelper::str_to_u(str);
+    const HTTP::byte_string str        = HTTP::strfy("1");
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(str);
     EXPECT_EQ(true, res.first);
     EXPECT_EQ(1, res.second);
 }
 
-TEST(parser_helper_str_to_u, is_UINT_MAX_less_1) {
-    const HTTP::byte_string str       = HTTP::strfy("4294967294");
-    std::pair<bool, unsigned int> res = ParserHelper::str_to_u(str);
+TEST(parser_helper_str_to_u, is_ULONG_MAX_less_1) {
+    const HTTP::byte_string str        = HTTP::strfy("18446744073709551614");
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(str);
     EXPECT_EQ(true, res.first);
-    EXPECT_EQ(UINT_MAX - 1, res.second);
+    EXPECT_EQ(ULONG_MAX - 1, res.second);
 }
 
-TEST(parser_helper_str_to_u, is_UINT_MAX) {
-    const HTTP::byte_string str       = HTTP::strfy("4294967295");
-    std::pair<bool, unsigned int> res = ParserHelper::str_to_u(str);
+TEST(parser_helper_str_to_u, is_ULONG_MAX) {
+    const HTTP::byte_string str        = HTTP::strfy("18446744073709551615");
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(str);
     EXPECT_EQ(true, res.first);
-    EXPECT_EQ(UINT_MAX, res.second);
+    EXPECT_EQ(ULONG_MAX, res.second);
 }
 
-TEST(parser_helper_str_to_u, is_UINT_MAX_with_leading_0) {
-    const HTTP::byte_string str       = HTTP::strfy("0000000004294967295");
-    std::pair<bool, unsigned int> res = ParserHelper::str_to_u(str);
+TEST(parser_helper_str_to_u, is_ULONG_MAX_with_leading_0) {
+    const HTTP::byte_string str        = HTTP::strfy("00000000018446744073709551615");
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(str);
     EXPECT_EQ(false, res.first);
 }
 
-TEST(parser_helper_str_to_u, is_UINT_MAX_plus_1) {
-    const HTTP::byte_string str       = HTTP::strfy("4294967296");
-    std::pair<bool, unsigned int> res = ParserHelper::str_to_u(str);
+TEST(parser_helper_str_to_u, is_ULONG_MAX_plus_1) {
+    const HTTP::byte_string str        = HTTP::strfy("18446744073709551616");
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(str);
     EXPECT_EQ(false, res.first);
 }
 
 TEST(parser_helper_str_to_u, is_minus_1) {
-    const HTTP::byte_string str       = HTTP::strfy("-1");
-    std::pair<bool, unsigned int> res = ParserHelper::str_to_u(str);
+    const HTTP::byte_string str        = HTTP::strfy("-1");
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(str);
     EXPECT_EQ(false, res.first);
 }
 
