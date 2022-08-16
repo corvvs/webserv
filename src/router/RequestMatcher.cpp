@@ -22,10 +22,16 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
     const config::Config &conf = get_config(configs, rp);
 
-    check_routable(rp, conf);
-
     RequestMatchingResult res;
     const RequestTarget &target = rp.get_request_target();
+    res.client_max_body_size    = get_client_max_body_size(target, conf);
+    res.status_page_dict        = get_status_page_dict(target, conf);
+
+    res.error = check_routable(rp, conf);
+    if (res.error.is_error()) {
+        return res;
+    }
+
     if (is_redirect(target, conf)) {
         RequestMatcher::redirect_pair pair = get_redirect(target, conf);
         res.status_code                    = pair.first;
@@ -33,8 +39,6 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
         res.result_type                    = RequestMatchingResult::RT_EXTERNAL_REDIRECTION;
         return res;
     }
-    res.client_max_body_size = get_client_max_body_size(target, conf);
-    res.status_page_dict     = get_status_page_dict(target, conf);
 
     if (is_cgi(target, conf)) {
         return routing_cgi(res, target, conf);
@@ -164,18 +168,19 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
     return configs.front();
 }
 
-void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config &conf) {
+minor_error RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config &conf) {
     const RequestTarget &target = rp.get_request_target();
 
     if (!is_valid_scheme(target)) {
-        throw http_error("invalid scheme", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("invalid scheme", HTTP::STATUS_BAD_REQUEST);
     }
     if (!is_valid_path(target)) {
-        throw http_error("invalid url target", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("invalid url target", HTTP::STATUS_BAD_REQUEST);
     }
     if (!is_valid_request_method(target, rp.get_http_method(), conf)) {
-        throw http_error("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
+        return minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
     }
+    return minor_error::ok();
 }
 
 bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {
@@ -185,6 +190,7 @@ bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {
 bool RequestMatcher::is_valid_path(const RequestTarget &target) {
     const std::vector<light_string> &splitted = target.path.split("/");
 
+    DXOUT(target.path);
     int depth = 0;
     for (std::vector<light_string>::const_iterator it = splitted.begin(); it != splitted.end(); ++it) {
         if (*it == "..") {
