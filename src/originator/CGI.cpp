@@ -547,11 +547,14 @@ void CGI::after_injection(bool is_disconnected) {
 
 void CGI::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
-    this->rp.content_type.determine(from_script_header_holder);
-    this->rp.status.determine(from_script_header_holder);
-    this->rp.location.determine(from_script_header_holder);
+    minor_error me;
+    me = erroneous(me, this->rp.content_type.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.status.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.location.determine(from_script_header_holder));
     this->rp.determine_body_size(from_script_header_holder);
-
+    if (me.is_error()) {
+        throw http_error(me);
+    }
     VOUT(rp.get_response_type());
 }
 
