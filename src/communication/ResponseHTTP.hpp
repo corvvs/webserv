@@ -42,7 +42,8 @@ public:
     ResponseHTTP(HTTP::t_version version,
                  HTTP::t_status status,
                  const header_list_type *headers,
-                 IResponseDataConsumer *data_consumer);
+                 IResponseDataConsumer *data_consumer,
+                 bool should_close);
     // unrecovarable エラー応答を構築する
     ResponseHTTP(HTTP::t_version version, const http_error &error, bool should_close);
     // recovarable エラー応答を構築する
@@ -56,7 +57,7 @@ public:
     void set_status(HTTP::t_status status);
 
     // HTTPヘッダを追加する
-    void feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val);
+    void feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val, bool overwrite = false);
 
     // 状態行 + ヘッダ部をバイト列に展開する
     byte_string serialize_former_part();

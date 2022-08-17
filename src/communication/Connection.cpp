@@ -141,14 +141,19 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
         }
     } catch (const http_error &err) { // 受信中のHTTPエラー
         DXOUT("error occurred");
-        if (phase == CONNECTION_SHUTTING_DOWN || rt.is_responding()) {
-            // レスポンス送信中のHTTPエラー -> 全てを諦めて終了
-            shutdown_gracefully(observer);
-        } else {
-            // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
-            rt.respond_error(err);
-            observer.reserve_set(this, IObserver::OT_WRITE);
+        if (phase != CONNECTION_SHUTTING_DOWN && !rt.is_responding()) {
+            try {
+                // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
+                rt.respond_error(observer, err);
+                observer.reserve_set(this, IObserver::OT_WRITE);
+                return;
+            } catch (const http_error &err) {
+                // エラー送信でもう1回エラー
+                DXOUT("double error: " << err.get_status() << " - " << err.what());
+            }
         }
+        // レスポンス送信中のHTTPエラー -> 全てを諦めて終了
+        shutdown_gracefully(observer);
     }
 }
 

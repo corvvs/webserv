@@ -7,6 +7,8 @@
 #include "../utils/UtilsString.hpp"
 #include <sys/stat.h>
 
+RequestMatchingResult::RequestMatchingResult(const RequestTarget *target_) : target(target_), client_max_body_size(0) {}
+
 RequestMatcher::RequestMatcher() {}
 RequestMatcher::~RequestMatcher() {}
 
@@ -22,10 +24,10 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
     const config::Config &conf = get_config(configs, rp);
 
-    RequestMatchingResult res;
     const RequestTarget &target = rp.get_request_target();
-    res.client_max_body_size    = get_client_max_body_size(target, conf);
-    res.status_page_dict        = get_status_page_dict(target, conf);
+    RequestMatchingResult res(&target);
+    res.client_max_body_size = get_client_max_body_size(target, conf);
+    res.status_page_dict     = get_status_page_dict(target, conf);
 
     res.error = check_routable(rp, conf);
     if (res.error.is_error()) {
@@ -190,7 +192,6 @@ bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {
 bool RequestMatcher::is_valid_path(const RequestTarget &target) {
     const std::vector<light_string> &splitted = target.path.split("/");
 
-    DXOUT(target.path);
     int depth = 0;
     for (std::vector<light_string>::const_iterator it = splitted.begin(); it != splitted.end(); ++it) {
         if (*it == "..") {

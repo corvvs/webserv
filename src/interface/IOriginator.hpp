@@ -48,7 +48,7 @@ public:
     // オリジネーションを開始する
     virtual void start_origination(IObserver &observer) = 0;
 
-    virtual ResponseHTTP *respond(const RequestHTTP &request) = 0;
+    virtual ResponseHTTP *respond(const RequestHTTP *request) = 0;
 
     // オリジネータ自身の破壊手続きを行う
     // 大抵は`delete this;だがソケットライクだったりすると違う

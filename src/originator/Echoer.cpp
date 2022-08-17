@@ -40,8 +40,8 @@ void Echoer::leave() {
     delete this;
 }
 
-ResponseHTTP *Echoer::respond(const RequestHTTP &request) {
-    HTTP::byte_string message = request.get_plain_message();
+ResponseHTTP *Echoer::respond(const RequestHTTP *request) {
+    HTTP::byte_string message = request->get_plain_message();
     response_data.inject(&message.front(), message.size(), true);
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
@@ -56,7 +56,7 @@ ResponseHTTP *Echoer::respond(const RequestHTTP &request) {
         default:
             break;
     }
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &headers, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }

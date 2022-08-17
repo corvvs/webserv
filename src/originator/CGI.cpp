@@ -515,9 +515,9 @@ void CGI::after_injection(bool is_disconnected) {
                     status.is_responsive = true;
                 }
                 status.is_complete = true;
-                VOUT(ps.start_of_body);
-                VOUT(ps.end_of_body);
-                BVOUT(bytebuffer);
+                // VOUT(ps.start_of_body);
+                // VOUT(ps.end_of_body);
+                // BVOUT(bytebuffer);
                 return;
             }
 
@@ -647,7 +647,7 @@ size_t CGI::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP &request) {
+ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
@@ -706,10 +706,10 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
                 break;
         }
     }
-    ResponseHTTP res(request.get_http_version(), response_status, &headers, &status.response_data);
+    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 
     // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, NULL);
+    ResponseHTTP *r = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, NULL, false);
     ResponseHTTP::swap(res, *r);
     r->start();
     return r;

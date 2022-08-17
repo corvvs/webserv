@@ -21,6 +21,11 @@ minor_error::minor_error(const minor_error &other) {
     *this = other;
 }
 
+minor_error::minor_error(const http_error &other) {
+    first  = other.what();
+    second = other.get_status();
+}
+
 minor_error &minor_error::operator=(const minor_error &rhs) {
     if (this != &rhs) {
         first  = rhs.first;
@@ -50,6 +55,10 @@ minor_error minor_error::ok() {
 }
 
 minor_error minor_error::make(const std::string &message, HTTP::t_status status_code) {
+    if (status_code != HTTP::STATUS_OK) {
+        QVOUT(message);
+        VOUT(status_code);
+    }
     return minor_error(message, status_code);
 }
 

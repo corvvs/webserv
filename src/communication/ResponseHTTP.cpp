@@ -4,15 +4,17 @@
 ResponseHTTP::ResponseHTTP(HTTP::t_version version,
                            HTTP::t_status status,
                            const header_list_type *headers,
-                           IResponseDataConsumer *data_consumer)
+                           IResponseDataConsumer *data_consumer,
+                           bool should_close)
     : version_(version)
     , status_(status)
     , lifetime(Lifetime::make_response())
     , sent_size(0)
     , data_consumer_(data_consumer)
-    , should_close_(false) {
+    , should_close_(should_close) {
     if (headers != NULL) {
         for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
+            DXOUT(it->first << " - " << it->second);
             feed_header(it->first, it->second);
         }
     }
@@ -55,9 +57,9 @@ void ResponseHTTP::set_status(HTTP::t_status status) {
     status_ = status;
 }
 
-void ResponseHTTP::feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val) {
-    if (header_dict.find(key) != header_dict.end() && !is_error()) {
-        throw std::runtime_error("Invalid Response: Duplicate header");
+void ResponseHTTP::feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val, bool overwrite) {
+    if (!overwrite && header_dict.find(key) != header_dict.end() && !is_error()) {
+        DXOUT("warning: duplicate header: " << key);
     }
     header_dict[key] = val;
     header_list.push_back(HTTP::header_kvpair_type(key, val));
