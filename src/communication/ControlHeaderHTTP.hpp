@@ -191,8 +191,12 @@ struct CookieEntry {
     // に対するある程度の防御を提供します。
     HTTP::Nullable<t_same_site> same_site;
 
+    // name=value の解析
     light_string parse_name_value(const light_string &str);
+    // Expire=... の解析
     light_string parse_expire(const light_string &str);
+    // Max-Age=... の解析
+    light_string parse_max_age(const light_string &str);
 
     CookieEntry();
 };

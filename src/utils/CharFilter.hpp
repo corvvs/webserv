@@ -92,6 +92,8 @@ public:
     static const CharFilter cookie_token_char;
     // Cookie: の value として使ってよい文字
     static const CharFilter cookie_octet;
+    // Set-Cookie: の属性名に使ってよい文字
+    static const CharFilter cookie_attr_name;
 
     byte_string str() const;
 };

@@ -767,20 +767,54 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_name_value(const light_string &s
 }
 
 HTTP::light_string HTTP::CH::CookieEntry::parse_expire(const light_string &str) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.1
+    // expires-av        = "Expires=" sane-cookie-date
+    // sane-cookie-date  = <rfc1123-date, defined in [RFC2616], Section 3.3.1>
     light_string work = str;
     expires.set();
     if (!work.starts_with("=")) {
         error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
         return work;
     }
-    work                          = work.substr(1);
-    const light_string maybe_date = work.substr_before(";");
-    work                          = work.substr(maybe_date.size());
-    std::pair<bool, t_time_epoch_ms> date_res = ParserHelper::str_to_http_date(maybe_date);
-    if (date_res.first) {
-        expires.set(date_res.second);
+    work                                 = work.substr(1);
+    const light_string maybe_date        = work.substr_before(";");
+    work                                 = work.substr(maybe_date.size());
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(maybe_date);
+    if (res.first) {
+        expires.set(res.second);
     } else {
         error = minor_error::make("invalid date format", HTTP::STATUS_BAD_REQUEST);
+    }
+    return work;
+}
+
+HTTP::light_string HTTP::CH::CookieEntry::parse_max_age(const light_string &str) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.1
+    // max-age-av        = "Max-Age=" non-zero-digit *DIGIT
+    //                       ; In practice, both expires-av and max-age-av
+    //                       ; are limited to dates representable by the
+    //                       ; user agent.
+    // non-zero-digit    = %x31-39
+    //                       ; digits 1 through 9
+    light_string work = str;
+    max_age.set();
+    if (!work.starts_with("=")) {
+        error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    work                             = work.substr(1);
+    const light_string maybe_max_age = work.substr_while(HTTP::CharFilter::digit);
+    work                             = work.substr(maybe_max_age.size());
+    if (maybe_max_age.size() == 0 || maybe_max_age[0] == '0') {
+        error = minor_error::make("unexpected leading zero", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    QVOUT(maybe_max_age);
+    std::pair<bool, unsigned long> res = ParserHelper::str_to_u(maybe_max_age);
+    if (res.first) {
+        max_age.set(res.second);
+    } else {
+        error = minor_error::make("invalid max-age format", HTTP::STATUS_BAD_REQUEST);
     }
     return work;
 }
@@ -917,13 +951,14 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
                 // cookie-av         = expires-av / max-age-av / domain-av /
                 //                     path-av / secure-av / httponly-av /
                 //                     extension-av
-                const light_string attr_name = work.substr_while(HTTP::CharFilter::alpha);
+                const light_string attr_name = work.substr_while(HTTP::CharFilter::alpha | "-");
                 work                         = work.substr(attr_name.size());
                 if (attr_name == "Expires") {
                     QVOUT(attr_name);
                     work = ce.parse_expire(work);
                 } else if (attr_name == "Max-Age") {
                     QVOUT(attr_name);
+                    work = ce.parse_max_age(work);
                 } else if (attr_name == "Domain") {
                     QVOUT(attr_name);
                 } else if (attr_name == "Path") {
@@ -933,6 +968,7 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
                 } else if (attr_name == "HttpOnly") {
                     QVOUT(attr_name);
                 } else if (attr_name.size() > 0) {
+                    QVOUT(attr_name);
                     DXOUT("other extension?");
                 } else {
                     DXOUT("away; unexpected attr_name");
