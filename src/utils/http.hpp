@@ -124,12 +124,12 @@ public:
 
     // Null状態に設定
     void set() {
-        is_null_ = false;
+        is_null_ = true;
     }
 
     // 値を設定
     void set(const T &val) {
-        is_null_ = true;
+        is_null_ = false;
         val_     = val;
     }
 };

@@ -165,7 +165,7 @@ struct CookieEntry {
     // https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Set-Cookie#%E5%B1%9E%E6%80%A7
 
     // > クッキーの有効期限を示す、 HTTP の日時タイムスタンプです。
-    HTTP::Nullable<HTTP::byte_string> expires;
+    HTTP::Nullable<t_time_epoch_ms> expires;
     // > クッキーの期限までの秒数を示します。ゼロまたは負の数値の場合は、クッキーは直ちに期限切れになります。
     // > Expires および Max-Age の両方が設定されていたら、 Max-Age が優先されます。
     HTTP::Nullable<long> max_age;
@@ -192,6 +192,7 @@ struct CookieEntry {
     HTTP::Nullable<t_same_site> same_site;
 
     light_string parse_name_value(const light_string &str);
+    light_string parse_expire(const light_string &str);
 
     CookieEntry();
 };

@@ -322,3 +322,43 @@ TEST(control_header_http, cookie_basic_ok) {
         test_existence_cookie(ch, HTTP::strfy("tasty_cookie"), HTTP::strfy("strawberry"));
     }
 }
+
+// [Set-Cookie]
+
+HTTP::CH::SetCookie::cookie_map_type::const_iterator test_existence_set_cookie(const HTTP::CH::SetCookie &ch,
+                               const HTTP::byte_string &name,
+                               const HTTP::byte_string &value) {
+    HTTP::CH::SetCookie::cookie_map_type::const_iterator it = ch.values.find(name);
+    EXPECT_FALSE(ch.values.end() == it);
+    EXPECT_EQ(name, it->first);
+    EXPECT_EQ(name, it->second.name);
+    EXPECT_EQ(value, it->second.value);
+    return it;
+}
+
+TEST(control_header_http, set_cookie_basic_ok) {
+    {
+        const HTTP::byte_string item = HTTP::strfy("Set-Cookie: sessionId=38afes7a8");
+        HeaderHolderHTTP holder;
+        minor_error me;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::SetCookie ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        test_existence_set_cookie(ch, HTTP::strfy("sessionId"), HTTP::strfy("38afes7a8"));
+    }
+    {
+        const HTTP::byte_string item = HTTP::strfy("Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT");
+        HeaderHolderHTTP holder;
+        minor_error me;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::SetCookie ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::SetCookie::cookie_map_type::const_iterator it = test_existence_set_cookie(ch, HTTP::strfy("id"), HTTP::strfy("a3fWa"));
+        EXPECT_FALSE(it->second.expires.is_null());
+        EXPECT_EQ(1445412480000, it->second.expires.value());
+    }
+}

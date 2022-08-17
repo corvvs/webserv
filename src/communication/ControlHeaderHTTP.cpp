@@ -766,6 +766,25 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_name_value(const light_string &s
     return work;
 }
 
+HTTP::light_string HTTP::CH::CookieEntry::parse_expire(const light_string &str) {
+    light_string work = str;
+    expires.set();
+    if (!work.starts_with("=")) {
+        error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    work                          = work.substr(1);
+    const light_string maybe_date = work.substr_before(";");
+    work                          = work.substr(maybe_date.size());
+    std::pair<bool, t_time_epoch_ms> date_res = ParserHelper::str_to_http_date(maybe_date);
+    if (date_res.first) {
+        expires.set(date_res.second);
+    } else {
+        error = minor_error::make("invalid date format", HTTP::STATUS_BAD_REQUEST);
+    }
+    return work;
+}
+
 minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1
     // cookie-header = "Cookie:" OWS cookie-string OWS
@@ -863,7 +882,7 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
     // extension-av      = <any CHAR except CTLs or ";">
     values.clear();
     merror                                    = minor_error::ok();
-    const AHeaderHolder::value_list_type *res = holder.get_vals(HeaderHTTP::cookie);
+    const AHeaderHolder::value_list_type *res = holder.get_vals(HeaderHTTP::set_cookie);
     if (!res) {
         return minor_error::ok();
     }
@@ -875,6 +894,53 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
         // cookie-pair       = cookie-name "=" cookie-value
         // cookie-name       = token
         // cookie-value      = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+        CookieEntry ce;
+        QVOUT(work);
+        work = ce.parse_name_value(work);
+        QVOUT(work);
+        if (ce.error.is_error()) {
+            DXOUT("away");
+            VOUT(ce.error);
+            merror = ce.error;
+            break;
+        }
+        QVOUT(ce.name);
+        QVOUT(ce.value);
+        if (work.size() > 0) {
+            // 続きがあるかも
+            for (; work.size() > 0;) {
+                if (!work.starts_with("; ")) {
+                    DXOUT("away");
+                    break;
+                }
+                work = work.substr(2);
+                // cookie-av         = expires-av / max-age-av / domain-av /
+                //                     path-av / secure-av / httponly-av /
+                //                     extension-av
+                const light_string attr_name = work.substr_while(HTTP::CharFilter::alpha);
+                work                         = work.substr(attr_name.size());
+                if (attr_name == "Expires") {
+                    QVOUT(attr_name);
+                    work = ce.parse_expire(work);
+                } else if (attr_name == "Max-Age") {
+                    QVOUT(attr_name);
+                } else if (attr_name == "Domain") {
+                    QVOUT(attr_name);
+                } else if (attr_name == "Path") {
+                    QVOUT(attr_name);
+                } else if (attr_name == "Secure") {
+                    QVOUT(attr_name);
+                } else if (attr_name == "HttpOnly") {
+                    QVOUT(attr_name);
+                } else if (attr_name.size() > 0) {
+                    DXOUT("other extension?");
+                } else {
+                    DXOUT("away; unexpected attr_name");
+                    break;
+                }
+            }
+        }
+        values.insert(std::make_pair(ce.name, ce));
     }
     return merror;
 }
