@@ -712,6 +712,106 @@ minor_error HTTP::CH::Location::determine(const AHeaderHolder &holder) {
     return minor_error::ok();
 }
 
+// [Cookie]
+
+minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1
+    // cookie-header = "Cookie:" OWS cookie-string OWS
+    // cookie-string = cookie-pair *( ";" SP cookie-pair )
+    // cookie-pair   = cookie-name "=" cookie-value
+    // cookie-name   = token
+    // cookie-value  = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+    // cookie-octet  = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+    //                 ; US-ASCII characters excluding CTLs,
+    //                 ; whitespace DQUOTE, comma, semicolon,
+    //                 ; and backslash
+    // token         = <token, defined in [RFC2616], Section 2.2>
+    // ↓
+    // token         = 1*<any CHAR except CTLs or separators>
+    // separators    = "(" | ")" | "<" | ">" | "@"
+    //               | "," | ";" | ":" | "\" | <">
+    //               | "/" | "[" | "]" | "?" | "="
+    //               | "{" | "}" | SP | HT
+    values.clear();
+    merror                                    = minor_error::ok();
+    const AHeaderHolder::value_list_type *res = holder.get_vals(HeaderHTTP::cookie);
+    if (!res) {
+        return minor_error::ok();
+    }
+    if (res->size() < 1) {
+        throw http_error("something wrong?", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+    }
+    if (res->size() > 1) {
+        return minor_error::make("duplicated Cookie:", HTTP::STATUS_BAD_REQUEST);
+    }
+    HTTP::light_string work = *(res->begin());
+    QVOUT(work);
+    for (; work.size() > 0;) {
+        work = work.ltrim(ParserHelper::OWS);
+        // cookie-name の捕捉
+        const light_string cookie_name = work.substr_while(HTTP::CharFilter::cookie_token_char);
+        QVOUT(cookie_name);
+        if (cookie_name.size() == 0) {
+            DXOUT("away; no cookie-name");
+            break;
+        }
+        work = work.substr(cookie_name.size());
+        QVOUT(work);
+        if (work.size() == 0 || work[0] != '=') {
+            DXOUT("away; no equal");
+            break;
+        }
+        work = work.substr(1);
+        QVOUT(work);
+        // cookie-value の捕捉
+        // cookie-value  = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+        if (work.size() == 0) {
+            DXOUT("away; no rest");
+            break;
+        }
+        const bool maybe_quoted = work[0] == '"';
+        if (maybe_quoted) {
+            // ( DQUOTE *cookie-octet DQUOTE )
+            // かもしれない
+            work = work.substr(1);
+        }
+        const light_string cookie_value = work.substr_while(HTTP::CharFilter::cookie_octet);
+        if (cookie_value.size() == 0) {
+            DXOUT("away; no cookie-value");
+            break;
+        }
+        work = work.substr(cookie_value.size());
+        QVOUT(work);
+        if (maybe_quoted) {
+            if (work.size() == 0 || work[0] != '"') {
+                DXOUT("away; no closing dquote");
+                break;
+            }
+            work = work.substr(1);
+        }
+        CookieEntry ce;
+        ce.name  = cookie_name.str();
+        ce.value = cookie_value.str();
+        QVOUT(ce.name);
+        QVOUT(ce.value);
+        values.insert(std::make_pair(ce.name, ce));
+        if (work.size() == 0) {
+            continue;
+        }
+        if (work.size() > 0 && work[0] != ';') {
+            DXOUT("away; an element doesn't end with ';'");
+            break;
+        }
+        work = work.substr(1);
+        if (!work.starts_with(" ")) {
+            DXOUT("away; no a leading sp for an element");
+            break;
+        }
+        work = work.substr(1);
+    }
+    return merror;
+}
+
 // [Connection]
 
 minor_error HTTP::CH::Connection::determine(const AHeaderHolder &holder) {

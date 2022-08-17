@@ -88,6 +88,10 @@ public:
     static const CharFilter cd_token_char;
     // Content-Type: の boundary に使ってよい文字
     static const CharFilter boundary_char;
+    // Cookie: の token に使ってよい文字
+    static const CharFilter cookie_token_char;
+    // Cookie: の value として使ってよい文字
+    static const CharFilter cookie_octet;
 
     byte_string str() const;
 };

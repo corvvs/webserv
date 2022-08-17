@@ -157,6 +157,19 @@ struct Location : public IControlHeader {
     minor_error determine(const AHeaderHolder &holder);
 };
 
+struct Cookie : public IControlHeader {
+    typedef HTTP::byte_string name_type;
+    struct CookieEntry {
+        name_type name;
+        HTTP::byte_string value;
+    };
+    typedef std::map<name_type, CookieEntry> cookie_map_type;
+
+    cookie_map_type values;
+    minor_error merror;
+    minor_error determine(const AHeaderHolder &holder);
+};
+
 } // namespace CH
 } // namespace HTTP
 

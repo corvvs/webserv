@@ -286,3 +286,39 @@ TEST(control_header_http, date_basic_ok) {
         EXPECT_EQ(1660097386000, ch.value);
     }
 }
+
+// [Cookie]
+
+void test_existence_cookie(const HTTP::CH::Cookie &ch, const HTTP::byte_string &name, const HTTP::byte_string &value) {
+    HTTP::CH::Cookie::cookie_map_type::const_iterator it = ch.values.find(name);
+    EXPECT_FALSE(ch.values.end() == it);
+    EXPECT_EQ(name, it->first);
+    EXPECT_EQ(name, it->second.name);
+    EXPECT_EQ(value, it->second.value);
+}
+
+TEST(control_header_http, cookie_basic_ok) {
+    {
+        const HTTP::byte_string item = HTTP::strfy("Cookie: yummy_cookie=choco");
+        HeaderHolderHTTP holder;
+        minor_error me;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::Cookie ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        test_existence_cookie(ch, HTTP::strfy("yummy_cookie"), HTTP::strfy("choco"));
+    }
+    {
+        const HTTP::byte_string item = HTTP::strfy("Cookie: yummy_cookie=choco; tasty_cookie=strawberry");
+        HeaderHolderHTTP holder;
+        minor_error me;
+        me = holder.parse_header_line(item, &holder);
+        EXPECT_TRUE(me.is_ok());
+        HTTP::CH::Cookie ch;
+        me = ch.determine(holder);
+        EXPECT_TRUE(me.is_ok());
+        test_existence_cookie(ch, HTTP::strfy("yummy_cookie"), HTTP::strfy("choco"));
+        test_existence_cookie(ch, HTTP::strfy("tasty_cookie"), HTTP::strfy("strawberry"));
+    }
+}
