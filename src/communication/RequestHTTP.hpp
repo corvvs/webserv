@@ -142,6 +142,7 @@ public:
         HTTP::CH::Upgrade upgrade;
         HTTP::CH::Via via;
         HTTP::CH::Date date;
+        HTTP::CH::Cookie cookie;
 
         // いろいろ抽出関数群
 
