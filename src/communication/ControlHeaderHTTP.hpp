@@ -157,12 +157,56 @@ struct Location : public IControlHeader {
     minor_error determine(const AHeaderHolder &holder);
 };
 
+struct CookieEntry {
+    minor_error error;
+    HTTP::byte_string name;
+    HTTP::byte_string value;
+
+    // https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Set-Cookie#%E5%B1%9E%E6%80%A7
+
+    // > クッキーの有効期限を示す、 HTTP の日時タイムスタンプです。
+    HTTP::Nullable<HTTP::byte_string> expires;
+    // > クッキーの期限までの秒数を示します。ゼロまたは負の数値の場合は、クッキーは直ちに期限切れになります。
+    // > Expires および Max-Age の両方が設定されていたら、 Max-Age が優先されます。
+    HTTP::Nullable<long> max_age;
+    // > クッキーを送信する先のホストを定義します。
+    // > 指定されなかった場合は、この属性は既定で現在の文書の URL
+    // におけるホスト名の部分になり、サブドメインを含みません。
+    HTTP::byte_string domain;
+    // > リクエストの URL に含む必要があるパスを示します。含まれていないと、ブラウザーは Cookie ヘッダーを送信しません。
+    // > スラッシュ (/) の文字はディレクトリー区切りとして解釈され、サブディレクトリーも同様に一致します。
+    HTTP::byte_string path;
+    // > クッキーが、リクエストが SSL と HTTPS
+    // プロトコルを使用して行われた場合にのみサーバーに送信されることを示します。
+    bool secure;
+    // > JavaScript が Document.cookie プロパティなどを介してこのクッキーにアクセスすることを禁止します。
+    bool http_only;
+
+    enum t_same_site {
+        SAMESITE_LAX, // lax: ゆるい, てきとう; 既定の動作
+        SAMESITE_STRICT,
+        SAMESITE_NONE
+    };
+    // > クロスサイトリクエストでクッキーを送信するかどうかを制御し、クロスサイトリクエストフォージェリ攻撃 (CSRF)
+    // に対するある程度の防御を提供します。
+    HTTP::Nullable<t_same_site> same_site;
+
+    light_string parse_name_value(const light_string &str);
+
+    CookieEntry();
+};
+
 struct Cookie : public IControlHeader {
     typedef HTTP::byte_string name_type;
-    struct CookieEntry {
-        name_type name;
-        HTTP::byte_string value;
-    };
+    typedef std::map<name_type, CookieEntry> cookie_map_type;
+
+    cookie_map_type values;
+    minor_error merror;
+    minor_error determine(const AHeaderHolder &holder);
+};
+
+struct SetCookie : public IControlHeader {
+    typedef HTTP::byte_string name_type;
     typedef std::map<name_type, CookieEntry> cookie_map_type;
 
     cookie_map_type values;

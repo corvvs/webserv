@@ -714,6 +714,58 @@ minor_error HTTP::CH::Location::determine(const AHeaderHolder &holder) {
 
 // [Cookie]
 
+HTTP::CH::CookieEntry::CookieEntry() : secure(false), http_only(false) {}
+
+HTTP::light_string HTTP::CH::CookieEntry::parse_name_value(const light_string &str) {
+    HTTP::light_string work = str;
+    error                   = minor_error::ok();
+    work                    = work.ltrim(ParserHelper::OWS);
+    // cookie-name の捕捉
+    const light_string cookie_name = work.substr_while(HTTP::CharFilter::cookie_token_char);
+    QVOUT(cookie_name);
+    if (cookie_name.size() == 0) {
+        error = minor_error::make("away; no cookie-name", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    work = work.substr(cookie_name.size());
+    QVOUT(work);
+    if (work.size() == 0 || work[0] != '=') {
+        DXOUT("away; no equal");
+        return work;
+    }
+    work = work.substr(1);
+    QVOUT(work);
+    // cookie-value の捕捉
+    // cookie-value  = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+    if (work.size() == 0) {
+        error = minor_error::make("away; no rest", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    const bool maybe_quoted = work[0] == '"';
+    if (maybe_quoted) {
+        // ( DQUOTE *cookie-octet DQUOTE )
+        // かもしれない
+        work = work.substr(1);
+    }
+    const light_string cookie_value = work.substr_while(HTTP::CharFilter::cookie_octet);
+    if (cookie_value.size() == 0) {
+        error = minor_error::make("away; no cookie-value", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    work = work.substr(cookie_value.size());
+    QVOUT(work);
+    if (maybe_quoted) {
+        if (work.size() == 0 || work[0] != '"') {
+            error = minor_error::make("away; no closing dquote", HTTP::STATUS_BAD_REQUEST);
+            return work;
+        }
+        work = work.substr(1);
+    }
+    this->name  = cookie_name.str();
+    this->value = cookie_value.str();
+    return work;
+}
+
 minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1
     // cookie-header = "Cookie:" OWS cookie-string OWS
@@ -747,67 +799,82 @@ minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
     HTTP::light_string work = *(res->begin());
     QVOUT(work);
     for (; work.size() > 0;) {
-        work = work.ltrim(ParserHelper::OWS);
-        // cookie-name の捕捉
-        const light_string cookie_name = work.substr_while(HTTP::CharFilter::cookie_token_char);
-        QVOUT(cookie_name);
-        if (cookie_name.size() == 0) {
-            DXOUT("away; no cookie-name");
-            break;
-        }
-        work = work.substr(cookie_name.size());
+        CookieEntry ce;
         QVOUT(work);
-        if (work.size() == 0 || work[0] != '=') {
-            DXOUT("away; no equal");
-            break;
-        }
-        work = work.substr(1);
+        work = ce.parse_name_value(work);
         QVOUT(work);
-        // cookie-value の捕捉
-        // cookie-value  = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-        if (work.size() == 0) {
-            DXOUT("away; no rest");
+        if (ce.error.is_error()) {
+            DXOUT("away");
+            VOUT(ce.error);
+            merror = ce.error;
             break;
         }
-        const bool maybe_quoted = work[0] == '"';
-        if (maybe_quoted) {
-            // ( DQUOTE *cookie-octet DQUOTE )
-            // かもしれない
+        QVOUT(ce.name);
+        QVOUT(ce.value);
+        values.insert(std::make_pair(ce.name, ce));
+        if (work.size() > 0) {
+            if (work.size() > 0 && work[0] != ';') {
+                merror = minor_error::make("away; an element doesn't end with ';'", HTTP::STATUS_BAD_REQUEST);
+                break;
+            }
             work = work.substr(1);
-        }
-        const light_string cookie_value = work.substr_while(HTTP::CharFilter::cookie_octet);
-        if (cookie_value.size() == 0) {
-            DXOUT("away; no cookie-value");
-            break;
-        }
-        work = work.substr(cookie_value.size());
-        QVOUT(work);
-        if (maybe_quoted) {
-            if (work.size() == 0 || work[0] != '"') {
-                DXOUT("away; no closing dquote");
+            if (!work.starts_with(" ")) {
+                merror = minor_error::make("away; no a leading sp for an element", HTTP::STATUS_BAD_REQUEST);
                 break;
             }
             work = work.substr(1);
         }
-        CookieEntry ce;
-        ce.name  = cookie_name.str();
-        ce.value = cookie_value.str();
-        QVOUT(ce.name);
-        QVOUT(ce.value);
-        values.insert(std::make_pair(ce.name, ce));
-        if (work.size() == 0) {
-            continue;
-        }
-        if (work.size() > 0 && work[0] != ';') {
-            DXOUT("away; an element doesn't end with ';'");
-            break;
-        }
-        work = work.substr(1);
-        if (!work.starts_with(" ")) {
-            DXOUT("away; no a leading sp for an element");
-            break;
-        }
-        work = work.substr(1);
+    }
+    return merror;
+}
+
+// [Set-Cookie]
+minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.1
+    // set-cookie-header = "Set-Cookie:" SP set-cookie-string
+    // set-cookie-string = cookie-pair *( ";" SP cookie-av )
+    // cookie-pair       = cookie-name "=" cookie-value
+    // cookie-name       = token
+    // cookie-value      = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+    // cookie-octet      = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+    //                       ; US-ASCII characters excluding CTLs,
+    //                       ; whitespace DQUOTE, comma, semicolon,
+    //                       ; and backslash
+    // token             = <token, defined in [RFC2616], Section 2.2>
+    // cookie-av         = expires-av / max-age-av / domain-av /
+    //                     path-av / secure-av / httponly-av /
+    //                     extension-av
+    // expires-av        = "Expires=" sane-cookie-date
+    // sane-cookie-date  = <rfc1123-date, defined in [RFC2616], Section 3.3.1>
+    // max-age-av        = "Max-Age=" non-zero-digit *DIGIT
+    //                       ; In practice, both expires-av and max-age-av
+    //                       ; are limited to dates representable by the
+    //                       ; user agent.
+    // non-zero-digit    = %x31-39
+    //                       ; digits 1 through 9
+    // domain-av         = "Domain=" domain-value
+    // domain-value      = <subdomain>
+    //                       ; defined in [RFC1034], Section 3.5, as
+    //                       ; enhanced by [RFC1123], Section 2.1
+    // path-av           = "Path=" path-value
+    // path-value        = <any CHAR except CTLs or ";">
+    // secure-av         = "Secure"
+    // httponly-av       = "HttpOnly"
+    // extension-av      = <any CHAR except CTLs or ";">
+    values.clear();
+    merror                                    = minor_error::ok();
+    const AHeaderHolder::value_list_type *res = holder.get_vals(HeaderHTTP::cookie);
+    if (!res) {
+        return minor_error::ok();
+    }
+    for (AHeaderHolder::value_list_type::const_iterator it = res->begin(); it != res->end(); ++it) {
+        HTTP::light_string work = *(res->begin());
+        QVOUT(work);
+        // 最初の要素は name と value
+        // set-cookie-string = cookie-pair *( ";" SP cookie-av )
+        // cookie-pair       = cookie-name "=" cookie-value
+        // cookie-name       = token
+        // cookie-value      = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
     }
     return merror;
 }
