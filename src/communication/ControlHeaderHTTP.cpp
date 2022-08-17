@@ -819,6 +819,40 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_max_age(const light_string &str)
     return work;
 }
 
+HTTP::light_string HTTP::CH::CookieEntry::parse_domain(const light_string &str) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.1
+    // domain-av         = "Domain=" domain-value
+    // domain-value      = <subdomain>
+    //                       ; defined in [RFC1034], Section 3.5, as
+    //                       ; enhanced by [RFC1123], Section 2.1
+    light_string work = str;
+    domain.clear();
+    if (!work.starts_with("=")) {
+        error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    work                            = work.substr(1);
+    const light_string maybe_domain = work.substr_while(HTTP::CharFilter::domain);
+    work                            = work.substr(maybe_domain.size());
+    QVOUT(maybe_domain);
+    std::vector<light_string> labels = maybe_domain.split(".");
+    for (std::vector<light_string>::size_type i = 0; i < labels.size(); ++i) {
+        const light_string &label = labels[i];
+        if (label.find_first_not_of(HTTP::CharFilter::domain_label) != light_string::npos) {
+            QVOUT(label);
+            error = minor_error::make("unusable char in a label", HTTP::STATUS_BAD_REQUEST);
+            break;
+        }
+        if (label.size() > 0 && (label.starts_with("-") || label.ends_with("-"))) {
+            QVOUT(label);
+            error = minor_error::make("a label starts or ends with hyphen", HTTP::STATUS_BAD_REQUEST);
+            break;
+        }
+    }
+    domain = maybe_domain.str();
+    return work;
+}
+
 minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1
     // cookie-header = "Cookie:" OWS cookie-string OWS
@@ -961,6 +995,7 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
                     work = ce.parse_max_age(work);
                 } else if (attr_name == "Domain") {
                     QVOUT(attr_name);
+                    work = ce.parse_domain(work);
                 } else if (attr_name == "Path") {
                     QVOUT(attr_name);
                 } else if (attr_name == "Secure") {

@@ -94,6 +94,10 @@ public:
     static const CharFilter cookie_octet;
     // Set-Cookie: の属性名に使ってよい文字
     static const CharFilter cookie_attr_name;
+    // ドメイン文字列として使ってよい文字
+    static const CharFilter domain;
+    // ドメインの"label"として使ってよい文字
+    static const CharFilter domain_label;
 
     byte_string str() const;
 };

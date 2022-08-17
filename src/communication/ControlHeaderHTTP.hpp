@@ -197,6 +197,8 @@ struct CookieEntry {
     light_string parse_expire(const light_string &str);
     // Max-Age=... の解析
     light_string parse_max_age(const light_string &str);
+    // Domain=... の解析
+    light_string parse_domain(const light_string &str);
 
     CookieEntry();
 };

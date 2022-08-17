@@ -207,6 +207,8 @@ const HTTP::CharFilter HTTP::CharFilter::cookie_octet      = HTTP::CharFilter(0x
                                                         | HTTP::CharFilter(0x2D, 0x3A) | HTTP::CharFilter(0x3C, 0x5B)
                                                         | HTTP::CharFilter(0x5D, 0x7E);
 const HTTP::CharFilter HTTP::CharFilter::cookie_attr_name = alpha | " ";
+const HTTP::CharFilter HTTP::CharFilter::domain           = alpha | digit | "-" | ".";
+const HTTP::CharFilter HTTP::CharFilter::domain_label     = domain - ".";
 
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
