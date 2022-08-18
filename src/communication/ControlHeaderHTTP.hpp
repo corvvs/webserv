@@ -203,6 +203,10 @@ struct CookieEntry {
     light_string parse_path(const light_string &str);
     // Secure の解析
     light_string parse_secure(const light_string &str);
+    // HttpOnly の解析
+    light_string parse_http_only(const light_string &str);
+    // SameSite の解析
+    light_string parse_same_site(const light_string &str);
     CookieEntry();
 };
 
