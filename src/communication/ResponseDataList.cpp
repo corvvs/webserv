@@ -84,7 +84,7 @@ void ResponseDataList::serialize_if_needed() {
 }
 
 const char *ResponseDataList::serialized_head() const {
-    return &serialized_data.front();
+    return &serialized_data.front() + sent_serialized;
 }
 
 size_t ResponseDataList::rest_serialized() const {
