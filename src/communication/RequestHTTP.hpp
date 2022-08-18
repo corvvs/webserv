@@ -22,6 +22,7 @@
 #include <vector>
 
 struct RequestTarget {
+    typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
 
     // リクエストの"form"
@@ -53,8 +54,26 @@ struct RequestTarget {
     light_string path;
     light_string query;
 
+    // パーセントエンコーディングをデコードしたもの
+    struct Decoded {
+        // scheme はパーセントエンコーディングされない
+        byte_string authority;
+        byte_string path;
+        byte_string query;
+    };
+
+    const byte_string &dauthority() const;
+    const byte_string &dpath() const;
+    const byte_string &dquery() const;
+
     RequestTarget();
     RequestTarget(const light_string &target);
+
+private:
+    Decoded decoded_parts;
+
+    void decompose(const light_string &target);
+    void decode_pct_encoded();
 };
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f);

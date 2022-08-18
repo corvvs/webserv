@@ -25,7 +25,15 @@ HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
 
 RequestTarget::RequestTarget() : is_error(false) {}
 
-RequestTarget::RequestTarget(const light_string &target) : given(target), is_error(false), form(FORM_UNKNOWN) {
+RequestTarget::RequestTarget(const light_string &target) {
+    decompose(target);
+    decode_pct_encoded();
+}
+
+void RequestTarget::decompose(const light_string &target) {
+    given    = target;
+    is_error = false;
+    form     = FORM_UNKNOWN;
     // TODO:
     // https://wiki.suikawiki.org/n/%E8%A6%81%E6%B1%82%E5%AF%BE%E8%B1%A1#anchor-22
     // 要求対象が // から始まるとき、 Apache も nginx も、 absolute-form と解釈するようです。
@@ -107,6 +115,27 @@ RequestTarget::RequestTarget(const light_string &target) : given(target), is_err
             return;
         }
     }
+}
+
+void RequestTarget::decode_pct_encoded() {
+    decoded_parts.authority = ParserHelper::decode_pct_encoded(authority);
+    // DXOUT("encoded: " << authority << " -> decoded: " << decoded_parts.authority);
+    decoded_parts.path = ParserHelper::decode_pct_encoded(path);
+    // DXOUT("encoded: " << path << " -> decoded: " << decoded_parts.path);
+    decoded_parts.query = ParserHelper::decode_pct_encoded(query);
+    // DXOUT("encoded: " << query << " -> decoded: " << decoded_parts.query);
+}
+
+const RequestTarget::byte_string &RequestTarget::dauthority() const {
+    return decoded_parts.authority;
+}
+
+const RequestTarget::byte_string &RequestTarget::dpath() const {
+    return decoded_parts.path;
+}
+
+const RequestTarget::byte_string &RequestTarget::dquery() const {
+    return decoded_parts.query;
 }
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
@@ -487,6 +516,10 @@ void RequestHTTP::check_reqline_consistensy() {
             throw http_error("authority-form is available for only CONNECT", HTTP::STATUS_BAD_REQUEST);
         default:
             throw http_error("request target's form is unknown", HTTP::STATUS_BAD_REQUEST);
+    }
+    if (this->rp.given_request_target.is_error) {
+        this->ps.merror
+            = erroneous(this->ps.merror, minor_error("request target is invalid", HTTP::STATUS_BAD_REQUEST));
     }
     DXOUT("OK.");
 }

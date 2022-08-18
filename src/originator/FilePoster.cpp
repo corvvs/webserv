@@ -17,8 +17,9 @@ HTTP::byte_string new_file_name(const HTTP::CH::ContentDisposition &content_disp
     const HTTP::IDictHolder::parameter_dict &params       = content_disposition.parameters;
     HTTP::IDictHolder::parameter_dict::const_iterator res = params.find(HTTP::strfy("filename"));
     if (res != params.end()) {
+        const HTTP::byte_string decoded = ParserHelper::decode_pct_encoded(res->second.unquote());
         file_name += HTTP::strfy("_");
-        file_name += res->second.unquote().str();
+        file_name += decoded;
     }
     return file_name;
 }
@@ -187,7 +188,7 @@ void FilePoster::write_file(const FileEntry &file) const {
         ssize_t written_size = write(fd, &file.content[0] + written, write_max);
         if (written_size < 0) {
             close(fd);
-            throw http_error("read error", HTTP::STATUS_FORBIDDEN);
+            throw http_error("write error", HTTP::STATUS_FORBIDDEN);
         }
         if (written_size == 0) {
             DXOUT("Imcomplete?");
@@ -227,9 +228,21 @@ void FilePoster::leave() {
     delete this;
 }
 
-ResponseHTTP *FilePoster::respond(const RequestHTTP &request) {
-    response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
+ResponseHTTP *FilePoster::respond(const RequestHTTP *request) {
+    ResponseHTTP::header_list_type headers;
+    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    switch (sm) {
+        case ResponseDataList::SM_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+            break;
+        case ResponseDataList::SM_NOT_CHUNKED:
+            headers.push_back(
+                std::make_pair(HeaderHTTP::content_length, ParserHelper::utos(response_data.current_total_size(), 10)));
+            break;
+        default:
+            break;
+    }
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }

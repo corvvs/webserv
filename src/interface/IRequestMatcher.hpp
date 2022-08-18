@@ -24,11 +24,13 @@ struct RequestMatchingResult {
     minor_error error;
     /**
      * リクエスト: `/cgi-bin/cgi.rb/pathinfo`
+     * fullpath   : /cgi-bin/cgi.rb (local path)
      * root       : /cgi-bin
-     * cgi_script : /cgi.rb
+     * script_name: /cgi-bin/cgi.rb (request path)
      * path_info  : /pathinfo
      */
     struct CGIResource {
+        HTTP::byte_string fullpath;
         HTTP::byte_string root;
         HTTP::byte_string script_name;
         HTTP::byte_string path_info;
@@ -61,6 +63,8 @@ struct RequestMatchingResult {
     HTTP::byte_string redirect_location;
 
     long client_max_body_size;
+
+    RequestMatchingResult(const RequestTarget *target);
 };
 class IRequestMatcher {
 public:

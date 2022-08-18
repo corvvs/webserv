@@ -1,9 +1,12 @@
 #include "FileReader.hpp"
 #include <unistd.h>
-#define READ_SIZE 1024
+#define READ_SIZE 1048576
 
 FileReader::FileReader(const RequestMatchingResult &match_result, FileCacher &cacher)
     : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
+
+FileReader::FileReader(const char_string &path, FileCacher &cacher)
+    : file_path_(path), originated_(false), cacher_(cacher) {}
 
 FileReader::~FileReader() {}
 
@@ -33,11 +36,22 @@ bool FileReader::read_from_cache() {
     return false;
 }
 
-void FileReader::read_from_file() {
-    // キャッシュに追加せずに読み込んでいく
+minor_error FileReader::read_from_file() {
+    // TODO: C++ way に書き直す
+    errno = 0;
+    // ファイルを読み込み用に開く
+    // 開けなかったらエラー
     int fd = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
-        throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
+        switch (errno) {
+            case ENOENT:
+                return minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
+            case EACCES:
+                return minor_error::make("permission denied", HTTP::STATUS_FORBIDDEN);
+            default:
+                VOUT(errno);
+                return minor_error::make("can't open", HTTP::STATUS_FORBIDDEN);
+        }
     }
     // 読んでデータリストに注入
     char read_buf[READ_SIZE];
@@ -46,15 +60,15 @@ void FileReader::read_from_file() {
         read_size = read(fd, read_buf, READ_SIZE);
         if (read_size < 0) {
             close(fd);
-            throw http_error("read error", HTTP::STATUS_FORBIDDEN);
+            return minor_error::make("read error", HTTP::STATUS_FORBIDDEN);
         }
         response_data.inject(read_buf, read_size, read_size == 0);
         if (read_size == 0) {
             break;
         }
     }
-    originated_ = true;
     close(fd);
+    return minor_error::ok();
 }
 
 void FileReader::inject_socketlike(ISocketLike *socket_like) {
@@ -84,16 +98,22 @@ void FileReader::start_origination(IObserver &observer) {
     if (originated_) {
         return;
     }
-    if (!read_from_cache()) {
-        read_from_file();
+    if (read_from_cache()) {
+        originated_ = true;
+        return;
     }
+    const minor_error me = read_from_file();
+    if (me.is_error()) {
+        throw http_error(me);
+    }
+    originated_ = true;
 }
 
 void FileReader::leave() {
     delete this;
 }
 
-ResponseHTTP *FileReader::respond(const RequestHTTP &request) {
+ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
@@ -107,7 +127,7 @@ ResponseHTTP *FileReader::respond(const RequestHTTP &request) {
         default:
             break;
     }
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &headers, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }

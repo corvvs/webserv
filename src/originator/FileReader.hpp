@@ -21,12 +21,14 @@ protected:
     FileCacher &cacher_;
 
     // ファイルからデータを読み出しておく
-    void read_from_file();
+    minor_error read_from_file();
+
     // キャッシュデータを読み込む
     bool read_from_cache();
 
 public:
     FileReader(const RequestMatchingResult &match_result, FileCacher &cacher);
+    FileReader(const char_string &path, FileCacher &cacher);
     ~FileReader();
 
     virtual void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
@@ -37,7 +39,7 @@ public:
     virtual bool is_origination_started() const;
     virtual void start_origination(IObserver &observer);
     virtual void leave();
-    virtual ResponseHTTP *respond(const RequestHTTP &request);
+    virtual ResponseHTTP *respond(const RequestHTTP *request);
 };
 
 #endif

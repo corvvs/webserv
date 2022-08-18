@@ -1,4 +1,6 @@
 #include "AutoIndexer.hpp"
+#include "../utils/CSS.hpp"
+#include "../utils/File.hpp"
 #include <algorithm>
 #include <ctime>
 #include <unistd.h>
@@ -34,14 +36,13 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
         basename += HTTP::strfy("/");
     }
     std::stringstream ss;
-    str += HTTP::strfy("\t<tr class=\"file-entry\">\n");
-    str += HTTP::strfy("\t\t<td class=\"name\">\n");
-    str += HTTP::strfy("\t\t\t");
+    str += HTTP::strfy("  <tr class=\"file-entry\">\n"
+                       "    <td class=\"name\">\n");
     // 名前とアンカー
     {
         // URL
         HTTP::byte_string relative_url;
-        relative_url += HTTP::strfy("<a href=\"");
+        relative_url += HTTP::strfy("      <a href=\"");
         relative_url += HTTP::strfy(requested_path);
         if (requested_path.size() > 1 && requested_path[requested_path.size() - 1] != '/') {
             relative_url += HTTP::strfy("/");
@@ -50,16 +51,15 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
         relative_url += HTTP::strfy("\">");
         str += relative_url;
         str += basename;
-        str += HTTP::strfy("</a>");
-        str += HTTP::strfy("\n");
-        str += HTTP::strfy("\t\t</td>\n");
+        str += HTTP::strfy("</a>\n");
+        str += HTTP::strfy("    </td>\n");
     }
     // 最終更新時刻
     {
-        str += HTTP::strfy("\t\t<td class=\"last-modified\">\n");
+        str += HTTP::strfy("    <td class=\"last-modified\">\n");
         ss << st_mtim.tv_sec;
         ss >> s;
-        str += HTTP::strfy("\t\t\t");
+        str += HTTP::strfy("      ");
 
         size_t mlen = 52;
         tm *tms     = localtime(&st_mtim.tv_sec);
@@ -71,12 +71,16 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
         }
         str += HTTP::strfy("\n");
         ss.clear();
-        str += HTTP::strfy("\t\t</td>\n");
+        str += HTTP::strfy("    </td>\n");
     }
     // ファイルサイズ
     {
-        str += HTTP::strfy("\t\t<td class=\"size\">\n");
-        str += HTTP::strfy("\t\t\t");
+        if (is_dir) {
+            str += HTTP::strfy("    <td class=\"size dir\">\n");
+        } else {
+            str += HTTP::strfy("    <td class=\"size file\">\n");
+        }
+        str += HTTP::strfy("      ");
         if (is_dir) {
             str += HTTP::strfy("-");
         } else {
@@ -86,15 +90,15 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
             str += HTTP::strfy(s);
         }
         str += HTTP::strfy("\n");
-        str += HTTP::strfy("\t\t</td>\n");
+        str += HTTP::strfy("    </td>\n");
     }
-    str += HTTP::strfy("\t</tr>\n");
+    str += HTTP::strfy("  </tr>\n");
     return str;
 }
 
 AutoIndexer::AutoIndexer(const RequestMatchingResult &match_result)
     : directory_path_(HTTP::restrfy(match_result.path_local))
-    , requested_path_(HTTP::restrfy(match_result.target->path.str()))
+    , requested_path_(HTTP::restrfy(match_result.target->dpath()))
     , originated_(false)
     , dir(NULL) {}
 
@@ -114,7 +118,8 @@ void AutoIndexer::scan_from_directory() {
     if (originated_) {
         return;
     }
-    errno     = 0;
+    errno = 0;
+    QVOUT(directory_path_);
     DIR *dird = opendir(directory_path_.c_str());
     if (dird == NULL) {
         switch (errno) {
@@ -160,29 +165,45 @@ void AutoIndexer::render_html() {
     std::stable_sort(entries.begin(), entries.end(), compare_entry_by_name);
     std::stable_sort(entries.begin(), entries.end(), compare_entry_by_mod_time);
     std::stable_sort(entries.begin(), entries.end(), compare_entry_by_type);
+
     // 出力データ生成
-    response_data.inject(HTTP::strfy("<html>\n<body>\n<table>\n"), false);
+    response_data.inject(HTTP::strfy("<html>\n"
+                                     "<head>\n"
+                                     "  <title>\n"),
+                         false);
+    response_data.inject(HTTP::strfy(requested_path_), false);
+    response_data.inject(HTTP::strfy("  </title>\n"
+                                     "  <style>\n" CSS_AUTOINDEXER "  </style>\n"
+                                     "</head>\n"
+                                     "<body>\n"),
+                         false);
 
     // 見出し部
-    response_data.inject(HTTP::strfy("<h2>\n"), false);
-    response_data.inject(HTTP::strfy("Index of "), false);
-    response_data.inject(HTTP::strfy(requested_path_), false);
-    response_data.inject(HTTP::strfy("</h2>\n"), false);
-
+    QVOUT(requested_path_);
+    response_data.inject(HTTP::strfy("<h2>Index of " + requested_path_ + "</h2>\n"), false);
+    response_data.inject(HTTP::strfy("<hr>"), false);
     // テーブル部
-    response_data.inject(HTTP::strfy("\t<thead>\n\t\t<tr>\n"), false);
-    response_data.inject(HTTP::strfy("\t\t\t<th class=\"name\">Name</th>\n"), false);
-    response_data.inject(HTTP::strfy("\t\t\t<th class=\"last-modified\">Last Modified</th>\n"), false);
-    response_data.inject(HTTP::strfy("\t\t\t<th class=\"size\">Size</th>\n"), false);
-    response_data.inject(HTTP::strfy("\t\t</tr>\n\t</thead>\n"), false);
-    response_data.inject(HTTP::strfy("<tbody>\n"), false);
+    response_data.inject(HTTP::strfy("<table class=\"autoindex-table\">\n"
+                                     "  <thead>\n"
+                                     "    <tr>\n"
+                                     "      <th class=\"name\">Name</th>\n"
+                                     "      <th class=\"last-modified\">Last Modified</th>\n"
+                                     "      <th class=\"size\">Size</th>\n"
+                                     "    </tr>\n"
+                                     "  </thead>\n"
+                                     "  <tbody>\n"),
+                         false);
     for (entry_list::size_type i = 0; i < entries.size(); ++i) {
         const Entry &ent             = entries[i];
         HTTP::byte_string serialized = ent.serialize(requested_path_);
         response_data.inject(serialized, false);
     }
-    response_data.inject(HTTP::strfy("</tbody>\n"), false);
-    response_data.inject(HTTP::strfy("</table>\n</body>\n</html>\n"), false);
+    response_data.inject(HTTP::strfy("  </tbody>\n"
+                                     "</table>\n"),
+                         false);
+    response_data.inject(HTTP::strfy("</body>\n"
+                                     "</html>\n"),
+                         false);
     response_data.inject("", 0, true);
 }
 
@@ -223,7 +244,7 @@ void AutoIndexer::leave() {
     delete this;
 }
 
-ResponseHTTP *AutoIndexer::respond(const RequestHTTP &request) {
+ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
@@ -239,7 +260,7 @@ ResponseHTTP *AutoIndexer::respond(const RequestHTTP &request) {
     }
     // MIMEタイプ設定
     headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::strfy("text/html")));
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &headers, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }

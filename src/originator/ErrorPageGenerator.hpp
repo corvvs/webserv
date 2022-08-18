@@ -12,16 +12,20 @@ public:
 
 private:
     minor_error error;
+    bool should_close_;
 
     void generate_html();
 
 public:
-    ErrorPageGenerator(const minor_error &error, const RequestMatchingResult &match_result, FileCacher &cacher);
+    ErrorPageGenerator(const minor_error &error,
+                       const RequestMatchingResult::status_dict_type &match_result,
+                       FileCacher &cacher,
+                       bool should_close = false);
     ~ErrorPageGenerator();
 
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    ResponseHTTP *respond(const RequestHTTP *request);
 };
 
 #endif

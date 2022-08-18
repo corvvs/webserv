@@ -107,6 +107,9 @@ public:
     static const byte_string META_CONTENT_TYPE;
     static const byte_string META_SERVER_PORT;
     static const byte_string META_CONTENT_LENGTH;
+    static const byte_string META_PATH_INFO;
+    static const byte_string META_SCRIPT_NAME;
+    static const byte_string META_QUERY_STRING;
 
 private:
     Attribute attr;
@@ -176,7 +179,7 @@ public:
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    ResponseHTTP *respond(const RequestHTTP *request);
     bool is_timeout(t_time_epoch_ms now) const;
 
     // 内部バッファにバイト列を追加する

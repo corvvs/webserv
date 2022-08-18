@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
+class http_error;
+
 // [軽微なHTTPエラークラス]
 // 即例外を出すほどではないが, 最終的にはエラー応答を返すようなエラー.
 class minor_error : public std::pair<std::string, HTTP::t_status> {
@@ -13,6 +15,7 @@ public:
     minor_error();
     minor_error(first_type message, second_type status_code);
     minor_error(const minor_error &other);
+    minor_error(const http_error &other);
     minor_error &operator=(const minor_error &rhs);
 
     bool is_ok() const;

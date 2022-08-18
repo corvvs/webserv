@@ -61,7 +61,8 @@ public:
         NetworkBuffer();
 
         // ソケットから内部バッファにデータを受信する
-        ssize_t receive(SocketConnected &sock);
+        // discard == true なら, 受信したデータを保存しない
+        ssize_t receive(SocketConnected &sock, bool discard = false);
         // 内部バッファの先頭チャンクを取り出す
         const byte_string &top_front() const;
         // 内部バッファの先頭チャンクを除去する
@@ -79,6 +80,7 @@ private:
 
     // 今切断中かどうか
     bool dying;
+    bool unrecoverable;
 
     // 通信用ソケット
     SocketConnected *sock;

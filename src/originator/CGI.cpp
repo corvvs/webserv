@@ -28,7 +28,7 @@ CGI::Attribute::Attribute(const RequestMatchingResult &matching_result,
                           const ICGIConfigurationProvider &configuration_provider)
     : configuration_provider_(configuration_provider)
     , executor_path_(matching_result.path_cgi_executor)
-    , script_path_(matching_result.cgi_resource.root + matching_result.cgi_resource.script_name)
+    , script_path_(matching_result.cgi_resource.fullpath)
     , query_string_(configuration_provider.get_request_matching_param().get_request_target().query.str())
     , observer(NULL)
     , master(NULL)
@@ -41,6 +41,9 @@ const CGI::byte_string CGI::META_SERVER_PROTOCOL   = HTTP::strfy("SERVER_PROTOCO
 const CGI::byte_string CGI::META_CONTENT_TYPE      = HTTP::strfy("CONTENT_TYPE");
 const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
 const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
+const CGI::byte_string CGI::META_PATH_INFO         = HTTP::strfy("PATH_INFO");
+const CGI::byte_string CGI::META_SCRIPT_NAME       = HTTP::strfy("SCRIPT_NAME");
+const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
     : attr(Attribute(match_result, request))
@@ -53,6 +56,13 @@ CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvi
     metavar_[META_REQUEST_METHOD]    = HTTP::method_str(attr.configuration_provider_.get_method());
     metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(attr.configuration_provider_.get_http_version());
     metavar_[META_CONTENT_TYPE]      = attr.configuration_provider_.get_content_type();
+    if (match_result.cgi_resource.script_name == HTTP::strfy("/")) {
+        metavar_[META_SCRIPT_NAME] = HTTP::strfy("");
+    } else {
+        metavar_[META_SCRIPT_NAME] = match_result.cgi_resource.script_name;
+    }
+    metavar_[META_PATH_INFO]    = match_result.cgi_resource.path_info;
+    metavar_[META_QUERY_STRING] = match_result.target->query.str();
 }
 
 CGI::~CGI() {
@@ -515,9 +525,9 @@ void CGI::after_injection(bool is_disconnected) {
                     status.is_responsive = true;
                 }
                 status.is_complete = true;
-                VOUT(ps.start_of_body);
-                VOUT(ps.end_of_body);
-                BVOUT(bytebuffer);
+                // VOUT(ps.start_of_body);
+                // VOUT(ps.end_of_body);
+                // BVOUT(bytebuffer);
                 return;
             }
 
@@ -647,7 +657,7 @@ size_t CGI::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP &request) {
+ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
@@ -706,10 +716,10 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
                 break;
         }
     }
-    ResponseHTTP res(request.get_http_version(), response_status, &headers, &status.response_data);
+    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 
     // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, NULL);
+    ResponseHTTP *r = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, NULL, false);
     ResponseHTTP::swap(res, *r);
     r->start();
     return r;
