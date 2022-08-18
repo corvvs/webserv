@@ -551,6 +551,7 @@ void CGI::extract_control_headers() {
     me = erroneous(me, this->rp.content_type.determine(from_script_header_holder));
     me = erroneous(me, this->rp.status.determine(from_script_header_holder));
     me = erroneous(me, this->rp.location.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.set_cookie.determine(from_script_header_holder));
     this->rp.determine_body_size(from_script_header_holder);
     if (me.is_error()) {
         throw http_error(me);
@@ -673,56 +674,55 @@ size_t CGI::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP *request) {
-    // ローカルリダイレクトの場合ここに来てはいけない
-    assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
-
-    CGI::t_cgi_response_type response_type = rp.get_response_type();
-    HTTP::t_status response_status         = HTTP::STATUS_OK;
-    VOUT(response_type);
-    VOUT(rp.status.code);
-    ResponseHTTP::header_list_type headers;
-    switch (response_type) {
+HTTP::t_status CGI::determine_response_status() const {
+    switch (rp.get_response_type()) {
         case CGIRES_DOCUMENT:
             // ドキュメント応答
             if (rp.status.code == HTTP::STATUS_UNSPECIFIED) {
-                response_status = HTTP::STATUS_OK;
+                return HTTP::STATUS_OK;
             } else {
-                response_status = (HTTP::t_status)rp.status.code;
+                return (HTTP::t_status)rp.status.code;
             }
-            break;
         case CGIRES_REDIRECT_CLIENT:
             // クライアントリダイレクト
-            response_status = HTTP::STATUS_FOUND;
-            headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
-            break;
+            return HTTP::STATUS_FOUND;
         case CGIRES_REDIRECT_CLIENT_DOCUMENT:
             // クライアントリダイレクト ドキュメント付き
-            response_status = (HTTP::t_status)rp.status.code;
-            headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
-            break;
+            return (HTTP::t_status)rp.status.code;
         default:
             assert(false);
     }
+    return HTTP::STATUS_DUMMY;
+}
 
+ResponseHTTP::header_list_type CGI::determine_response_headers_destructively() {
+    ResponseHTTP::header_list_type headers;
     // [伝送に関する決め事]
     // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
     // それはそうとして, chunkedで送るか, そうでないかを決める
     // chunkedでない場合, Content-Length: を与える
     // 本文がある場合は Content-Type: をセット
     // (なければ何もセットしない)
+    from_script_header_holder.erase_vals(HeaderHTTP::transfer_encoding);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_length);
     IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
+    const t_cgi_response_type response_type  = rp.get_response_type();
+    const bool is_redirection
+        = response_type == CGIRES_REDIRECT_CLIENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
     const bool must_have_body = response_type == CGIRES_DOCUMENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
+    if (is_redirection) {
+        headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
+    }
+    // Content-Type:
     if (must_have_body) {
-        VOUT(status.response_data.current_total_size());
-        if (status.response_data.current_total_size() > 0) {
-            const HeaderHolderCGI::header_val_type *val
-                = from_script_header_holder.get_back_val(HeaderHTTP::content_type);
-            if (val) {
-                headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
-            }
+        const HeaderHolderCGI::header_val_type *val = from_script_header_holder.get_back_val(HeaderHTTP::content_type);
+        if (val) {
+            headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
+        } else {
+            headers.push_back(std::make_pair(HeaderHTTP::content_type, CGIP::CH::ContentType::default_value));
         }
     }
+    // 伝送方式
     switch (sm) {
         case ResponseDataList::SM_CHUNKED:
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -734,6 +734,29 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
         default:
             break;
     }
+    // その他のヘッダ
+    from_script_header_holder.erase_vals(HeaderHTTP::status);
+    from_script_header_holder.erase_vals(HeaderHTTP::location);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_type);
+    const AHeaderHolder::list_type &header_list = from_script_header_holder.get_list();
+    for (AHeaderHolder::list_type::const_iterator hit = header_list.begin(); hit != header_list.end(); ++hit) {
+        const HeaderItem::value_list_type &val_list = hit->get_vals();
+        for (HeaderItem::value_list_type::const_iterator vit = val_list.begin(); vit != val_list.end(); ++vit) {
+            headers.push_back(std::make_pair(hit->get_key(), *vit));
+        }
+    }
+    return headers;
+}
+
+ResponseHTTP *CGI::respond(const RequestHTTP *request) {
+    // ローカルリダイレクトの場合ここに来てはいけない
+    assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
+
+    // 応答ステータスを決める
+    HTTP::t_status response_status = determine_response_status();
+
+    // HTTPレスポンスヘッダを生成する
+    ResponseHTTP::header_list_type headers = determine_response_headers_destructively();
     ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 
     // 例外安全のための copy and swap

@@ -248,6 +248,8 @@ struct Status : public HTTP::IControlHeader {
 
 struct Location : public HTTP::CH::Location {};
 
+struct SetCookie : public HTTP::CH::SetCookie {};
+
 } // namespace CH
 } // namespace CGIP
 
