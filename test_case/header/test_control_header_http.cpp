@@ -349,8 +349,9 @@ TEST(control_header_http, set_cookie_basic_ok) {
         test_existence_set_cookie(ch, HTTP::strfy("sessionId"), HTTP::strfy("38afes7a8"));
     }
     {
-        const HTTP::byte_string item = HTTP::strfy(
-            "Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Max-Age=2592000; Path=/docs/Web/HTTP; Domain=somecompany.co.uk");
+        const HTTP::byte_string item
+            = HTTP::strfy("Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; "
+                          "Max-Age=2592000; Path=/docs/Web/HTTP; Domain=somecompany.co.uk; Secure;");
         HeaderHolderHTTP holder;
         minor_error me;
         me = holder.parse_header_line(item, &holder);
@@ -366,5 +367,6 @@ TEST(control_header_http, set_cookie_basic_ok) {
         EXPECT_EQ(2592000, it->second.max_age.value());
         EXPECT_EQ(HTTP::strfy("somecompany.co.uk"), it->second.domain);
         EXPECT_EQ(HTTP::strfy("/docs/Web/HTTP"), it->second.path);
+        EXPECT_TRUE(it->second.secure);
     }
 }

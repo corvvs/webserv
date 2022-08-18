@@ -875,6 +875,20 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_path(const light_string &str) {
     return work;
 }
 
+HTTP::light_string HTTP::CH::CookieEntry::parse_secure(const light_string &str) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.1
+    // secure-av         = "Secure"
+    // この関数に来てる時点で "Secure" があることは確定しているので, 余計なものがないことを確認
+    light_string work = str;
+    secure            = false;
+    if (work.size() > 0 && work[0] != ';') {
+        error = minor_error::make("unexpected char follows \"Secure\"", HTTP::STATUS_BAD_REQUEST);
+    } else {
+        secure = true;
+    }
+    return work;
+}
+
 minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1
     // cookie-header = "Cookie:" OWS cookie-string OWS
@@ -1023,6 +1037,7 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
                     work = ce.parse_path(work);
                 } else if (attr_name == "Secure") {
                     QVOUT(attr_name);
+                    work = ce.parse_secure(work);
                 } else if (attr_name == "HttpOnly") {
                     QVOUT(attr_name);
                 } else if (attr_name.size() > 0) {
