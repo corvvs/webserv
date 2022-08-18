@@ -349,9 +349,9 @@ TEST(control_header_http, set_cookie_basic_ok) {
         test_existence_set_cookie(ch, HTTP::strfy("sessionId"), HTTP::strfy("38afes7a8"));
     }
     {
-        const HTTP::byte_string item = HTTP::strfy(
-            "Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; "
-            "Max-Age=2592000; Path=/docs/Web/HTTP; Domain=somecompany.co.uk; Secure; HttpOnly; SameSite=Strict");
+        const HTTP::byte_string item = HTTP::strfy("Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; "
+                                                   "Max-Age=2592000; Path=/docs/Web/HTTP; Domain=somecompany.co.uk; "
+                                                   "Secure; HttpOnly; auau?; SameSite=Strict;");
         HeaderHolderHTTP holder;
         minor_error me;
         me = holder.parse_header_line(item, &holder);

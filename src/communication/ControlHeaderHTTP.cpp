@@ -1093,6 +1093,9 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
                 } else if (attr_name.size() > 0) {
                     QVOUT(attr_name);
                     DXOUT("other extension?");
+                    // extension-av      = <any CHAR except CTLs or ";">
+                    // 読んで捨てる
+                    work = work.substr_after(HTTP::CharFilter::cookie_extension);
                 } else {
                     DXOUT("away; unexpected attr_name");
                     break;
