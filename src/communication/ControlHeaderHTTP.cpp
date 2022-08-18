@@ -124,7 +124,7 @@ minor_error HTTP::CH::ContentLength::determine(const AHeaderHolder &holder) {
         return minor_error::ok();
     }
     for (AHeaderHolder::value_list_type::const_iterator it = les->begin(); it != les->end(); ++it) {
-        std::pair<bool, unsigned int> res = ParserHelper::str_to_u(*it);
+        std::pair<bool, unsigned long> res = ParserHelper::str_to_u(*it);
         // VOUT(res.first);
         // VOUT(res.second);
         if (!res.first) {

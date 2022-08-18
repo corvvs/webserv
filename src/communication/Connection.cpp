@@ -19,7 +19,15 @@ Connection::NetworkBuffer::NetworkBuffer() : read_size(0), extra_amount(0) {
     read_buffer.resize(MAX_REQLINE_END);
 }
 
-ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock) {
+ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock, bool discard) {
+    if (discard) {
+        // データをreadして捨てる
+        DXOUT("DISCARDING...");
+        char rb[MAX_REQLINE_END];
+        read_size = sock.receive(rb, MAX_REQLINE_END, 0);
+        return read_size;
+    }
+
     if (read_size > 0) {
         // read_buffer にデータがあるならそれを待避させる
         extra_buffer.push_back(read_buffer);
@@ -87,6 +95,7 @@ Connection::Connection(IRouter *router, SocketConnected *sock_given, const confi
     : attr(Attribute())
     , phase(CONNECTION_ESTABLISHED)
     , dying(false)
+    , unrecoverable(false)
     , sock(sock_given)
     , rt(*router, configs)
     , lifetime(Lifetime::make_connection()) {
@@ -119,7 +128,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
                         return;
                     }
                     detect_update(observer);
-                    if (!rt.is_freezed() && net_buffer.should_redo()) {
+                    if (!unrecoverable && !rt.is_freezed() && net_buffer.should_redo()) {
                         // - リクエストが凍結されていない
                         // - NetworkBuffer に余ったデータがある
                         // なら, イベントハンドラをもう一度やり直す.
@@ -139,8 +148,12 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
             }
             return;
         }
-    } catch (const http_error &err) { // 受信中のHTTPエラー
-        DXOUT("error occurred");
+    } catch (const http_error &err) { // 回復不可能なエラー
+        DXOUT("UNRECOVERABLE ERROR occurred");
+        // この状態になったら:
+        // - 受信データはすべて捨てる
+        // - リクエストの状態は変化させず, 状態検査もしない
+        unrecoverable = true;
         if (phase != CONNECTION_SHUTTING_DOWN && !rt.is_responding()) {
             try {
                 // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
@@ -188,10 +201,13 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-    const ssize_t received_size = net_buffer.receive(*sock);
+    const ssize_t received_size = net_buffer.receive(*sock, unrecoverable);
     if (received_size <= 0) {
         // なにも受信できなかったか, 受信エラーが起きた場合
         die(observer);
+        return;
+    }
+    if (unrecoverable) {
         return;
     }
 

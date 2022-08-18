@@ -107,6 +107,9 @@ public:
     static const byte_string META_CONTENT_TYPE;
     static const byte_string META_SERVER_PORT;
     static const byte_string META_CONTENT_LENGTH;
+    static const byte_string META_PATH_INFO;
+    static const byte_string META_SCRIPT_NAME;
+    static const byte_string META_QUERY_STRING;
 
 private:
     Attribute attr;

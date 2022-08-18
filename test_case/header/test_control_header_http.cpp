@@ -49,7 +49,7 @@ TEST(control_header_http, content_length_basic_ok) {
 }
 
 TEST(control_header_http, content_length_basic_ko) {
-    const char *strs[] = {"apple", "", "12345678910", "1 2 3", NULL};
+    const char *strs[] = {"apple", "", "123456789012345678901", "1 2 3", NULL};
     minor_error me;
     for (size_t i = 0; strs[i]; ++i) {
         HeaderHolderHTTP holder;

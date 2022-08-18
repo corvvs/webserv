@@ -136,8 +136,8 @@ http { \
         TestParam tp(HTTP::METHOD_GET, "/ruby/blank.rb", HTTP::V_1_1, "localhost", "80");
         EXPECT_NO_THROW({
             RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./cgi/ruby"), res.cgi_resource.root);
-            EXPECT_EQ(HTTP::strfy("/blank.rb"), res.cgi_resource.script_name);
+            EXPECT_EQ(HTTP::strfy("./cgi"), res.cgi_resource.root);
+            EXPECT_EQ(HTTP::strfy("/ruby/blank.rb"), res.cgi_resource.script_name);
             EXPECT_EQ(HTTP::strfy(""), res.cgi_resource.path_info);
         });
     }
@@ -146,8 +146,8 @@ http { \
         TestParam tp(HTTP::METHOD_GET, "/ruby/blank.rb/path/after", HTTP::V_1_1, "localhost", "80");
         EXPECT_NO_THROW({
             RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./cgi/ruby"), res.cgi_resource.root);
-            EXPECT_EQ(HTTP::strfy("/blank.rb"), res.cgi_resource.script_name);
+            EXPECT_EQ(HTTP::strfy("./cgi"), res.cgi_resource.root);
+            EXPECT_EQ(HTTP::strfy("/ruby/blank.rb"), res.cgi_resource.script_name);
             EXPECT_EQ(HTTP::strfy("/path/after"), res.cgi_resource.path_info);
         });
     }

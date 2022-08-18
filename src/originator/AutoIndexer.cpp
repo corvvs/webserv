@@ -98,7 +98,7 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
 
 AutoIndexer::AutoIndexer(const RequestMatchingResult &match_result)
     : directory_path_(HTTP::restrfy(match_result.path_local))
-    , requested_path_(HTTP::restrfy(match_result.target->path.str()))
+    , requested_path_(HTTP::restrfy(match_result.target->dpath()))
     , originated_(false)
     , dir(NULL) {}
 
