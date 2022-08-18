@@ -889,6 +889,46 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_secure(const light_string &str) 
     return work;
 }
 
+HTTP::light_string HTTP::CH::CookieEntry::parse_http_only(const light_string &str) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.1
+    // httponly-av       = "HttpOnly"
+    // この関数に来てる時点で "HttpOnly" があることは確定しているので, 余計なものがないことを確認
+    light_string work = str;
+    http_only         = false;
+    if (work.size() > 0 && work[0] != ';') {
+        error = minor_error::make("unexpected char follows \"HttpOnly\"", HTTP::STATUS_BAD_REQUEST);
+    } else {
+        http_only = true;
+    }
+    return work;
+}
+
+HTTP::light_string HTTP::CH::CookieEntry::parse_same_site(const light_string &str) {
+    // https://httpwg.org/http-extensions/draft-ietf-httpbis-rfc6265bis.html
+    // samesite-av       = "SameSite" BWS "=" BWS samesite-value
+    // samesite-value    = "Strict" / "Lax" / "None"
+    light_string work = str;
+    same_site.set();
+    if (!work.starts_with("=")) {
+        error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    work                               = work.substr(1);
+    const light_string maybe_same_site = work.substr_while(HTTP::CharFilter::alpha);
+    work                               = work.substr(maybe_same_site.size());
+    QVOUT(maybe_same_site);
+    if (maybe_same_site == "Strict") {
+        same_site.set(SAMESITE_STRICT);
+    } else if (maybe_same_site == "Lax") {
+        same_site.set(SAMESITE_LAX);
+    } else if (maybe_same_site == "None") {
+        same_site.set(SAMESITE_NONE);
+    } else {
+        error = minor_error::make("SameSite value is unexpected", HTTP::STATUS_BAD_REQUEST);
+    }
+    return work;
+}
+
 minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1
     // cookie-header = "Cookie:" OWS cookie-string OWS
@@ -984,6 +1024,12 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
     // secure-av         = "Secure"
     // httponly-av       = "HttpOnly"
     // extension-av      = <any CHAR except CTLs or ";">
+    //
+    // "SameSite" については正式なRFCにはまだ記載がなく, RFC6265の改訂版のドラフトを見るしかない.
+    // https://httpwg.org/http-extensions/draft-ietf-httpbis-rfc6265bis.html
+    // samesite-av       = "SameSite" BWS "=" BWS samesite-value
+    // samesite-value    = "Strict" / "Lax" / "None"
+
     values.clear();
     merror                                    = minor_error::ok();
     const AHeaderHolder::value_list_type *res = holder.get_vals(HeaderHTTP::set_cookie);
@@ -1040,6 +1086,10 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
                     work = ce.parse_secure(work);
                 } else if (attr_name == "HttpOnly") {
                     QVOUT(attr_name);
+                    work = ce.parse_http_only(work);
+                } else if (attr_name == "SameSite") {
+                    QVOUT(attr_name);
+                    work = ce.parse_same_site(work);
                 } else if (attr_name.size() > 0) {
                     QVOUT(attr_name);
                     DXOUT("other extension?");
