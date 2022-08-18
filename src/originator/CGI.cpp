@@ -721,28 +721,32 @@ ResponseHTTP::header_list_type CGI::determine_response_headers_destructively() {
         } else {
             headers.push_back(std::make_pair(HeaderHTTP::content_type, CGIP::CH::ContentType::default_value));
         }
-    }
-    // 伝送方式
-    switch (sm) {
-        case ResponseDataList::SM_CHUNKED:
-            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
-            break;
-        case ResponseDataList::SM_NOT_CHUNKED:
-            headers.push_back(std::make_pair(HeaderHTTP::content_length,
-                                             ParserHelper::utos(status.response_data.current_total_size(), 10)));
-            break;
-        default:
-            break;
+        // 伝送方式
+        switch (sm) {
+            case ResponseDataList::SM_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+                break;
+            case ResponseDataList::SM_NOT_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::content_length,
+                                                 ParserHelper::utos(status.response_data.current_total_size(), 10)));
+                break;
+            default:
+                break;
+        }
     }
     // その他のヘッダ
+    from_script_header_holder.erase_vals(HeaderHTTP::transfer_encoding);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_length);
     from_script_header_holder.erase_vals(HeaderHTTP::status);
     from_script_header_holder.erase_vals(HeaderHTTP::location);
     from_script_header_holder.erase_vals(HeaderHTTP::content_type);
-    const AHeaderHolder::list_type &header_list = from_script_header_holder.get_list();
-    for (AHeaderHolder::list_type::const_iterator hit = header_list.begin(); hit != header_list.end(); ++hit) {
-        const HeaderItem::value_list_type &val_list = hit->get_vals();
-        for (HeaderItem::value_list_type::const_iterator vit = val_list.begin(); vit != val_list.end(); ++vit) {
-            headers.push_back(std::make_pair(hit->get_key(), *vit));
+    if (response_type != CGIRES_REDIRECT_CLIENT) {
+        const AHeaderHolder::list_type &header_list = from_script_header_holder.get_list();
+        for (AHeaderHolder::list_type::const_iterator hit = header_list.begin(); hit != header_list.end(); ++hit) {
+            const HeaderItem::value_list_type &val_list = hit->get_vals();
+            for (HeaderItem::value_list_type::const_iterator vit = val_list.begin(); vit != val_list.end(); ++vit) {
+                headers.push_back(std::make_pair(hit->get_key(), *vit));
+            }
         }
     }
     return headers;
