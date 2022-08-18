@@ -98,7 +98,8 @@ public:
     static const CharFilter domain;
     // ドメインの"label"として使ってよい文字
     static const CharFilter domain_label;
-
+    // Sei-Cookie: における Path=... の値として使ってよい文字
+    static const CharFilter cookie_path;
     byte_string str() const;
 };
 } // namespace HTTP

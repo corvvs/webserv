@@ -853,6 +853,28 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_domain(const light_string &str) 
     return work;
 }
 
+HTTP::light_string HTTP::CH::CookieEntry::parse_path(const light_string &str) {
+    // https://www.rfc-editor.org/rfc/rfc6265#section-4.1
+    // path-av           = "Path=" path-value
+    // path-value        = <any CHAR except CTLs or ";">
+    light_string work = str;
+    path.clear();
+    if (!work.starts_with("=")) {
+        error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
+        return work;
+    }
+    work                          = work.substr(1);
+    const light_string maybe_path = work.substr_while(HTTP::CharFilter::cookie_path);
+    work                          = work.substr(maybe_path.size());
+    QVOUT(maybe_path);
+    if (maybe_path.size() == 0) {
+        error = minor_error::make("no value for path", HTTP::STATUS_BAD_REQUEST);
+    } else {
+        path = maybe_path.str();
+    }
+    return work;
+}
+
 minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1
     // cookie-header = "Cookie:" OWS cookie-string OWS
@@ -998,6 +1020,7 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
                     work = ce.parse_domain(work);
                 } else if (attr_name == "Path") {
                     QVOUT(attr_name);
+                    work = ce.parse_path(work);
                 } else if (attr_name == "Secure") {
                     QVOUT(attr_name);
                 } else if (attr_name == "HttpOnly") {

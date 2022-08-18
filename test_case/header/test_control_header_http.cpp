@@ -350,7 +350,7 @@ TEST(control_header_http, set_cookie_basic_ok) {
     }
     {
         const HTTP::byte_string item = HTTP::strfy(
-            "Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Max-Age=2592000; Domain=somecompany.co.uk");
+            "Set-Cookie: id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Max-Age=2592000; Path=/docs/Web/HTTP; Domain=somecompany.co.uk");
         HeaderHolderHTTP holder;
         minor_error me;
         me = holder.parse_header_line(item, &holder);
@@ -365,5 +365,6 @@ TEST(control_header_http, set_cookie_basic_ok) {
         EXPECT_FALSE(it->second.max_age.is_null());
         EXPECT_EQ(2592000, it->second.max_age.value());
         EXPECT_EQ(HTTP::strfy("somecompany.co.uk"), it->second.domain);
+        EXPECT_EQ(HTTP::strfy("/docs/Web/HTTP"), it->second.path);
     }
 }
