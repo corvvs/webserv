@@ -26,11 +26,24 @@ void ResponseDataList::inject(const char *src, size_t n, bool is_completed) {
 }
 
 void ResponseDataList::inject(const HTTP::byte_string &src, bool is_completed) {
-    inject(&src.front(), src.size(), is_completed);
+    const HTTP::light_string l(src);
+    inject(l, is_completed);
 }
 
 void ResponseDataList::inject(const HTTP::light_string &src, bool is_completed) {
-    inject(&src[0], src.size(), is_completed);
+    assert(list.size() > 0);
+
+    ResponseDataBucket &bucket = list.back();
+    bucket.buffer.reserve(src.size());
+    bucket.buffer.assign(src.begin(), src.end());
+    bucket.is_completed = true;
+    total += src.size();
+    if (src.size() > 0) {
+        list.push_back(ResponseDataBucket());
+        if (is_completed) {
+            list.back().is_completed = true;
+        }
+    }
 }
 
 bool ResponseDataList::is_injection_closed() const {
@@ -83,8 +96,8 @@ void ResponseDataList::serialize_if_needed() {
     list.pop_front();
 }
 
-const char *ResponseDataList::serialized_head() const {
-    return &serialized_data.front();
+const HTTP::byte_string::value_type *ResponseDataList::serialized_head() const {
+    return &serialized_data.front() + sent_serialized;
 }
 
 size_t ResponseDataList::rest_serialized() const {

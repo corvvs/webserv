@@ -34,15 +34,18 @@ minor_error FileReader::read_from_file() {
         }
     }
     // 読んでデータリストに注入
-    char read_buf[READ_SIZE];
+    byte_string read_buf;
+    read_buf.resize(READ_SIZE);
+
     ssize_t read_size;
     for (;;) {
-        read_size = read(fd, read_buf, READ_SIZE);
+        read_size = read(fd, &read_buf.front(), read_buf.size());
         if (read_size < 0) {
             close(fd);
             return minor_error::make("read error", HTTP::STATUS_FORBIDDEN);
         }
-        response_data.inject(read_buf, read_size, read_size == 0);
+        read_buf.resize(read_size);
+        response_data.inject(read_buf, read_size == 0);
         if (read_size == 0) {
             break;
         }

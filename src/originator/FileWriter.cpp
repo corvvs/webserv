@@ -50,7 +50,7 @@ void FileWriter::write_to_file() {
     }
     // 書き込んだサイズを文字列変換してボディに突っ込む
     HTTP::byte_string written_size_str = ParserHelper::utos(write_head, 10);
-    response_data.inject(&written_size_str.front(), written_size_str.size(), true);
+    response_data.inject(written_size_str, true);
     originated_ = true;
     close(fd);
 }

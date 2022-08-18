@@ -43,6 +43,12 @@ bool RoundTrip::inject_data(const char *received_buffer, ssize_t received_size) 
     return received_size == 0;
 }
 
+bool RoundTrip::inject_data(const light_string &received_buffer) {
+    start_if_needed();
+    request_->inject_bytestring(received_buffer.begin(), received_buffer.end());
+    return received_buffer.size() == 0;
+}
+
 bool RoundTrip::is_routable() const {
     // [ルーティング可能]
     // レスポンスが存在しない
