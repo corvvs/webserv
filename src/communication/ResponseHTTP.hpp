@@ -66,7 +66,7 @@ public:
     // renderされたHTTPメッセージデータ全体を返す
     const byte_string &get_message_text() const;
     // 未送信のHTTPメッセージデータを返す
-    const char *get_unsent_head();
+    const byte_string::value_type *get_unsent_head();
     // 送信済みバイト数を増やす
     void mark_sent(ssize_t sent);
     // 未送信のHTTPメッセージデータのサイズを返す

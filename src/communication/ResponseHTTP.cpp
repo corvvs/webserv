@@ -90,7 +90,7 @@ const ResponseHTTP::byte_string &ResponseHTTP::get_message_text() const {
     return message_text;
 }
 
-const char *ResponseHTTP::get_unsent_head() {
+const ResponseHTTP::byte_string::value_type *ResponseHTTP::get_unsent_head() {
     consumer()->serialize_if_needed();
     return consumer()->serialized_head();
 }

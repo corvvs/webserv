@@ -39,8 +39,8 @@ ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock, bool discard) 
     }
 
     read_buffer.resize(MAX_REQLINE_END);
-    char *rb  = &read_buffer.front();
-    read_size = sock.receive(rb, MAX_REQLINE_END, 0);
+    byte_string::value_type *rb = &read_buffer.front();
+    read_size                   = sock.receive(rb, MAX_REQLINE_END, 0);
     if (read_size >= 0) {
         read_buffer.resize(read_size);
     }
@@ -218,7 +218,7 @@ void Connection::perform_receiving(IObserver &observer) {
         rt.start_if_needed();
         lifetime.activate();
         const light_string buf = net_buffer.top_front();
-        bool is_disconnected   = rt.inject_data(&buf[0], buf.size());
+        bool is_disconnected   = rt.inject_data(buf);
         net_buffer.pop_front();
         rt.req()->after_injection(is_disconnected);
         rt.req()->check_size_limitation();

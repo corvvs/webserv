@@ -42,7 +42,7 @@ void Echoer::leave() {
 
 ResponseHTTP *Echoer::respond(const RequestHTTP *request) {
     HTTP::byte_string message = request->get_plain_message();
-    response_data.inject(&message.front(), message.size(), true);
+    response_data.inject(message, true);
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {

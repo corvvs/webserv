@@ -13,7 +13,9 @@ public:
     ~IResponseDataProducer() {}
 
     // 長さ n のバイト列を注入する
-    virtual void inject(const char *src, size_t n, bool is_completed) = 0;
+    virtual void inject(const char *src, size_t n, bool is_completed)     = 0;
+    virtual void inject(const HTTP::byte_string &src, bool is_completed)  = 0;
+    virtual void inject(const HTTP::light_string &src, bool is_completed) = 0;
     // データ注入完了
     virtual bool is_injection_closed() const = 0;
 };
@@ -32,7 +34,7 @@ public:
     // 必要ならシリアライズデータを更新
     virtual void serialize_if_needed() = 0;
     // シリアライズデータの未送信部分の先頭を取得
-    virtual const char *serialized_head() const = 0;
+    virtual const HTTP::byte_string::value_type *serialized_head() const = 0;
     // シリアライズデータの未送信部分のサイズを取得
     virtual size_t rest_serialized() const = 0;
     // 送信したシリアライズデータのバイト数を記録
@@ -107,7 +109,7 @@ public:
     // 送信を開始する
     void start(const HTTP::byte_string &initial_data);
 
-    const char *serialized_head() const;
+    const HTTP::byte_string::value_type *serialized_head() const;
     size_t rest_serialized() const;
     void mark_sent(size_t n);
 
