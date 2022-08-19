@@ -113,6 +113,7 @@ public:
     static const byte_string META_QUERY_STRING;
 
 private:
+    bool leaving;
     Attribute attr;
     Lifetime lifetime;
 

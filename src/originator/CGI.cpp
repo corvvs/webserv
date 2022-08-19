@@ -46,7 +46,8 @@ const CGI::byte_string CGI::META_SCRIPT_NAME       = HTTP::strfy("SCRIPT_NAME");
 const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
-    : attr(Attribute(match_result, request))
+    : leaving(false)
+    , attr(Attribute(match_result, request))
     , lifetime(Lifetime::make_response())
     , metavar_(request.get_cgi_meta_vars())
     , to_script_content_length_(0)
@@ -300,6 +301,9 @@ t_port CGI::get_port() const {
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     // DXOUT("CGI received: " << cat);
+    if (leaving) {
+        return;
+    }
     if (attr.master) {
         switch (cat) {
             case IObserver::OT_WRITE:
@@ -427,11 +431,17 @@ HTTP::byte_string CGI::reroute_path() const {
 }
 
 void CGI::leave() {
+    if (leaving) {
+        DXOUT("now already leaving.");
+        return;
+    }
     DXOUT("leaving.");
+    leaving = true;
     if (attr.observer != NULL) {
         attr.observer->reserve_unhold(this);
     } else {
         // Observerに渡される前に leave されることがある
+        DXOUT("leaving immediately.");
         delete this;
     }
 }
