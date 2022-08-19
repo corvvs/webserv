@@ -98,10 +98,10 @@ void FileReader::start_origination(IObserver &observer) {
     if (originated_) {
         return;
     }
-    if (read_from_cache()) {
-        originated_ = true;
-        return;
-    }
+    // if (read_from_cache()) {
+    //     originated_ = true;
+    //     return;
+    // }
     const minor_error me = read_from_file();
     if (me.is_error()) {
         throw http_error(me);
