@@ -112,6 +112,7 @@ public:
     static const byte_string META_PATH_INFO;
     static const byte_string META_SCRIPT_NAME;
     static const byte_string META_QUERY_STRING;
+    static const byte_string META_REQUEST_URI;
 
 private:
     bool leaving;
