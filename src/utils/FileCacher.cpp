@@ -1,4 +1,5 @@
 #include "FileCacher.hpp"
+#include "../utils/test_common.hpp"
 #include "File.hpp"
 #include "LRUCache.hpp"
 #include <ctime>
@@ -14,11 +15,21 @@ FileCacher::FileCacheData::FileCacheData(const std::string &path_,
                                          const byte_string &data_)
     : path(path_), cached_at(cached_at_), size(size_), data(data_) {}
 
-void FileCacher::erase_cache(const std::string &path) {
+FileCacher::FileCacheData &FileCacher::FileCacheData::operator=(const FileCacheData &rhs) {
+    if (this == &rhs) {
+        return *this;
+    }
+    cached_at = rhs.cached_at;
+    size      = rhs.size;
+    data      = rhs.data;
+    return *this;
+}
+
+void FileCacher::erase(const std::string &path) {
     cache_.erase(path);
 }
 
-bool FileCacher::add_cache(const std::string &path) {
+bool FileCacher::add(const std::string &path) {
     const long file_size = file::get_size(path);
     if (file_size < 0) {
         return false;
@@ -42,14 +53,14 @@ bool FileCacher::add_cache(const std::string &path) {
 std::pair<minor_error, const FileCacher::entry_type *> FileCacher::fetch(const std::string &path) {
     // パスにファイルが存在していない -> キャッシュがあるなら削除し, 404を返す。
     if (!file::is_file(path)) {
-        erase_cache(path);
+        erase(path);
         return std::make_pair(minor_error::make("file not found", HTTP::STATUS_NOT_FOUND),
                               static_cast<entry_type *>(NULL));
     }
 
     // ファイルはあるが読み取り権限がない, 通常ファイルではない -> キャッシュがあるなら削除し, 403を返す
     if (!file::is_readable(path)) {
-        erase_cache(path);
+        erase(path);
         return std::make_pair(minor_error::make("forbidden", HTTP::STATUS_FORBIDDEN), static_cast<entry_type *>(NULL));
     }
 
@@ -65,18 +76,18 @@ std::pair<minor_error, const FileCacher::entry_type *> FileCacher::fetch(const s
         const FileCacheData &cache_data = it->second;
         // ファイルの最終修正時刻がキャッシュ時刻より古い場合はキャッシュを返す
         if (cache_data.cached_at > last_update) {
+            // DXOUT(HTTP::restrfy(cache_data.data));
             return std::make_pair(minor_error::ok(), &cache_data);
         }
     }
 
     // ファイルを読み取り、キャッシュを追加する
-    if (!add_cache(path)) {
+    if (!add(path)) {
         return std::make_pair(minor_error::make("data too large to cache", HTTP::STATUS_BAD_REQUEST),
                               static_cast<entry_type *>(NULL));
     }
-    cache_const_iterator it         = cache_.fetch(path);
-    const FileCacheData &cache_data = it->second;
-
+    cache_const_iterator res        = cache_.fetch(path);
+    const FileCacheData &cache_data = res->second;
     // 作成したキャッシュを返す
     return std::make_pair(minor_error::ok(), &cache_data);
 }

@@ -3,6 +3,7 @@
 #include "../Interfaces.hpp"
 #include "../config/Config.hpp"
 #include "../socket/SocketConnected.hpp"
+#include "../utils/FileCacher.hpp"
 #include "Lifetime.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
@@ -27,6 +28,8 @@ private:
     // 処理中のコネクションに関連するconfigの配列
     const config::config_vector &configs_;
 
+    FileCacher &cacher_;
+
     RequestHTTP *request_;
     // 注意:
     // オリジネーションが終わっても, ラウンドトリップが終わるまでオリジネータを破棄しないこと.
@@ -41,12 +44,14 @@ private:
     // エラーレスポンス中かどうか
     bool in_error_responding;
 
+    // オリジネーターを生成する
+    IOriginator *make_originator(const RequestMatchingResult &result, const RequestHTTP &request);
     void destroy_request();
     void destroy_originator();
     void destroy_response();
 
 public:
-    RoundTrip(IRouter &router, const config::config_vector &configs);
+    RoundTrip(IRouter &router, const config::config_vector &configs, FileCacher &cacher);
     ~RoundTrip();
 
     // [getters]

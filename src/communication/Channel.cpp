@@ -1,9 +1,13 @@
 #include "Channel.hpp"
 #include "Connection.hpp"
 
-Channel::Channel(
-    IRouter *router, t_socket_domain sdomain, t_socket_type stype, t_port port, const config::config_vector &configs)
-    : sock(SocketListening::bind(sdomain, stype, port)), router_(router), configs_(configs) {
+Channel::Channel(IRouter *router,
+                 t_socket_domain sdomain,
+                 t_socket_type stype,
+                 t_port port,
+                 const config::config_vector &configs,
+                 FileCacher &cacher)
+    : sock(SocketListening::bind(sdomain, stype, port)), router_(router), configs_(configs), cacher_(cacher) {
     sock->listen(1024);
 }
 
@@ -34,7 +38,7 @@ void Channel::notify(IObserver &observer, IObserver::observation_category cat, t
                 // acceptするものが残っていない場合 NULL が返ってくる
                 break;
             }
-            Connection *con = new Connection(router_, connected, configs_);
+            Connection *con = new Connection(router_, connected, configs_, cacher_);
             observer.reserve_hold(con);
             observer.reserve_set(con, IObserver::OT_READ);
         }
