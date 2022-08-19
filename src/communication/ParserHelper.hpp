@@ -81,9 +81,11 @@ light_string extract_quoted_or_token(const light_string &str);
 std::pair<bool, t_time_epoch_ms> str_to_http_date(const light_string &str);
 
 // パーセントエンコードされた文字列をデコードする
-byte_string decode_pct_encoded(const byte_string &str);
+// ただしエンコード後の文字が`exclude`に含まれる場合はデコードしない
+byte_string decode_pct_encoded(const byte_string &str, const HTTP::CharFilter &exclude = HTTP::CharFilter::empty);
 // パーセントエンコードされた文字列をデコードする
-byte_string decode_pct_encoded(const light_string &str);
+// ただしエンコード後の文字が`exclude`に含まれる場合はデコードしない
+byte_string decode_pct_encoded(const light_string &str, const HTTP::CharFilter &exclude = HTTP::CharFilter::empty);
 } // namespace ParserHelper
 
 #endif

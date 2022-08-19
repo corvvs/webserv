@@ -42,6 +42,7 @@ public:
     // 文字集合のサイズ
     byte_string::size_type size() const;
 
+    static const CharFilter empty;
     // アルファベット・小文字
     static const CharFilter alpha_low;
     // アルファベット・大文字
