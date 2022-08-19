@@ -76,6 +76,8 @@ struct TransferEncoding : public IControlHeader {
     const Term::TransferCoding &current_coding() const;
     minor_error determine(const AHeaderHolder &holder);
     static HTTP::byte_string normalize(const HTTP::byte_string &str);
+
+    TransferEncoding();
 };
 
 struct ContentLength : public IControlHeader {
