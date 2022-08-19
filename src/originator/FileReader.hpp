@@ -25,6 +25,7 @@ protected:
 
     // キャッシュデータを読み込む
     bool read_from_cache();
+    byte_string infer_content_type() const;
     ResponseHTTP::header_list_type determine_response_headers();
 
 public:

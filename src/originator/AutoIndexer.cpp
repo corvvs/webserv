@@ -264,7 +264,12 @@ ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
             break;
     }
     // MIMEタイプ設定
-    headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::strfy("text/html")));
+    {
+        HTTP::CH::ContentType ct;
+        ct.value   = HTTP::strfy("text/html");
+        ct.charset = HTTP::strfy("UTF-8");
+        headers.push_back(std::make_pair(HeaderHTTP::content_type, ct.serialize()));
+    }
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;

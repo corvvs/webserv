@@ -122,6 +122,39 @@ void FileReader::leave() {
     delete this;
 }
 
+HTTP::byte_string FileReader::infer_content_type() const {
+    HTTP::CH::ContentType ct;
+    HTTP::char_string::size_type dot = file_path_.find_last_of(".");
+    HTTP::byte_string mt;
+    if (dot != HTTP::char_string::npos) {
+        mt = HTTP::MIME::mime_type_for_extension(HTTP::strfy(file_path_.substr(dot + 1)));
+    }
+    if (!mt.empty()) {
+        ct.value = mt;
+    } else {
+        bool is_text = false;
+        if (!response_data.empty()) {
+            const HTTP::light_string body = response_data.top();
+            is_text                       = body.find_first_of(HTTP::CharFilter::nul) == HTTP::light_string::npos;
+        }
+        if (is_text) {
+            ct.value = HTTP::strfy("text/plain");
+        } else {
+            ct.value = HTTP::CH::ContentType::default_value;
+        }
+    }
+    const bool type_is_text = HTTP::light_string(ct.value).starts_with("text/");
+    if (type_is_text) {
+        bool is_ascii_only = true;
+        if (!response_data.empty()) {
+            const HTTP::light_string body = response_data.top();
+            is_ascii_only                 = body.find_first_not_of(HTTP::CharFilter::ascii) == HTTP::light_string::npos;
+        }
+        ct.charset = HTTP::strfy(is_ascii_only ? "US-ASCII" : "UTF-8");
+    }
+    return ct.serialize();
+}
+
 ResponseHTTP::header_list_type FileReader::determine_response_headers() {
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
@@ -136,16 +169,8 @@ ResponseHTTP::header_list_type FileReader::determine_response_headers() {
         default:
             break;
     }
-    HTTP::char_string::size_type dot = file_path_.find_last_of(".");
-    HTTP::byte_string mt;
-    if (dot != HTTP::char_string::npos) {
-        mt = HTTP::MIME::mime_type_for_extension(HTTP::strfy(file_path_.substr(dot + 1)));
-    }
-    if (mt.empty()) {
-        headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::CH::ContentType::default_value));
-    } else {
-        headers.push_back(std::make_pair(HeaderHTTP::content_type, mt));
-    }
+    // Content-Type: の推測
+    headers.push_back(std::make_pair(HeaderHTTP::content_type, infer_content_type()));
     return headers;
 }
 

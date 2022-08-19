@@ -198,6 +198,7 @@ const HTTP::CharFilter HTTP::CharFilter::cgi_sp            = HTTP::strfy(" ");
 const HTTP::CharFilter HTTP::CharFilter::cgi_extra         = HTTP::strfy(":@&=+$,");
 const HTTP::CharFilter HTTP::CharFilter::pchar_without_pct = unreserved | sub_delims | ":@";
 const HTTP::CharFilter HTTP::CharFilter::uri_scheme        = alpha | digit | "+-.";
+const HTTP::CharFilter HTTP::CharFilter::nul               = HTTP::CharFilter(0, 0);
 const HTTP::CharFilter HTTP::CharFilter::ascii             = HTTP::CharFilter(0, 127);
 const HTTP::CharFilter HTTP::CharFilter::controls          = (HTTP::CharFilter(0, 31) | HTTP::CharFilter(127, 127));
 const HTTP::CharFilter HTTP::CharFilter::cd_separators     = "()<>@,;:\\\"/[]?={} \t";

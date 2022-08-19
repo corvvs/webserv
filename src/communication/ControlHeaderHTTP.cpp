@@ -234,12 +234,24 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
             }
         }
     }
-    // QVOUT(boundary);
     return minor_error::ok();
 }
 
 HTTP::byte_string HTTP::CH::ContentType::normalize(const HTTP::byte_string &str) {
     return HTTP::Utils::downcase(str);
+}
+
+HTTP::byte_string HTTP::CH::ContentType::serialize() const {
+    HTTP::byte_string rv;
+    if (value.empty()) {
+        return rv;
+    }
+    rv += value;
+    if (!charset.is_null()) {
+        rv += HTTP::strfy("; charset=");
+        rv += charset.value();
+    }
+    return rv;
 }
 
 // [ContentDisposition]

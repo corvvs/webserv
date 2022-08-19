@@ -96,7 +96,9 @@ struct ContentType : public IControlHeader, public IDictHolder {
 
     HTTP::byte_string value;
     parameter_dict parameters;
-    HTTP::light_string boundary;
+    Nullable<HTTP::byte_string> charset;
+    // light_string なのはリクエストからの入力のみを想定しているから
+    Nullable<HTTP::light_string> boundary;
 
     // "application/octet-stream"
     // 値がないときはこれに設定するのではなく, この値と**みなす**
@@ -105,6 +107,9 @@ struct ContentType : public IControlHeader, public IDictHolder {
     minor_error determine(const AHeaderHolder &holder);
     void store_list_item(const parameter_key_type &key, const parameter_value_type &val);
     static HTTP::byte_string normalize(const HTTP::byte_string &str);
+
+    // 現在保持しているデータを, HTTPヘッダの値として文字列化して返す
+    HTTP::byte_string serialize() const;
 };
 
 struct ContentDisposition : public IControlHeader, public IDictHolder {

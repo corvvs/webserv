@@ -167,3 +167,11 @@ HTTP::byte_string ResponseDataList::serialize_bucket(const ResponseDataBucket &b
 ResponseDataList::t_sending_mode ResponseDataList::get_sending_mode() const {
     return sending_mode;
 }
+
+bool ResponseDataList::empty() const {
+    return list.empty();
+}
+
+const HTTP::byte_string &ResponseDataList::top() const {
+    return list.front().buffer;
+}
