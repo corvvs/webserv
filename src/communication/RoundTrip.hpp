@@ -87,6 +87,7 @@ public:
     // (この時, extra_buffer が空であってはならない)
     // 接続が閉じたとみられるかどうかを返す
     bool inject_data(const char *received_buffer, ssize_t received_size);
+    bool inject_data(const light_string &received_buffer);
 
     void notify_originator(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
 
