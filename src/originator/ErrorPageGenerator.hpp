@@ -1,5 +1,6 @@
-#ifndef ERROR_PAGE_GENERATOR_HPP
-#define ERROR_PAGE_GENERATOR_HPP
+#ifndef ERRORPAGEGENERATOR_HPP
+#define ERRORPAGEGENERATOR_HPP
+#include "../utils/FileCacher.hpp"
 #include "FileReader.hpp"
 
 class ErrorPageGenerator : public FileReader {
@@ -18,6 +19,7 @@ private:
 public:
     ErrorPageGenerator(const minor_error &error,
                        const RequestMatchingResult::status_dict_type &match_result,
+                       FileCacher &cacher,
                        bool should_close = false);
     ~ErrorPageGenerator();
 

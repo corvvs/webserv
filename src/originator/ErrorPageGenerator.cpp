@@ -4,8 +4,9 @@
 
 ErrorPageGenerator::ErrorPageGenerator(const minor_error &err,
                                        const RequestMatchingResult::status_dict_type &status_page_dict,
+                                       FileCacher &cacher,
                                        bool should_close)
-    : FileReader(""), error(err), should_close_(should_close) {
+    : FileReader("", cacher), error(err), should_close_(should_close) {
     RequestMatchingResult::status_dict_type::const_iterator res = status_page_dict.find(err.status_code());
     if (res != status_page_dict.end()) {
         // エラーページ定義があった
