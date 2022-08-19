@@ -5,6 +5,7 @@
 #include "../interface/IRouter.hpp"
 #include "../interface/ISocketLike.hpp"
 #include "../socket/SocketListening.hpp"
+#include "../utils/FileCacher.hpp"
 #include <map>
 #include <utility>
 
@@ -23,15 +24,15 @@ private:
     SocketListening *sock;
     IRouter *router_;
     const config::config_vector &configs_;
+    FileCacher &cacher_;
 
 public:
-    // TODO: confのlistenパラメータを与えて、そこからsocket生成用パラメータを作るようにする
-    Channel(IRouter *router, t_socket_domain sdomain, t_socket_type stype, t_port port);
     Channel(IRouter *router,
             t_socket_domain sdomain,
             t_socket_type stype,
             t_port port,
-            const config::config_vector &configs);
+            const config::config_vector &configs,
+            FileCacher &cacher);
 
     ~Channel();
 
