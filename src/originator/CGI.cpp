@@ -150,7 +150,7 @@ void CGI::start_origination(IObserver &observer) {
         }
         // 起動
         errno  = 0;
-        int rv = execve(HTTP::restrfy(attr.script_path_).c_str(), argv, mvs);
+        int rv = execve(HTTP::restrfy(attr.executor_path_).c_str(), argv, mvs);
         VOUT(rv);
         VOUT(errno);
         exit(rv);
