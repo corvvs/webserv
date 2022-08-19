@@ -60,11 +60,13 @@ struct RequestTarget {
         byte_string authority;
         byte_string path;
         byte_string query;
+        byte_string path_slash_reduced;
     };
 
     const byte_string &dauthority() const;
     const byte_string &dpath() const;
     const byte_string &dquery() const;
+    const byte_string &dpath_slash_reduced() const;
 
     RequestTarget();
     RequestTarget(const light_string &target);

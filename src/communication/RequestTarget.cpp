@@ -96,11 +96,14 @@ void RequestTarget::decompose(const light_string &target) {
 
 void RequestTarget::decode_pct_encoded() {
     decoded_parts.authority = ParserHelper::decode_pct_encoded(authority);
-    // DXOUT("encoded: " << authority << " -> decoded: " << decoded_parts.authority);
-    decoded_parts.path = ParserHelper::decode_pct_encoded(path);
-    // DXOUT("encoded: " << path << " -> decoded: " << decoded_parts.path);
-    decoded_parts.query = ParserHelper::decode_pct_encoded(query);
-    // DXOUT("encoded: " << query << " -> decoded: " << decoded_parts.query);
+    decoded_parts.path      = ParserHelper::decode_pct_encoded(path, HTTP::CharFilter::reserved);
+    decoded_parts.query     = ParserHelper::decode_pct_encoded(query);
+    decoded_parts.path_slash_reduced.clear();
+    for (HTTP::byte_string::size_type i = 0; i < decoded_parts.path.size(); ++i) {
+        if (decoded_parts.path[i] != '/' || i == 0 || decoded_parts.path[i - 1] != '/') {
+            decoded_parts.path_slash_reduced.push_back(decoded_parts.path[i]);
+        }
+    }
 }
 
 const RequestTarget::byte_string &RequestTarget::dauthority() const {
@@ -113,6 +116,10 @@ const RequestTarget::byte_string &RequestTarget::dpath() const {
 
 const RequestTarget::byte_string &RequestTarget::dquery() const {
     return decoded_parts.query;
+}
+
+const RequestTarget::byte_string &RequestTarget::dpath_slash_reduced() const {
+    return decoded_parts.path;
 }
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
