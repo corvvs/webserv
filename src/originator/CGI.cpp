@@ -251,7 +251,9 @@ char **CGI::flatten_metavar(const metavar_dict_type &metavar) {
         }
         memcpy(item, &(it->first.front()), it->first.size());
         item[it->first.size()] = '=';
-        memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
+        if (it->second.size() > 0) {
+            memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
+        }
         frame[i]    = item;
         frame[i][j] = '\0';
         // VOUT(frame[i]);
