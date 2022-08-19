@@ -406,7 +406,7 @@ void CGI::perform_receiving(IObserver &observer) {
 }
 
 bool CGI::is_originatable() const {
-    return !status.is_started;
+    return attr.configuration_provider_.is_complete() && !status.is_started;
 }
 
 bool CGI::is_origination_started() const {
