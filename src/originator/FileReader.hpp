@@ -25,6 +25,7 @@ protected:
 
     // キャッシュデータを読み込む
     bool read_from_cache();
+    ResponseHTTP::header_list_type determine_response_headers();
 
 public:
     FileReader(const RequestMatchingResult &match_result, FileCacher &cacher);

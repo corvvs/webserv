@@ -1,4 +1,5 @@
 #include "FileReader.hpp"
+#include "../utils/MIME.hpp"
 #include <unistd.h>
 #define READ_SIZE 1048576
 
@@ -121,7 +122,7 @@ void FileReader::leave() {
     delete this;
 }
 
-ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
+ResponseHTTP::header_list_type FileReader::determine_response_headers() {
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
@@ -135,6 +136,21 @@ ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
         default:
             break;
     }
+    HTTP::char_string::size_type dot = file_path_.find_last_of(".");
+    HTTP::byte_string mt;
+    if (dot != HTTP::char_string::npos) {
+        mt = HTTP::MIME::mime_type_for_extension(HTTP::strfy(file_path_.substr(dot + 1)));
+    }
+    if (mt.empty()) {
+        headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::CH::ContentType::default_value));
+    } else {
+        headers.push_back(std::make_pair(HeaderHTTP::content_type, mt));
+    }
+    return headers;
+}
+
+ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
+    ResponseHTTP::header_list_type headers = determine_response_headers();
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
