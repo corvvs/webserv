@@ -315,7 +315,7 @@ HTTP::byte_string RequestMatcher::get_path_cgi_executor(const RequestTarget &tar
     }
     // cgi_executers のキーは `.` を含む
     const std::string &extension                      = s.substr(pos);
-    const std::string &path                           = HTTP::restrfy(target.dpath_slash_reduced());
+    const std::string &path                           = HTTP::restrfy(target.dpath());
     const config::cgi_executer_map cgi_executers      = conf.get_cgi_path(path);
     const config::cgi_executer_map::const_iterator it = cgi_executers.find(extension);
     if (it == cgi_executers.end()) {
