@@ -15,6 +15,16 @@ FileCacher::FileCacheData::FileCacheData(const std::string &path_,
                                          const byte_string &data_)
     : path(path_), cached_at(cached_at_), size(size_), data(data_) {}
 
+FileCacher::FileCacheData &FileCacher::FileCacheData::operator=(const FileCacheData &rhs) {
+    if (this == &rhs) {
+        return *this;
+    }
+    cached_at = rhs.cached_at;
+    size      = rhs.size;
+    data      = rhs.data;
+    return *this;
+}
+
 void FileCacher::erase(const std::string &path) {
     cache_.erase(path);
 }

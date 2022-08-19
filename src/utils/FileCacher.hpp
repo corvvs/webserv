@@ -27,6 +27,7 @@ public:
                       const time_t &cached_at_,
                       const size_t &size_,
                       const byte_string &data_);
+        FileCacheData &operator=(const FileCacheData &rhs);
     };
 
     typedef FileCacheData entry_type;
@@ -48,9 +49,9 @@ private:
     typedef cache_type::const_iterator cache_const_iterator;
 
     // キャッシュするデータの上限値
-    static const long MAX_CACHE_DATA_SIZE = 1024 * 5;
+    static const long MAX_CACHE_DATA_SIZE = 1e7;
     // キャッシュする配列の上限値
-    static const long MAX_CACHE_ARRAY_SIZE = 10;
+    static const long MAX_CACHE_ARRAY_SIZE = 50;
 
     // 利用順にもとづいてキャッシュを作る
     cache_type cache_;
