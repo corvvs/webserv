@@ -43,15 +43,16 @@ void HTTPServer::init(const std::string &config_path) {
     for (config::config_dict::const_iterator it = configs_.begin(); it != configs_.end(); ++it) {
         const config::host_port_pair &hp     = it->first;
         const config::config_vector &configs = it->second;
-        this->listen(SD_IP4, ST_TCP, hp.second, configs);
+        this->listen(SD_IP4, ST_TCP, hp.second, configs, cacher_);
     }
 }
 
 void HTTPServer::listen(t_socket_domain sdomain,
                         t_socket_type stype,
                         t_port port,
-                        const config::config_vector &configs) {
-    Channel *ch            = new Channel(this, sdomain, stype, port, configs);
+                        const config::config_vector &configs,
+                        FileCacher &cacher) {
+    Channel *ch            = new Channel(this, sdomain, stype, port, configs, cacher);
     channels[ch->get_id()] = ch;
     socket_observer_->reserve_hold(ch);
     socket_observer_->reserve_set(ch, IObserver::OT_READ);
