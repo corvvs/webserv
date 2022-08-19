@@ -17,6 +17,8 @@ HTTP::Term::TransferCoding HTTP::Term::TransferCoding::init() {
     return o;
 }
 
+HTTP::CH::TransferEncoding::TransferEncoding() : currently_chunked(false) {}
+
 bool HTTP::CH::TransferEncoding::empty() const {
     return transfer_codings.empty();
 }
@@ -748,11 +750,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_name_value(const light_string &s
         work = work.substr(1);
     }
     const light_string cookie_value = work.substr_while(HTTP::CharFilter::cookie_octet);
-    if (cookie_value.size() == 0) {
-        error = minor_error::make("away; no cookie-value", HTTP::STATUS_BAD_REQUEST);
-        return work;
-    }
-    work = work.substr(cookie_value.size());
+    work                            = work.substr(cookie_value.size());
     QVOUT(work);
     if (maybe_quoted) {
         if (work.size() == 0 || work[0] != '"') {
