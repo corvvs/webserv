@@ -49,7 +49,7 @@ private:
     typedef cache_type::const_iterator cache_const_iterator;
 
     // キャッシュするデータの上限値
-    static const long MAX_CACHE_DATA_SIZE = 1e7;
+    static const long MAX_CACHE_DATA_SIZE = 10000000;
     // キャッシュする配列の上限値
     static const long MAX_CACHE_ARRAY_SIZE = 50;
 
