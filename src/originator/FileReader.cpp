@@ -67,6 +67,11 @@ bool FileReader::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string FileReader::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool FileReader::is_responsive() const {
     return originated_;
 }

@@ -30,6 +30,7 @@ public:
     virtual void inject_socketlike(ISocketLike *socket_like);
     virtual bool is_originatable() const;
     virtual bool is_reroutable() const;
+    HTTP::byte_string reroute_path() const;
     virtual bool is_responsive() const;
     virtual bool is_origination_started() const;
     virtual void start_origination(IObserver &observer);

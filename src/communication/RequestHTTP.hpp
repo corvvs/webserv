@@ -10,6 +10,7 @@
 #include "HeaderHTTP.hpp"
 #include "Lifetime.hpp"
 #include "ParserHelper.hpp"
+#include "RequestTarget.hpp"
 #include "RoutingParameters.hpp"
 #include "ValidatorHTTP.hpp"
 
@@ -20,63 +21,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-struct RequestTarget {
-    typedef HTTP::byte_string byte_string;
-    typedef HTTP::light_string light_string;
-
-    // リクエストの"form"
-    // - origin-form: "/"から始まるパスだけのやつ
-    // - authority-form: ドメイン部だけのやつ
-    // - absolute-form: URLまるごと
-    // - asterisk-form: "*"のみ
-    enum t_form { FORM_UNKNOWN, FORM_ORIGIN, FORM_AUTHORITY, FORM_ABSOLUTE, FORM_ASTERISK };
-
-    // 与えられたリクエストターゲット
-    light_string given;
-    // エラーかどうか
-    bool is_error;
-    // 何formか
-    t_form form;
-
-    // cf. https://datatracker.ietf.org/doc/html/rfc3986#section-3
-    //
-    //     foo://example.com:8042/over/there?name=ferret#nose
-    //     \_/   \______________/\_________/ \_________/ \__/
-    //     |           |            |            |        |
-    // scheme     authority       path        query   fragment
-    //     |   _____________________|__
-    //     / \ /                        \
-    //     urn:example:animal:ferret:nose
-
-    light_string scheme;
-    light_string authority;
-    light_string path;
-    light_string query;
-
-    // パーセントエンコーディングをデコードしたもの
-    struct Decoded {
-        // scheme はパーセントエンコーディングされない
-        byte_string authority;
-        byte_string path;
-        byte_string query;
-    };
-
-    const byte_string &dauthority() const;
-    const byte_string &dpath() const;
-    const byte_string &dquery() const;
-
-    RequestTarget();
-    RequestTarget(const light_string &target);
-
-private:
-    Decoded decoded_parts;
-
-    void decompose(const light_string &target);
-    void decode_pct_encoded();
-};
-
-std::ostream &operator<<(std::ostream &ost, const RequestTarget &f);
 
 class IRequestMatchingParam {
 public:
@@ -178,6 +122,10 @@ public:
     struct RoutingParameters : public ARoutingParameters, public IRequestMatchingParam {
         // TODO: リクエストマッチングに必要なものを外部に公開する
         RequestTarget given_request_target; // リクエストマッチングに必要
+        // リルート用パラメータ
+        bool use_reroute;
+        byte_string reroute_path;
+        RequestTarget reroute_request_target;
 
         HTTP::t_method http_method; // リクエストマッチングに必要
         HTTP::t_version http_version;
@@ -206,6 +154,8 @@ public:
         HTTP::t_method get_http_method() const;
         HTTP::t_version get_http_version() const;
         const HTTP::CH::Host &get_host() const;
+
+        RoutingParameters();
     };
 
 private:
@@ -304,6 +254,8 @@ public:
     bool is_freezed() const;
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
+
+    void inject_reroute_path(const HTTP::byte_string &path);
 
     // 各種サイズの制限を調べる
     // 違反していれば対応する例外を投げる(すべてunrecovarable扱い)

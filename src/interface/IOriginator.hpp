@@ -1,6 +1,7 @@
 #ifndef IORIGINATOR_HPP
 #define IORIGINATOR_HPP
 #include "../communication/RequestHTTP.hpp"
+#include "../communication/RequestTarget.hpp"
 #include "../communication/ResponseHTTP.hpp"
 #include "../utils/http.hpp"
 #include "IObserver.hpp"
@@ -42,12 +43,15 @@ public:
     virtual bool is_origination_started() const = 0;
     // 再ルーティングすべきか
     virtual bool is_reroutable() const = 0;
+    // 再ルーティングのためのリクエストターゲット生成
+    virtual HTTP::byte_string reroute_path() const = 0;
     // レスポンスを作成できるかどうか
     virtual bool is_responsive() const = 0;
 
     // オリジネーションを開始する
     virtual void start_origination(IObserver &observer) = 0;
 
+    // レスポンスをヒープに確保し, 送信可能な状態にして返す
     virtual ResponseHTTP *respond(const RequestHTTP *request) = 0;
 
     // オリジネータ自身の破壊手続きを行う

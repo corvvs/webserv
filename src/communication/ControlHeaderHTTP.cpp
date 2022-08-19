@@ -179,8 +179,9 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     // -> OWSがあるのはparameter部分だけなので, そこに差異を押し込められそう.
 
     const byte_string *ct = holder.get_val(HeaderHTTP::content_type);
+    this->value.clear();
     if (!ct || ct->size() == 0) {
-        this->value = HTTP::CH::ContentType::default_value;
+        // this->value = HTTP::CH::ContentType::default_value;
         return minor_error::ok();
     }
     const light_string lct(*ct);
@@ -558,9 +559,9 @@ minor_error HTTP::CH::Location::determine(const AHeaderHolder &holder) {
     //     escaped         = "%" hex hex
 
     const byte_string *ct = holder.get_val(HeaderHTTP::location);
+    this->is_local        = false;
     if (!ct || ct->size() == 0) {
         this->value.clear();
-        this->is_local = false;
         return minor_error::ok();
     }
     this->value = *ct;
@@ -599,7 +600,7 @@ minor_error HTTP::CH::Location::determine(const AHeaderHolder &holder) {
             DXOUT("query_string is valid");
             this->query_string = query_string;
         }
-
+        this->is_local = true;
     } else {
         // client-Location?
         // `fragment-URI`

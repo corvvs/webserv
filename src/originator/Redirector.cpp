@@ -27,6 +27,11 @@ bool Redirector::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string Redirector::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool Redirector::is_responsive() const {
     return originated_;
 }

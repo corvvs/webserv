@@ -100,6 +100,7 @@ void CGI::check_executable() const {
         case EACCES:
             throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
         default:
+            VOUT(errno);
             throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
 }
@@ -415,8 +416,14 @@ bool CGI::is_reroutable() const {
 
 bool CGI::is_responsive() const {
     // レスポンス可能であり, CGIレスポンスタイプが確定していてローカルリダイレクトでない
+    VOUT(status.is_responsive);
+    VOUT(rp.get_response_type());
     return status.is_responsive && rp.get_response_type() != CGIRES_UNKNOWN
            && rp.get_response_type() != CGIRES_REDIRECT_LOCAL;
+}
+
+HTTP::byte_string CGI::reroute_path() const {
+    return rp.location.value;
 }
 
 void CGI::leave() {
@@ -498,6 +505,7 @@ void CGI::after_injection(bool is_disconnected) {
                 // ※「chunked が使用可能」という条件が本来は必要.
                 // なぜなら chunked は最初のtransfer-encodingでなければならないからだが,
                 // ここではオリジネーションをしているので必然的に最後になる.
+                VOUT(rp.get_response_type());
                 if (rp.get_response_type() != CGIRES_REDIRECT_LOCAL) {
                     status.is_responsive = true;
                 }
@@ -539,15 +547,19 @@ void CGI::after_injection(bool is_disconnected) {
 
 void CGI::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
-    this->rp.content_type.determine(from_script_header_holder);
-    this->rp.status.determine(from_script_header_holder);
-    this->rp.location.determine(from_script_header_holder);
+    minor_error me;
+    me = erroneous(me, this->rp.content_type.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.status.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.location.determine(from_script_header_holder));
     this->rp.determine_body_size(from_script_header_holder);
-
+    if (me.is_error()) {
+        throw http_error(me);
+    }
     VOUT(rp.get_response_type());
 }
 
 void CGI::check_cgi_response_consistensy() {
+    VOUT(rp.get_response_type());
     switch (rp.get_response_type()) {
         case CGIRES_DOCUMENT: {
             // 特に何もチェックしなくて良さそう
@@ -555,6 +567,7 @@ void CGI::check_cgi_response_consistensy() {
         }
         case CGIRES_REDIRECT_LOCAL: {
             // CGIヘッダが2つ以上ある
+            DXOUT("LOCAL?");
             const AHeaderHolder::list_type &head_list = from_script_header_holder.get_list();
             if (head_list.size() != 1) {
                 throw http_error("local-redirection doesn't have only one cgi header",
@@ -613,6 +626,9 @@ void CGI::check_cgi_response_consistensy() {
 }
 
 CGI::t_cgi_response_type CGI::RoutingParameters::get_response_type() const {
+    // QVOUT(content_type.value);
+    // QVOUT(location.value);
+    // QVOUT(location.is_local);
     if (content_type.value.size() > 0) {
         if (location.value.size() == 0) {
             return CGIRES_DOCUMENT;
@@ -665,6 +681,7 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     HTTP::t_status response_status         = HTTP::STATUS_OK;
     VOUT(response_type);
     VOUT(rp.status.code);
+    ResponseHTTP::header_list_type headers;
     switch (response_type) {
         case CGIRES_DOCUMENT:
             // ドキュメント応答
@@ -677,16 +694,17 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
         case CGIRES_REDIRECT_CLIENT:
             // クライアントリダイレクト
             response_status = HTTP::STATUS_FOUND;
+            headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
             break;
         case CGIRES_REDIRECT_CLIENT_DOCUMENT:
             // クライアントリダイレクト ドキュメント付き
             response_status = (HTTP::t_status)rp.status.code;
+            headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
             break;
         default:
             assert(false);
     }
 
-    ResponseHTTP::header_list_type headers;
     // [伝送に関する決め事]
     // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
     // それはそうとして, chunkedで送るか, そうでないかを決める
@@ -704,17 +722,17 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
                 headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
             }
         }
-        switch (sm) {
-            case ResponseDataList::SM_CHUNKED:
-                headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
-                break;
-            case ResponseDataList::SM_NOT_CHUNKED:
-                headers.push_back(std::make_pair(HeaderHTTP::content_length,
-                                                 ParserHelper::utos(status.response_data.current_total_size(), 10)));
-                break;
-            default:
-                break;
-        }
+    }
+    switch (sm) {
+        case ResponseDataList::SM_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+            break;
+        case ResponseDataList::SM_NOT_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::content_length,
+                                             ParserHelper::utos(status.response_data.current_total_size(), 10)));
+            break;
+        default:
+            break;
     }
     ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 

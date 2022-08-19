@@ -215,6 +215,11 @@ bool FilePoster::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string FilePoster::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool FilePoster::is_responsive() const {
     return originated_;
 }
