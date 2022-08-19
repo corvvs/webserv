@@ -2,6 +2,7 @@
 #define FILEREADER_HPP
 #include "../Interfaces.hpp"
 #include "../communication/RequestHTTP.hpp"
+#include "../utils/FileCacher.hpp"
 #include "../utils/http.hpp"
 #include <fstream>
 #include <map>
@@ -17,13 +18,17 @@ protected:
     char_string file_path_;
     bool originated_;
     ResponseDataList response_data;
+    FileCacher &cacher_;
 
     // ファイルからデータを読み出しておく
     minor_error read_from_file();
 
+    // キャッシュデータを読み込む
+    bool read_from_cache();
+
 public:
-    FileReader(const RequestMatchingResult &match_result);
-    FileReader(const char_string &path);
+    FileReader(const RequestMatchingResult &match_result, FileCacher &cacher);
+    FileReader(const char_string &path, FileCacher &cacher);
     ~FileReader();
 
     virtual void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);

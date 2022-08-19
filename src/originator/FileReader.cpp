@@ -2,10 +2,11 @@
 #include <unistd.h>
 #define READ_SIZE 1048576
 
-FileReader::FileReader(const RequestMatchingResult &match_result)
-    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false) {}
+FileReader::FileReader(const RequestMatchingResult &match_result, FileCacher &cacher)
+    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
 
-FileReader::FileReader(const char_string &path) : file_path_(path), originated_(false) {}
+FileReader::FileReader(const char_string &path, FileCacher &cacher)
+    : file_path_(path), originated_(false), cacher_(cacher) {}
 
 FileReader::~FileReader() {}
 
@@ -14,6 +15,25 @@ void FileReader::notify(IObserver &observer, IObserver::observation_category cat
     (void)cat;
     (void)epoch;
     assert(false);
+}
+
+bool FileReader::read_from_cache() {
+    std::pair<minor_error, const FileCacher::entry_type *> res = cacher_.fetch(file_path_.c_str());
+    if (res.first.is_ok()) {
+        // Deep copyする
+        byte_string file_data = res.second->data;
+        size_t file_size      = res.second->size;
+        response_data.inject(HTTP::restrfy(file_data).c_str(), file_size, true);
+        originated_ = true;
+        return true;
+    }
+
+    // ファイルのサイズがキャシュできる上限を超えている以外のエラーが発生した場合は例外を投げる
+    const minor_error merror = res.first;
+    if (merror.second != HTTP::STATUS_BAD_REQUEST) {
+        throw http_error(merror.first.c_str(), merror.second);
+    }
+    return false;
 }
 
 minor_error FileReader::read_from_file() {
@@ -79,11 +99,17 @@ bool FileReader::is_responsive() const {
     return originated_;
 }
 
+// キャッシュデータが存在するならデータリストにinjectするだけ
+// なかったらファイルを読みこんでキャッシュを更新する
 void FileReader::start_origination(IObserver &observer) {
     (void)observer;
     if (originated_) {
         return;
     }
+    // if (read_from_cache()) {
+    //     originated_ = true;
+    //     return;
+    // }
     const minor_error me = read_from_file();
     if (me.is_error()) {
         throw http_error(me);

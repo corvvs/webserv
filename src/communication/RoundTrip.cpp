@@ -3,9 +3,10 @@
 #include "Connection.hpp"
 #include <cassert>
 
-RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs)
+RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs, FileCacher &cacher)
     : router(router)
     , configs_(configs)
+    , cacher_(cacher)
     , request_(NULL)
     , originator_(NULL)
     , response_(NULL)
@@ -62,12 +63,12 @@ void RoundTrip::notify_originator(IObserver &observer, IObserver::observation_ca
     originator_->notify(observer, cat, epoch);
 }
 
-IOriginator *make_originator(const RequestMatchingResult &result, const RequestHTTP &request) {
+IOriginator *RoundTrip::make_originator(const RequestMatchingResult &result, const RequestHTTP &request) {
     switch (result.result_type) {
         case RequestMatchingResult::RT_CGI:
             return new CGI(result, request);
         case RequestMatchingResult::RT_FILE_DELETE:
-            return new FileDeleter(result);
+            return new FileDeleter(result, cacher_);
         case RequestMatchingResult::RT_FILE_POST:
             return new FilePoster(result, request);
         case RequestMatchingResult::RT_AUTO_INDEX:
@@ -79,7 +80,7 @@ IOriginator *make_originator(const RequestMatchingResult &result, const RequestH
         default:
             break;
     }
-    return new FileReader(result);
+    return new FileReader(result, cacher_);
 }
 
 void RoundTrip::route(Connection &connection) {
@@ -90,7 +91,7 @@ void RoundTrip::route(Connection &connection) {
     if (request_->current_error().is_error()) {
         // TODO: リクエストがエラーを抱えている場合にエラーレスポンスを作る
         const minor_error me = request_->purge_error();
-        originator_          = new ErrorPageGenerator(me, result.status_page_dict);
+        originator_          = new ErrorPageGenerator(me, result.status_page_dict, cacher_);
         DXOUT("purged error: " << me);
     } else {
         originator_ = make_originator(result, *request_);
@@ -197,7 +198,7 @@ void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
     destroy_originator();
     // TODO: ほんとはここで「デフォルトのエラーページdict」があるとよい
     const RequestMatchingResult::status_dict_type blank_dict;
-    originator_ = new ErrorPageGenerator(err, blank_dict, true);
+    originator_ = new ErrorPageGenerator(err, blank_dict, cacher_, true);
     originator_->start_origination(observer);
     response_ = originator_->respond(request_);
 }
