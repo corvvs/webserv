@@ -221,7 +221,8 @@ TEST(control_header_http, content_type_bounary) {
         EXPECT_TRUE(me.is_ok());
         EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
         EXPECT_EQ(HTTP::strfy("abcdefg"), ch.parameters[HTTP::strfy("boundary")].str());
-        EXPECT_EQ(HTTP::strfy("abcdefg"), ch.boundary.str());
+        EXPECT_FALSE(ch.boundary.is_null());
+        EXPECT_EQ(HTTP::strfy("abcdefg"), ch.boundary.value().str());
     }
 
     {
@@ -236,7 +237,7 @@ TEST(control_header_http, content_type_bounary) {
         EXPECT_TRUE(me.is_ok());
         EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
         EXPECT_EQ(HTTP::strfy("----------------------------------------------------------------------"),
-                  ch.boundary.str());
+                  ch.boundary.value().str());
     }
 
     {
@@ -251,7 +252,7 @@ TEST(control_header_http, content_type_bounary) {
         me = ch.determine(holder);
         EXPECT_TRUE(me.is_ok());
         EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
-        EXPECT_EQ(HTTP::strfy(""), ch.boundary.str());
+        EXPECT_TRUE(ch.boundary.is_null());
     }
 
     {
@@ -265,7 +266,7 @@ TEST(control_header_http, content_type_bounary) {
         EXPECT_TRUE(me.is_ok());
         EXPECT_EQ(HTTP::strfy("multipart/form-data"), ch.value);
         // 無意味では・・・
-        EXPECT_EQ(HTTP::strfy(""), ch.boundary.str());
+        EXPECT_TRUE(ch.boundary.is_null());
     }
 }
 
