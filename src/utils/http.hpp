@@ -123,7 +123,7 @@ public:
     }
 
     // Null状態に設定
-    void set() {
+    void unset() {
         is_null_ = true;
     }
 
