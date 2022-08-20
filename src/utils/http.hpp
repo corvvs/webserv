@@ -106,9 +106,9 @@ private:
 
 public:
     // Null状態でデフォルト構築
-    Nullable() : is_null_(false) {}
+    Nullable() : is_null_(true) {}
     // 値が入った状態で構築
-    Nullable(const T &val) : is_null_(true), val_(val) {}
+    Nullable(const T &val) : is_null_(false), val_(val) {}
 
     // Nullかどうか
     bool is_null() const {
@@ -123,7 +123,7 @@ public:
     }
 
     // Null状態に設定
-    void set() {
+    void unset() {
         is_null_ = true;
     }
 
