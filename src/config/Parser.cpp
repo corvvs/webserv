@@ -42,6 +42,9 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
 }
 
 std::map<host_port_pair, config_vector> Parser::parse(const std::string &file_data) {
+    if (file_data.empty()) {
+        throw SyntaxError("config: file is empty");
+    }
     lexer_.tokenize(file_data);
 
     ErrorMsg err;
