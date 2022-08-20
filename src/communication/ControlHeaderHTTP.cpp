@@ -781,7 +781,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_expire(const light_string &str) 
     // expires-av        = "Expires=" sane-cookie-date
     // sane-cookie-date  = <rfc1123-date, defined in [RFC2616], Section 3.3.1>
     light_string work = str;
-    expires.set();
+    expires.unset();
     if (!work.starts_with("=")) {
         error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
         return work;
@@ -807,7 +807,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_max_age(const light_string &str)
     // non-zero-digit    = %x31-39
     //                       ; digits 1 through 9
     light_string work = str;
-    max_age.set();
+    max_age.unset();
     if (!work.starts_with("=")) {
         error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
         return work;
@@ -918,7 +918,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_same_site(const light_string &st
     // samesite-av       = "SameSite" BWS "=" BWS samesite-value
     // samesite-value    = "Strict" / "Lax" / "None"
     light_string work = str;
-    same_site.set();
+    same_site.unset();
     if (!work.starts_with("=")) {
         error = minor_error::make("no equal", HTTP::STATUS_BAD_REQUEST);
         return work;
