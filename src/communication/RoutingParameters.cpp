@@ -55,17 +55,17 @@ ARoutingParameters::decompose_semicoron_separated_kvlist(const light_string &kvl
         params_str = params_str.substr_after(HTTP::CharFilter::sp);
         // QVOUT(params_str);
         if (params_str.size() == 0) {
-            DXOUT("away, there's only sp.");
+            // DXOUT("away, there's only sp.");
             return params_str;
         }
         if (params_str[0] != ';') {
-            DXOUT("away");
+            // DXOUT("away");
             return params_str;
         }
         params_str = params_str.substr_after(HTTP::CharFilter::sp, 1);
         // DXOUT("param_sep2: " << sep_pos);
         if (params_str.size() == 0) {
-            DXOUT("[KO] there's only sp after ';'");
+            // DXOUT("[KO] there's only sp after ';'");
             return params_str;
         }
         // ここからparameterを取得
@@ -112,6 +112,4 @@ void ARoutingParameters::pack_host(HTTP::Term::Host &host_item, const light_stri
             host_item.port    = port.str();
         }
     }
-    // DXOUT("host: \"" << host_item.host << "\"");
-    // DXOUT("port: \"" << host_item.port << "\"");
 }

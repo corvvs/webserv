@@ -1,5 +1,6 @@
 #include "CGI.hpp"
 #include "../communication/RoundTrip.hpp"
+#include "../utils/File.hpp"
 #include <cstring>
 #include <signal.h>
 #include <sys/stat.h>
@@ -27,7 +28,7 @@ CGI::Attribute::Attribute(const RequestMatchingResult &matching_result,
                           const ICGIConfigurationProvider &configuration_provider)
     : configuration_provider_(configuration_provider)
     , executor_path_(matching_result.path_cgi_executor)
-    , script_path_(matching_result.path_local)
+    , script_path_(matching_result.cgi_resource.fullpath)
     , query_string_(configuration_provider.get_request_matching_param().get_request_target().query.str())
     , observer(NULL)
     , master(NULL)
@@ -40,9 +41,13 @@ const CGI::byte_string CGI::META_SERVER_PROTOCOL   = HTTP::strfy("SERVER_PROTOCO
 const CGI::byte_string CGI::META_CONTENT_TYPE      = HTTP::strfy("CONTENT_TYPE");
 const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
 const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
+const CGI::byte_string CGI::META_PATH_INFO         = HTTP::strfy("PATH_INFO");
+const CGI::byte_string CGI::META_SCRIPT_NAME       = HTTP::strfy("SCRIPT_NAME");
+const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
     : attr(Attribute(match_result, request))
+    , lifetime(Lifetime::make_response())
     , metavar_(request.get_cgi_meta_vars())
     , to_script_content_length_(0)
     , mid(0) {
@@ -51,6 +56,13 @@ CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvi
     metavar_[META_REQUEST_METHOD]    = HTTP::method_str(attr.configuration_provider_.get_method());
     metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(attr.configuration_provider_.get_http_version());
     metavar_[META_CONTENT_TYPE]      = attr.configuration_provider_.get_content_type();
+    if (match_result.cgi_resource.script_name == HTTP::strfy("/")) {
+        metavar_[META_SCRIPT_NAME] = HTTP::strfy("");
+    } else {
+        metavar_[META_SCRIPT_NAME] = match_result.cgi_resource.script_name;
+    }
+    metavar_[META_PATH_INFO]    = match_result.cgi_resource.path_info;
+    metavar_[META_QUERY_STRING] = match_result.target->query.str();
 }
 
 CGI::~CGI() {
@@ -59,6 +71,7 @@ CGI::~CGI() {
         ::kill(attr.cgi_pid, SIGKILL);
         int wstatus;
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
+        lifetime.deactivate();
         // VOUT(pid);
         assert(pid > 0);
         // VOUT(WIFEXITED(wstatus));
@@ -77,29 +90,18 @@ void CGI::inject_socketlike(ISocketLike *socket_like) {
 }
 
 void CGI::check_executable() const {
-    // 存在 -> stat のエラー
-    // 通常ファイルか -> stat S_ISREF
-    // 実行権限 -> stat
-    struct stat st;
-    errno            = 0;
-    const int result = stat(HTTP::restrfy(attr.script_path_).c_str(), &st);
-    if (result != 0) {
-        switch (errno) {
-            case ENOENT:
-                throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
-            case EACCES:
-                throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
-            default:
-                throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
-        }
+    errno = 0;
+    if (file::is_executable(HTTP::restrfy(attr.script_path_))) {
+        return;
     }
-    const bool is_regular_file = S_ISREG(st.st_mode);
-    if (!is_regular_file) {
-        throw http_error("is not normal file", HTTP::STATUS_FORBIDDEN);
-    }
-    const bool is_executable = (st.st_mode & S_IXUSR);
-    if (!is_executable) {
-        throw http_error("is not executable", HTTP::STATUS_FORBIDDEN);
+    switch (errno) {
+        case ENOENT:
+            throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+        case EACCES:
+            throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
+        default:
+            VOUT(errno);
+            throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
 }
 
@@ -142,10 +144,13 @@ void CGI::start_origination(IObserver &observer) {
         // if (redirect_fd(socks.second, STDERR_FILENO) < 0) {
         //     exit(1);
         // }
-
+        std::string dir_name = file::get_directory_name(HTTP::restrfy(attr.script_path_));
+        if (chdir(dir_name.c_str()) != 0) {
+            exit(1);
+        }
         // 起動
         errno  = 0;
-        int rv = execve(HTTP::restrfy(attr.script_path_).c_str(), argv, mvs);
+        int rv = execve(HTTP::restrfy(attr.executor_path_).c_str(), argv, mvs);
         VOUT(rv);
         VOUT(errno);
         exit(rv);
@@ -161,6 +166,7 @@ void CGI::start_origination(IObserver &observer) {
     observer.reserve_set(this, IObserver::OT_READ);
     observer.reserve_set(this, IObserver::OT_WRITE);
     status.is_started = true;
+    lifetime.activate();
 }
 
 void CGI::capture_script_termination() {
@@ -173,6 +179,7 @@ void CGI::capture_script_termination() {
         VOUT(strerror(errno));
     } else if (rv > 0) {
         attr.cgi_pid = 0;
+        lifetime.deactivate();
         // 終了している
         if (WIFEXITED(wstatus)) {
             int cstatus = WEXITSTATUS(wstatus);
@@ -317,7 +324,10 @@ void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_tim
             return;
         case IObserver::OT_TIMEOUT:
         case IObserver::OT_ORIGINATOR_TIMEOUT:
-            VOUT(epoch);
+            if (lifetime.is_timeout(epoch)) {
+                DXOUT("TIMEOUT!!");
+                throw http_error("cgi-script timed out", HTTP::STATUS_TIMEOUT);
+            }
             return;
         default:
             DXOUT("unexpected cat: " << cat);
@@ -406,8 +416,14 @@ bool CGI::is_reroutable() const {
 
 bool CGI::is_responsive() const {
     // レスポンス可能であり, CGIレスポンスタイプが確定していてローカルリダイレクトでない
+    VOUT(status.is_responsive);
+    VOUT(rp.get_response_type());
     return status.is_responsive && rp.get_response_type() != CGIRES_UNKNOWN
            && rp.get_response_type() != CGIRES_REDIRECT_LOCAL;
+}
+
+HTTP::byte_string CGI::reroute_path() const {
+    return rp.location.value;
 }
 
 void CGI::leave() {
@@ -418,6 +434,10 @@ void CGI::leave() {
         // Observerに渡される前に leave されることがある
         delete this;
     }
+}
+
+bool CGI::is_timeout(t_time_epoch_ms now) const {
+    return lifetime.is_timeout(now);
 }
 
 CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {
@@ -485,6 +505,7 @@ void CGI::after_injection(bool is_disconnected) {
                 // ※「chunked が使用可能」という条件が本来は必要.
                 // なぜなら chunked は最初のtransfer-encodingでなければならないからだが,
                 // ここではオリジネーションをしているので必然的に最後になる.
+                VOUT(rp.get_response_type());
                 if (rp.get_response_type() != CGIRES_REDIRECT_LOCAL) {
                     status.is_responsive = true;
                 }
@@ -512,9 +533,9 @@ void CGI::after_injection(bool is_disconnected) {
                     status.is_responsive = true;
                 }
                 status.is_complete = true;
-                VOUT(ps.start_of_body);
-                VOUT(ps.end_of_body);
-                BVOUT(bytebuffer);
+                // VOUT(ps.start_of_body);
+                // VOUT(ps.end_of_body);
+                // BVOUT(bytebuffer);
                 return;
             }
 
@@ -526,15 +547,20 @@ void CGI::after_injection(bool is_disconnected) {
 
 void CGI::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
-    this->rp.content_type.determine(from_script_header_holder);
-    this->rp.status.determine(from_script_header_holder);
-    this->rp.location.determine(from_script_header_holder);
+    minor_error me;
+    me = erroneous(me, this->rp.content_type.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.status.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.location.determine(from_script_header_holder));
+    me = erroneous(me, this->rp.set_cookie.determine(from_script_header_holder));
     this->rp.determine_body_size(from_script_header_holder);
-
+    if (me.is_error()) {
+        throw http_error(me);
+    }
     VOUT(rp.get_response_type());
 }
 
 void CGI::check_cgi_response_consistensy() {
+    VOUT(rp.get_response_type());
     switch (rp.get_response_type()) {
         case CGIRES_DOCUMENT: {
             // 特に何もチェックしなくて良さそう
@@ -542,6 +568,7 @@ void CGI::check_cgi_response_consistensy() {
         }
         case CGIRES_REDIRECT_LOCAL: {
             // CGIヘッダが2つ以上ある
+            DXOUT("LOCAL?");
             const AHeaderHolder::list_type &head_list = from_script_header_holder.get_list();
             if (head_list.size() != 1) {
                 throw http_error("local-redirection doesn't have only one cgi header",
@@ -600,6 +627,9 @@ void CGI::check_cgi_response_consistensy() {
 }
 
 CGI::t_cgi_response_type CGI::RoutingParameters::get_response_type() const {
+    // QVOUT(content_type.value);
+    // QVOUT(location.value);
+    // QVOUT(location.is_local);
     if (content_type.value.size() > 0) {
         if (location.value.size() == 0) {
             return CGIRES_DOCUMENT;
@@ -644,35 +674,28 @@ size_t CGI::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP &request) {
-    // ローカルリダイレクトの場合ここに来てはいけない
-    assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
-
-    CGI::t_cgi_response_type response_type = rp.get_response_type();
-    HTTP::t_status response_status         = HTTP::STATUS_OK;
-    VOUT(response_type);
-    VOUT(rp.status.code);
-    switch (response_type) {
+HTTP::t_status CGI::determine_response_status() const {
+    switch (rp.get_response_type()) {
         case CGIRES_DOCUMENT:
             // ドキュメント応答
             if (rp.status.code == HTTP::STATUS_UNSPECIFIED) {
-                response_status = HTTP::STATUS_OK;
+                return HTTP::STATUS_OK;
             } else {
-                response_status = (HTTP::t_status)rp.status.code;
+                return (HTTP::t_status)rp.status.code;
             }
-            break;
         case CGIRES_REDIRECT_CLIENT:
             // クライアントリダイレクト
-            response_status = HTTP::STATUS_FOUND;
-            break;
+            return HTTP::STATUS_FOUND;
         case CGIRES_REDIRECT_CLIENT_DOCUMENT:
             // クライアントリダイレクト ドキュメント付き
-            response_status = (HTTP::t_status)rp.status.code;
-            break;
+            return (HTTP::t_status)rp.status.code;
         default:
             assert(false);
     }
+    return HTTP::STATUS_DUMMY;
+}
 
+ResponseHTTP::header_list_type CGI::determine_response_headers_destructively() {
     ResponseHTTP::header_list_type headers;
     // [伝送に関する決め事]
     // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
@@ -680,17 +703,25 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
     // chunkedでない場合, Content-Length: を与える
     // 本文がある場合は Content-Type: をセット
     // (なければ何もセットしない)
+    from_script_header_holder.erase_vals(HeaderHTTP::transfer_encoding);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_length);
     IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
+    const t_cgi_response_type response_type  = rp.get_response_type();
+    const bool is_redirection
+        = response_type == CGIRES_REDIRECT_CLIENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
     const bool must_have_body = response_type == CGIRES_DOCUMENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
+    if (is_redirection) {
+        headers.push_back(std::make_pair(HeaderHTTP::location, rp.location.value));
+    }
+    // Content-Type:
     if (must_have_body) {
-        VOUT(status.response_data.current_total_size());
-        if (status.response_data.current_total_size() > 0) {
-            const HeaderHolderCGI::header_val_type *val
-                = from_script_header_holder.get_back_val(HeaderHTTP::content_type);
-            if (val) {
-                headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
-            }
+        const HeaderHolderCGI::header_val_type *val = from_script_header_holder.get_back_val(HeaderHTTP::content_type);
+        if (val) {
+            headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
+        } else {
+            headers.push_back(std::make_pair(HeaderHTTP::content_type, CGIP::CH::ContentType::default_value));
         }
+        // 伝送方式
         switch (sm) {
             case ResponseDataList::SM_CHUNKED:
                 headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -703,10 +734,37 @@ ResponseHTTP *CGI::respond(const RequestHTTP &request) {
                 break;
         }
     }
-    ResponseHTTP res(request.get_http_version(), response_status, &headers, &status.response_data);
+    // その他のヘッダ
+    from_script_header_holder.erase_vals(HeaderHTTP::transfer_encoding);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_length);
+    from_script_header_holder.erase_vals(HeaderHTTP::status);
+    from_script_header_holder.erase_vals(HeaderHTTP::location);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_type);
+    if (response_type != CGIRES_REDIRECT_CLIENT) {
+        const AHeaderHolder::list_type &header_list = from_script_header_holder.get_list();
+        for (AHeaderHolder::list_type::const_iterator hit = header_list.begin(); hit != header_list.end(); ++hit) {
+            const HeaderItem::value_list_type &val_list = hit->get_vals();
+            for (HeaderItem::value_list_type::const_iterator vit = val_list.begin(); vit != val_list.end(); ++vit) {
+                headers.push_back(std::make_pair(hit->get_key(), *vit));
+            }
+        }
+    }
+    return headers;
+}
+
+ResponseHTTP *CGI::respond(const RequestHTTP *request) {
+    // ローカルリダイレクトの場合ここに来てはいけない
+    assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
+
+    // 応答ステータスを決める
+    HTTP::t_status response_status = determine_response_status();
+
+    // HTTPレスポンスヘッダを生成する
+    ResponseHTTP::header_list_type headers = determine_response_headers_destructively();
+    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 
     // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, NULL);
+    ResponseHTTP *r = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, NULL, false);
     ResponseHTTP::swap(res, *r);
     r->start();
     return r;

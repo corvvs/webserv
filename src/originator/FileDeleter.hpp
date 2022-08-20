@@ -2,6 +2,7 @@
 #define FILEDELETER_HPP
 #include "../Interfaces.hpp"
 #include "../communication/RequestHTTP.hpp"
+#include "../utils/FileCacher.hpp"
 #include "../utils/http.hpp"
 #include <map>
 
@@ -16,23 +17,25 @@ private:
     char_string file_path_;
     ResponseDataList response_data;
     bool originated_;
+    FileCacher &cacher_;
 
     // ターゲットの削除を試みる
     void delete_file();
 
 public:
-    FileDeleter(const RequestMatchingResult &match_result);
+    FileDeleter(const RequestMatchingResult &match_result, FileCacher &cacher);
     ~FileDeleter();
 
     void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
     void inject_socketlike(ISocketLike *socket_like);
     bool is_originatable() const;
     bool is_reroutable() const;
+    HTTP::byte_string reroute_path() const;
     bool is_responsive() const;
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    ResponseHTTP *respond(const RequestHTTP *request);
 };
 
 #endif

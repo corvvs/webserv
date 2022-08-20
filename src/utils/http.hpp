@@ -30,6 +30,7 @@ enum t_status {
     STATUS_NOT_FOUND          = 404,
     STATUS_METHOD_NOT_ALLOWED = 405,
     STATUS_TIMEOUT            = 408,
+    STATUS_PAYLOAD_TOO_LARGE  = 413,
     STATUS_URI_TOO_LONG       = 414,
     STATUS_IM_A_TEAPOT        = 418,
     STATUS_HEADER_TOO_LARGE   = 431,
@@ -96,6 +97,42 @@ byte_string strfy(const char_string &str);
 char_string restrfy(const byte_string &str);
 
 size_type find(const byte_string &hay, const byte_string &needle);
+
+template <class T>
+class Nullable {
+private:
+    bool is_null_;
+    T val_;
+
+public:
+    // Null状態でデフォルト構築
+    Nullable() : is_null_(true) {}
+    // 値が入った状態で構築
+    Nullable(const T &val) : is_null_(false), val_(val) {}
+
+    // Nullかどうか
+    bool is_null() const {
+        return is_null_;
+    }
+
+    // 値を取得
+    // (Null状態のときに呼ばないこと)
+    const T &value() const {
+        assert(!is_null());
+        return val_;
+    }
+
+    // Null状態に設定
+    void unset() {
+        is_null_ = true;
+    }
+
+    // 値を設定
+    void set(const T &val) {
+        is_null_ = false;
+        val_     = val;
+    }
+};
 
 } // namespace HTTP
 

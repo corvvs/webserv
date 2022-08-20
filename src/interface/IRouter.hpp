@@ -4,6 +4,7 @@
 #include "../communication/ResponseHTTP.hpp"
 #include "../config/Config.hpp"
 #include "IOriginator.hpp"
+#include "IRequestMatcher.hpp"
 
 // [ルータインターフェース]
 // [責務]
@@ -12,7 +13,7 @@ class IRouter {
 public:
     virtual ~IRouter(){};
 
-    virtual IOriginator *route(const RequestHTTP &request, const config::config_vector &configs) = 0;
+    virtual RequestMatchingResult route(const IRequestMatchingParam &request, const config::config_vector &configs) = 0;
 };
 
 #endif

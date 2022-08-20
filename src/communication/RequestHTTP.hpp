@@ -8,9 +8,12 @@
 #include "ChunkedBody.hpp"
 #include "ControlHeaderHTTP.hpp"
 #include "HeaderHTTP.hpp"
+#include "Lifetime.hpp"
 #include "ParserHelper.hpp"
+#include "RequestTarget.hpp"
 #include "RoutingParameters.hpp"
 #include "ValidatorHTTP.hpp"
+
 #include <iostream>
 #include <list>
 #include <map>
@@ -18,44 +21,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-struct RequestTarget {
-    typedef HTTP::light_string light_string;
-
-    // リクエストの"form"
-    // - origin-form: "/"から始まるパスだけのやつ
-    // - authority-form: ドメイン部だけのやつ
-    // - absolute-form: URLまるごと
-    // - asterisk-form: "*"のみ
-    enum t_form { FORM_UNKNOWN, FORM_ORIGIN, FORM_AUTHORITY, FORM_ABSOLUTE, FORM_ASTERISK };
-
-    // 与えられたリクエストターゲット
-    light_string given;
-    // エラーかどうか
-    bool is_error;
-    // 何formか
-    t_form form;
-
-    // cf. https://datatracker.ietf.org/doc/html/rfc3986#section-3
-    //
-    //     foo://example.com:8042/over/there?name=ferret#nose
-    //     \_/   \______________/\_________/ \_________/ \__/
-    //     |           |            |            |        |
-    // scheme     authority       path        query   fragment
-    //     |   _____________________|__
-    //     / \ /                        \
-    //     urn:example:animal:ferret:nose
-
-    light_string scheme;
-    light_string authority;
-    light_string path;
-    light_string query;
-
-    RequestTarget();
-    RequestTarget(const light_string &target);
-};
-
-std::ostream &operator<<(std::ostream &ost, const RequestTarget &f);
 
 class IRequestMatchingParam {
 public:
@@ -148,6 +113,7 @@ public:
         ChunkedBody::Chunk current_chunk;
         // 凍結されたかどうか
         bool is_freezed;
+        minor_error merror;
 
         ParserStatus();
     };
@@ -156,6 +122,10 @@ public:
     struct RoutingParameters : public ARoutingParameters, public IRequestMatchingParam {
         // TODO: リクエストマッチングに必要なものを外部に公開する
         RequestTarget given_request_target; // リクエストマッチングに必要
+        // リルート用パラメータ
+        bool use_reroute;
+        byte_string reroute_path;
+        RequestTarget reroute_request_target;
 
         HTTP::t_method http_method; // リクエストマッチングに必要
         HTTP::t_version http_version;
@@ -163,6 +133,7 @@ public:
         bool is_body_chunked;
 
         HTTP::CH::Host header_host; // リクエストマッチングに必要
+        HTTP::CH::ContentLength content_length;
         HTTP::CH::ContentType content_type;
         HTTP::CH::ContentDisposition content_disposition;
         HTTP::CH::TransferEncoding transfer_encoding;
@@ -170,23 +141,30 @@ public:
         HTTP::CH::TE te;
         HTTP::CH::Upgrade upgrade;
         HTTP::CH::Via via;
+        HTTP::CH::Date date;
+        HTTP::CH::Cookie cookie;
 
         // いろいろ抽出関数群
 
         // TODO: struct に結びつくやつは struct に移したほうがいいかも
-        void determine_host(const header_holder_type &holder);
+        minor_error determine_host(const header_holder_type &holder);
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
-        void determine_body_size(const header_holder_type &holder);
+        void determine_body_size();
 
         const RequestTarget &get_request_target() const;
         HTTP::t_method get_http_method() const;
         HTTP::t_version get_http_version() const;
         const HTTP::CH::Host &get_host() const;
+
+        RoutingParameters();
     };
 
 private:
     byte_string bytebuffer;
     ssize_t mid;
+    ssize_t client_max_body_size;
+    Lifetime lifetime;
+    Lifetime lifetime_header;
 
     // 解析中の情報
     ParserStatus ps;
@@ -208,23 +186,26 @@ private:
     t_parse_progress reach_chunked_data_end(size_t len, bool is_disconnected);
     t_parse_progress reach_chunked_data_termination(size_t len, bool is_disconnected);
     t_parse_progress reach_chunked_trailer_end(size_t len, bool is_disconnected);
-    void analyze_headers(IndexRange res);
+    minor_error analyze_headers(IndexRange res);
 
     // [パース関数群]
 
     // 開始行の終了位置を探す
     bool seek_reqline_end(size_t len);
     // [begin, end) を要求行としてパースする
+    // (ここでのエラーは持続不可能とする)
     void parse_reqline(const light_string &line);
 
+    // chunkのサイズ行をチェックする
+    // (ここでのエラーは持続不可能とする)
     void parse_chunk_size_line(const light_string &line);
-    void parse_chunk_data(const light_string &data);
 
     // 要求行の整合性をチェック
+    // (ここでのエラーは持続不可能とする)
     void check_reqline_consistensy();
 
     // ヘッダから必要な情報を取る
-    void extract_control_headers();
+    minor_error extract_control_headers();
 
 public:
     RequestHTTP();
@@ -243,9 +224,12 @@ public:
     // 受信済み(未解釈含む)データサイズ
     size_t receipt_size() const;
     // 解釈済みボディサイズ
+    // 「受信したデータのうち解釈済みのもの」なので、実際のボディサイズとは限らない(特にchunkedの場合は明確に異なる)
     size_t parsed_body_size() const;
     // 解釈済みデータサイズ
     size_t parsed_size() const;
+
+    size_t effective_parsed_body_size() const;
 
     // リクエストのHTTPバージョン
     HTTP::t_version get_http_version() const;
@@ -261,6 +245,8 @@ public:
     // HTTPメッセージ全文を返す
     byte_string get_plain_message() const;
 
+    void set_max_body_size(ssize_t size);
+
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
     bool is_routable() const;
     // predicate: レスポンスの受信が完了したかどうか
@@ -270,8 +256,21 @@ public:
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
     bool should_keep_in_touch() const;
 
+    void inject_reroute_path(const HTTP::byte_string &path);
+
+    // 各種サイズの制限を調べる
+    // 違反していれば対応する例外を投げる(すべてunrecovarable扱い)
+    void check_size_limitation();
+    bool is_timeout(t_time_epoch_ms now) const;
+
     header_holder_type::joined_dict_type get_cgi_meta_vars() const;
     const IRequestMatchingParam &get_request_matching_param() const;
+
+    // 「現在抱えているエラー」を返す.
+    // ** 副作用として「現在抱えているエラー」はOKになる. **
+    minor_error purge_error();
+    // 「現在抱えているエラー」を返す.
+    const minor_error &current_error() const;
 };
 
 #endif

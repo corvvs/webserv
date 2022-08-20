@@ -1,9 +1,17 @@
 #include "RoundTrip.hpp"
+#include "../Originators.hpp"
 #include "Connection.hpp"
 #include <cassert>
 
-RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs)
-    : router(router), configs_(configs), request_(NULL), originator_(NULL), response_(NULL), reroute_count(0) {}
+RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs, FileCacher &cacher)
+    : router(router)
+    , configs_(configs)
+    , cacher_(cacher)
+    , request_(NULL)
+    , originator_(NULL)
+    , response_(NULL)
+    , lifetime(Lifetime::make_round_trip())
+    , reroute_count(0) {}
 
 RoundTrip::~RoundTrip() {
     wipeout();
@@ -27,21 +35,19 @@ void RoundTrip::start_if_needed() {
     }
     DXOUT("[start_roundtrip]");
     request_ = new RequestHTTP();
+    lifetime.activate();
 }
 
-bool RoundTrip::inject_data(const u8t *received_buffer, ssize_t received_size, extra_buffer_type &extra_buffer) {
-    if (received_buffer != NULL) {
-        start_if_needed();
-        request_->inject_bytestring(received_buffer, received_buffer + received_size);
-        return received_size == 0;
-    } else {
-        assert(extra_buffer.size() > 0);
-        const extra_buffer_type::size_type n = std::min(extra_buffer.size(), (extra_buffer_type::size_type)1024);
-        bool is_disconnected                 = (extra_buffer.size() == n);
-        request_->inject_bytestring(extra_buffer.begin(), extra_buffer.begin() + n);
-        extra_buffer.erase(extra_buffer.begin(), extra_buffer.begin() + n);
-        return is_disconnected;
-    }
+bool RoundTrip::inject_data(const char *received_buffer, ssize_t received_size) {
+    start_if_needed();
+    request_->inject_bytestring(received_buffer, received_buffer + received_size);
+    return received_size == 0;
+}
+
+bool RoundTrip::inject_data(const light_string &received_buffer) {
+    start_if_needed();
+    request_->inject_bytestring(received_buffer.begin(), received_buffer.end());
+    return received_buffer.size() == 0;
 }
 
 bool RoundTrip::is_routable() const {
@@ -57,11 +63,40 @@ void RoundTrip::notify_originator(IObserver &observer, IObserver::observation_ca
     originator_->notify(observer, cat, epoch);
 }
 
+IOriginator *RoundTrip::make_originator(const RequestMatchingResult &result, const RequestHTTP &request) {
+    switch (result.result_type) {
+        case RequestMatchingResult::RT_CGI:
+            return new CGI(result, request);
+        case RequestMatchingResult::RT_FILE_DELETE:
+            return new FileDeleter(result, cacher_);
+        case RequestMatchingResult::RT_FILE_POST:
+            return new FilePoster(result, request);
+        case RequestMatchingResult::RT_AUTO_INDEX:
+            return new AutoIndexer(result);
+        case RequestMatchingResult::RT_EXTERNAL_REDIRECTION:
+            return new Redirector(result);
+        case RequestMatchingResult::RT_ECHO:
+            return new Echoer(result);
+        default:
+            break;
+    }
+    return new FileReader(result, cacher_);
+}
+
 void RoundTrip::route(Connection &connection) {
     DXOUT("[route]");
     assert(request_ != NULL);
     reroute_count += 1;
-    originator_ = router.route(*request_, configs_);
+    const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
+    if (request_->current_error().is_error()) {
+        // TODO: リクエストがエラーを抱えている場合にエラーレスポンスを作る
+        const minor_error me = request_->purge_error();
+        originator_          = new ErrorPageGenerator(me, result.status_page_dict, cacher_);
+        DXOUT("purged error: " << me);
+    } else {
+        originator_ = make_originator(result, *request_);
+        request_->set_max_body_size(result.client_max_body_size);
+    }
     originator_->inject_socketlike(&connection);
 }
 
@@ -110,7 +145,13 @@ void RoundTrip::reroute(Connection &connection) {
     }
 
     // TODO: 古いオリジネータの内容を考慮する
-    IOriginator *reoriginator = router.route(*request_, configs_);
+    assert(originator_ != NULL);
+    request_->inject_reroute_path(originator_->reroute_path());
+
+    const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
+    VOUT(result.result_type);
+    IOriginator *reoriginator = make_originator(result, *request_);
+    request_->set_max_body_size(result.client_max_body_size);
 
     originator_->leave();
     originator_ = reoriginator;
@@ -132,19 +173,34 @@ bool RoundTrip::is_responding() const {
     return response_ != NULL;
 }
 
-void RoundTrip::respond() {
-    DXOUT("[respond]");
-    response_ = originator_->respond(*request_);
+bool RoundTrip::is_timeout(t_time_epoch_ms now) const {
+    if (request_ != NULL && request_->is_timeout(now)) {
+        return true;
+    }
+    if (response_ != NULL && response_->is_timeout(now)) {
+        return true;
+    }
+    return lifetime.is_timeout(now);
 }
 
-void RoundTrip::respond_error(const http_error &err) {
+void RoundTrip::respond() {
+    DXOUT("[respond]");
+    response_ = originator_->respond(request_);
+}
+
+void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
     DXOUT("[respond_error]");
     DXOUT(err.get_status() << ":" << err.what());
+    VOUT(response_);
     destroy_response();
     in_error_responding = true;
-    ResponseHTTP *res   = new ResponseHTTP(HTTP::DEFAULT_HTTP_VERSION, err);
-    res->start();
-    response_ = res;
+
+    destroy_originator();
+    // TODO: ほんとはここで「デフォルトのエラーページdict」があるとよい
+    const RequestMatchingResult::status_dict_type blank_dict;
+    originator_ = new ErrorPageGenerator(err, blank_dict, cacher_, true);
+    originator_->start_origination(observer);
+    response_ = originator_->respond(request_);
 }
 
 bool RoundTrip::is_terminatable() const {
@@ -157,9 +213,10 @@ bool RoundTrip::is_terminatable() const {
 
 void RoundTrip::wipeout() {
     destroy_request();
-    destroy_originator();
     destroy_response();
+    destroy_originator();
     reroute_count = 0;
+    lifetime.deactivate();
 }
 
 void RoundTrip::destroy_request() {
@@ -178,4 +235,12 @@ void RoundTrip::destroy_originator() {
 void RoundTrip::destroy_response() {
     delete response_;
     response_ = NULL;
+}
+
+void RoundTrip::emit_fatal_error() {
+    // レスポンスがすでに存在する状態でリクエストがエラーを抱えているなら,
+    // それを http_error に変えて送出
+    if (response_ != NULL && request_ != NULL && request_->current_error().is_error()) {
+        throw http_error(request_->purge_error());
+    }
 }

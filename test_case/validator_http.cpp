@@ -4,6 +4,9 @@
 #define LS(c_str) (HTTP::light_string(HTTP::strfy(c_str)))
 
 // [is_valid_header_host]
+TEST(is_valid_header_host, basic) {
+    EXPECT_FALSE(HTTP::Validator::is_valid_header_host(LS("")));
+}
 
 // [is_uri_host]
 

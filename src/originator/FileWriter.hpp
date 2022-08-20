@@ -29,11 +29,12 @@ public:
     void inject_socketlike(ISocketLike *socket_like);
     bool is_originatable() const;
     bool is_reroutable() const;
+    HTTP::byte_string reroute_path() const;
     bool is_responsive() const;
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    ResponseHTTP *respond(const RequestHTTP *request);
 };
 
 #endif

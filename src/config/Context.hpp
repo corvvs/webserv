@@ -1,6 +1,7 @@
 #ifndef CONTEXT_HPP
 #define CONTEXT_HPP
 #include "../utils/HTTPError.hpp"
+#include "../utils/LightString.hpp"
 #include <map>
 #include <set>
 #include <string>
@@ -11,9 +12,14 @@ namespace config {
 typedef std::string host_type;
 typedef int port_type;
 typedef std::pair<host_type, port_type> host_port_pair;
+
+typedef HTTP::light_string light_string;
+typedef HTTP::byte_string byte_string;
 typedef std::string extension_type;
 typedef std::string executer_path_type;
-typedef std::map<extension_type, executer_path_type> cgi_path_map;
+typedef std::map<extension_type, executer_path_type> cgi_executer_map;
+typedef std::pair<extension_type, executer_path_type> executer_pair;
+typedef std::vector<executer_pair> executer_vector;
 
 static const HTTP::t_status REDIRECT_INITIAL_VALUE = HTTP::STATUS_REDIRECT_INIT;
 
@@ -83,7 +89,7 @@ public:
     std::string path;
     std::vector<class ContextLocation> locations;
     ContextLimitExcept limit_except;
-    cgi_path_map cgi_paths;
+    cgi_executer_map cgi_executers;
     bool exec_cgi;
     bool exec_delete;
     // 継承するか判定するときに使用する

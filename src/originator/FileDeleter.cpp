@@ -3,8 +3,8 @@
 #define WRITE_SIZE 1024
 #define NON_FD -1
 
-FileDeleter::FileDeleter(const RequestMatchingResult &match_result)
-    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false) {}
+FileDeleter::FileDeleter(const RequestMatchingResult &match_result, FileCacher &cacher)
+    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
 
 FileDeleter::~FileDeleter() {}
 
@@ -14,6 +14,7 @@ void FileDeleter::notify(IObserver &observer, IObserver::observation_category ca
     (void)epoch;
     assert(false);
 }
+
 void FileDeleter::delete_file() {
     // TODO: C++ way に書き直す
     if (originated_) {
@@ -35,6 +36,8 @@ void FileDeleter::delete_file() {
         }
         return;
     }
+    // cacheも削除する
+    cacher_.erase(file_path_.c_str());
     response_data.inject("", 0, true);
     originated_ = true;
 }
@@ -55,6 +58,11 @@ bool FileDeleter::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string FileDeleter::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool FileDeleter::is_responsive() const {
     return originated_;
 }
@@ -68,9 +76,9 @@ void FileDeleter::leave() {
     delete this;
 }
 
-ResponseHTTP *FileDeleter::respond(const RequestHTTP &request) {
+ResponseHTTP *FileDeleter::respond(const RequestHTTP *request) {
     response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, false);
     res->start();
     return res;
 }

@@ -27,6 +27,11 @@ bool Echoer::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string Echoer::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool Echoer::is_responsive() const {
     return originated_;
 }
@@ -40,9 +45,9 @@ void Echoer::leave() {
     delete this;
 }
 
-ResponseHTTP *Echoer::respond(const RequestHTTP &request) {
-    HTTP::byte_string message = request.get_plain_message();
-    response_data.inject(&message.front(), message.size(), true);
+ResponseHTTP *Echoer::respond(const RequestHTTP *request) {
+    HTTP::byte_string message = request->get_plain_message();
+    response_data.inject(message, true);
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
@@ -56,7 +61,7 @@ ResponseHTTP *Echoer::respond(const RequestHTTP &request) {
         default:
             break;
     }
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, &headers, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }

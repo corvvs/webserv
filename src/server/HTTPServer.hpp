@@ -4,6 +4,7 @@
 #include "../Originators.hpp"
 #include "../communication/Channel.hpp"
 #include "../config/Config.hpp"
+#include "../utils/FileCacher.hpp"
 #include <map>
 
 class MockMatcher : public IRequestMatcher {
@@ -21,6 +22,7 @@ public:
 class HTTPServer : public IRouter {
 public:
     typedef std::map<Channel::t_channel_id, Channel *> channel_map;
+    FileCacher cacher_;
 
 private:
     IObserver *socket_observer_;
@@ -42,10 +44,14 @@ public:
     // イベントループ開始
     void run();
 
-private:
-    void listen(t_socket_domain sdomain, t_socket_type stype, t_port port, const config::config_vector &configs);
+    RequestMatchingResult route(const IRequestMatchingParam &request, const config::config_vector &configs);
 
-    IOriginator *route(const RequestHTTP &request, const config::config_vector &configs);
+private:
+    void listen(t_socket_domain sdomain,
+                t_socket_type stype,
+                t_port port,
+                const config::config_vector &configs,
+                FileCacher &cacher);
 };
 
 #endif

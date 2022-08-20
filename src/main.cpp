@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
         std::cerr << "Usage: ./webserv [config_path]" << std::endl;
         return EXIT_FAILURE;
     }
-    const std::string &config_path = (argc == 2) ? argv[1] : "./conf/valid/01_default.conf";
+    const std::string &config_path = (argc == 2) ? argv[1] : "./conf/default.conf";
 
     // HTTPServer  http_server(new EventKqueueLoop());
     HTTPServer http_server(new EventPollLoop());

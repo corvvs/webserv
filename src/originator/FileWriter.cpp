@@ -40,7 +40,7 @@ void FileWriter::write_to_file() {
         written_size = write(fd, &content_to_write_[write_head], write_max);
         if (written_size < 0) {
             close(fd);
-            throw http_error("read error", HTTP::STATUS_FORBIDDEN);
+            throw http_error("write error", HTTP::STATUS_FORBIDDEN);
         }
         write_head += written_size;
         if (written_size == 0) {
@@ -50,7 +50,7 @@ void FileWriter::write_to_file() {
     }
     // 書き込んだサイズを文字列変換してボディに突っ込む
     HTTP::byte_string written_size_str = ParserHelper::utos(write_head, 10);
-    response_data.inject(&written_size_str.front(), written_size_str.size(), true);
+    response_data.inject(written_size_str, true);
     originated_ = true;
     close(fd);
 }
@@ -71,6 +71,11 @@ bool FileWriter::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string FileWriter::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool FileWriter::is_responsive() const {
     return originated_;
 }
@@ -84,9 +89,9 @@ void FileWriter::leave() {
     delete this;
 }
 
-ResponseHTTP *FileWriter::respond(const RequestHTTP &request) {
+ResponseHTTP *FileWriter::respond(const RequestHTTP *request) {
     response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, false);
     res->start();
     return res;
 }

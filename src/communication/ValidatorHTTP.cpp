@@ -3,7 +3,9 @@
 
 bool HTTP::Validator::is_valid_header_host(const light_string &str) {
     // host = uri-host [ ":" port ]
-
+    if (str.size() == 0) {
+        return false;
+    }
     const light_string::size_type ket = str.find_last_of("]");
     const light_string port_part      = (ket == npos) ? str : str.substr(ket + 1);
     light_string::size_type sep       = port_part.find_last_of(":");
@@ -252,7 +254,6 @@ bool HTTP::Validator::is_ls32(const light_string &str) {
 bool HTTP::Validator::is_uri_authority(const HTTP::light_string &authority) {
     const light_string tmp      = authority.substr_before("@");
     const light_string userinfo = tmp.size() < authority.size() ? tmp : HTTP::strfy("");
-    QVOUT(userinfo);
     {
         // validate `userinfo`
         // userinfo = *( unreserved / pct-encoded / sub-delims / ":" )
@@ -264,7 +265,6 @@ bool HTTP::Validator::is_uri_authority(const HTTP::light_string &authority) {
     }
     // validate `host` and `port`
     const light_string host_port = 0 < userinfo.size() ? authority.substr(userinfo.size() + 1) : authority;
-    QVOUT(host_port);
     if (!HTTP::Validator::is_valid_header_host(host_port)) {
         return false;
     }

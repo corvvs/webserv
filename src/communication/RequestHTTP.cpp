@@ -23,105 +23,27 @@ HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
     throw http_error("unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
-RequestTarget::RequestTarget() : is_error(false) {}
+RequestHTTP::ParserStatus::ParserStatus()
+    : found_obs_fold(false)
+    , start_of_reqline(0)
+    , end_of_reqline(0)
+    , start_of_header(0)
+    , end_of_header(0)
+    , start_of_body(0)
+    , end_of_body(0)
+    , is_freezed(false) {}
 
-RequestTarget::RequestTarget(const light_string &target) : given(target), is_error(false), form(FORM_UNKNOWN) {
-    // TODO:
-    // https://wiki.suikawiki.org/n/%E8%A6%81%E6%B1%82%E5%AF%BE%E8%B1%A1#anchor-22
-    // 要求対象が // から始まるとき、 Apache も nginx も、 absolute-form と解釈するようです。
-    // ↑ これを実装
-
-    // formの識別
-    assert(target.size() > 0);
-    light_string temp = target;
-    if (temp[0] == '/') {
-        form = FORM_ORIGIN;
-    } else if (temp == "*") {
-        form = FORM_ASTERISK;
-    } else {
-        const light_string scheme_ = temp.substr_while(HTTP::CharFilter::uri_scheme);
-        if (scheme_.size() < temp.size() && temp[scheme_.size()] == ':') {
-            form   = FORM_ABSOLUTE;
-            scheme = scheme_;
-            temp   = temp.substr(scheme_.size() + 1);
-        } else {
-            form = FORM_AUTHORITY;
-        }
-    }
-    // formを見ながらバリデーション
-    if (form == FORM_ABSOLUTE) {
-        const light_string ss = temp.substr(0, 2);
-        if (ss != "//") {
-            is_error = true;
-            DXOUT("!! NG !!");
-            return;
-        }
-        temp = temp.substr(ss.size());
-    }
-    // authority
-    if (form == FORM_ABSOLUTE || form == FORM_AUTHORITY) {
-        const light_string authority_ = temp.substr_before("/");
-        if (!HTTP::Validator::is_uri_authority(authority_)) {
-            is_error = true;
-            DXOUT("!! authority NG !!");
-            return;
-        }
-        authority = authority_;
-        temp      = temp.substr(authority_.size());
-    }
-    // path
-    if (form == FORM_ORIGIN || form == FORM_ABSOLUTE) {
-        const light_string path_ = temp.substr_before("?");
-        if (!HTTP::Validator::is_uri_path(path_, HTTP::CharFilter::pchar_without_pct)) {
-            is_error = true;
-            DXOUT("!! path NG !!");
-            return;
-        }
-        path = path_;
-        temp = temp.substr(path_.size());
-    }
-    // query
-    if (form == FORM_ORIGIN || form == FORM_ABSOLUTE) {
-        if (temp.size() > 0 && temp[0] == '?') {
-            temp                      = temp.substr(1);
-            const light_string query_ = temp.substr_before("#");
-            if (!HTTP::Validator::is_segment(query_, HTTP::CharFilter::pchar_without_pct)) {
-                is_error = true;
-                DXOUT("!! query NG !!");
-                return;
-            }
-            temp  = temp.substr(query_.size());
-            query = query_;
-        }
-    }
-    // fragment
-    // -> 送信されないはずだが, もしあったらチェックして捨てる
-    if (form == FORM_ORIGIN || form == FORM_ABSOLUTE) {
-        if (temp.size() > 0 && temp[0] == '#') {
-            temp = temp.substr(0, 0);
-        }
-        const light_string fragment_ = temp;
-        if (!HTTP::Validator::is_segment(fragment_, HTTP::CharFilter::pchar_without_pct)) {
-            is_error = true;
-            DXOUT("!! fragment NG !!");
-            return;
-        }
-    }
-}
-
-std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
-    return ost << "(" << f.form << (f.is_error ? "E" : "") << ") \"" << f.given << "\", scheme: \"" << f.scheme
-               << "\", authority: \"" << f.authority << "\", path: \"" << f.path << "\", query: \"" << f.query;
-}
-
-RequestHTTP::ParserStatus::ParserStatus() : found_obs_fold(false), is_freezed(false) {}
-
-RequestHTTP::RequestHTTP() : mid(0), rp() {
-    DXOUT("[create_requedt]");
+RequestHTTP::RequestHTTP()
+    : mid(0)
+    , client_max_body_size(0)
+    , lifetime(Lifetime::make_request())
+    , lifetime_header(Lifetime::make_request_header())
+    , rp() {
+    DXOUT("[create_request]");
     this->ps.parse_progress = PP_REQLINE_START;
-    this->rp.http_method    = HTTP::METHOD_UNKNOWN;
-    this->rp.http_version   = HTTP::V_UNKNOWN;
     bytebuffer.reserve(MAX_REQLINE_END);
+    lifetime.activate();
+    lifetime_header.activate();
 }
 
 RequestHTTP::~RequestHTTP() {}
@@ -263,7 +185,10 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is
         return PP_HEADER_SECTION_END;
     }
     // あたり: ヘッダの終わりが見つかった
-    analyze_headers(res);
+    minor_error me  = analyze_headers(res);
+    this->ps.merror = me;
+    VOUT(me);
+    lifetime_header.deactivate();
     if (this->rp.is_body_chunked) {
         return PP_CHUNK_SIZE_LINE_END;
     } else {
@@ -387,17 +312,23 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_trailer_end(size_t len,
     return PP_OVER;
 }
 
-void RequestHTTP::analyze_headers(IndexRange res) {
+minor_error RequestHTTP::analyze_headers(IndexRange res) {
     this->ps.end_of_header = res.first;
     this->ps.start_of_body = res.second;
     // -> [start_of_header, end_of_header) を解析する
     const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
-    this->header_holder.parse_header_lines(header_lines, &this->header_holder);
-    extract_control_headers();
-    VOUT(this->rp.is_body_chunked);
+    minor_error me;
+
+    minor_error header_error  = this->header_holder.parse_header_lines(header_lines, &this->header_holder);
+    me                        = me.is_error() ? me : header_error;
+    minor_error control_error = extract_control_headers();
+    me                        = me.is_error() ? me : control_error;
+
     if (this->rp.is_body_chunked) {
         this->ps.start_of_current_chunk = this->ps.start_of_body;
     }
+    VOUT(me);
+    return me;
 }
 
 bool RequestHTTP::seek_reqline_end(size_t len) {
@@ -462,6 +393,10 @@ void RequestHTTP::check_reqline_consistensy() {
         default:
             throw http_error("request target's form is unknown", HTTP::STATUS_BAD_REQUEST);
     }
+    if (this->rp.given_request_target.is_error) {
+        this->ps.merror
+            = erroneous(this->ps.merror, minor_error("request target is invalid", HTTP::STATUS_BAD_REQUEST));
+    }
     DXOUT("OK.");
 }
 
@@ -522,22 +457,49 @@ void RequestHTTP::parse_chunk_size_line(const light_string &line) {
     }
 }
 
-void RequestHTTP::extract_control_headers() {
+minor_error RequestHTTP::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     // TODO: ここで何を抽出すべきか洗い出す
-
-    this->rp.determine_host(header_holder);
-    this->rp.content_type.determine(header_holder);
-    this->rp.content_disposition.determine(header_holder);
-    this->rp.transfer_encoding.determine(header_holder);
-    this->rp.determine_body_size(header_holder);
-    this->rp.connection.determine(header_holder);
-    this->rp.te.determine(header_holder);
-    this->rp.upgrade.determine(header_holder);
-    this->rp.via.determine(header_holder);
+    minor_error me;
+    me = erroneous(me, this->rp.determine_host(header_holder));
+    me = erroneous(me, this->rp.content_type.determine(header_holder));
+    me = erroneous(me, this->rp.content_disposition.determine(header_holder));
+    me = erroneous(me, this->rp.transfer_encoding.determine(header_holder));
+    me = erroneous(me, this->rp.content_length.determine(header_holder));
+    this->rp.determine_body_size();
+    me = erroneous(me, this->rp.connection.determine(header_holder));
+    me = erroneous(me, this->rp.te.determine(header_holder));
+    me = erroneous(me, this->rp.upgrade.determine(header_holder));
+    me = erroneous(me, this->rp.via.determine(header_holder));
+    me = erroneous(me, this->rp.date.determine(header_holder));
+    me = erroneous(me, this->rp.cookie.determine(header_holder));
+    VOUT(me);
+    return me;
 }
 
-void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_type &holder) {
+void RequestHTTP::inject_reroute_path(const HTTP::byte_string &path) {
+    rp.reroute_path           = path;
+    rp.reroute_request_target = RequestTarget(rp.reroute_path);
+    rp.use_reroute            = true;
+    VOUT(rp.reroute_request_target);
+}
+
+void RequestHTTP::check_size_limitation() {
+    // ボディ
+    if (client_max_body_size > 0) {
+        if (effective_parsed_body_size() > (size_t)client_max_body_size) {
+            // ダメ
+            throw http_error("request body size exceeded the limit", HTTP::STATUS_PAYLOAD_TOO_LARGE);
+        }
+    }
+}
+
+// [RequestHTTP::RoutingParameters]
+
+RequestHTTP::RoutingParameters::RoutingParameters()
+    : use_reroute(false), http_method(HTTP::METHOD_UNKNOWN), http_version(HTTP::V_UNKNOWN), is_body_chunked(false) {}
+
+void RequestHTTP::RoutingParameters::determine_body_size() {
     // https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length
 
     // メッセージが Transfer-Encoding: と Content-Length: をどちらも持っている場合,
@@ -584,7 +546,6 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
         // the connection to the server, discard the received response, and send a 502 (Bad Gateway) response to the
         // client. If it is in a response message received by a user agent, the user agent MUST close the connection to
         // the server and discard the received response.
-        const byte_string *cl = holder.get_val(HeaderHTTP::content_length);
 
         // Transfer-Encoding: がなく, valid な Content-Length: がある場合, その(10進の)値が本文長となる.
         // 本文長に達する前に接続が閉じられた場合, メッセージは「不完全」となる.
@@ -593,10 +554,11 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
         // expected message body length in octets. If the sender closes the connection or the recipient times out before
         // the indicated number of octets are received, the recipient MUST consider the message to be incomplete and
         // close the connection.
-        if (cl) {
-            std::pair<bool, unsigned int> res = ParserHelper::str_to_u(*cl);
-            VOUT(res.first);
-            body_size       = res.second;
+        if (content_length.merror.is_error()) {
+            throw http_error("multiple content-length", HTTP::STATUS_BAD_REQUEST);
+        }
+        if (!content_length.empty()) {
+            body_size       = content_length.value;
             is_body_chunked = false;
             // content-length の値が妥当でない場合, ここで例外が飛ぶ
             DXOUT("body_size = " << body_size);
@@ -617,30 +579,37 @@ void RequestHTTP::RoutingParameters::determine_body_size(const header_holder_typ
     // immediately after the header section.
 }
 
-void RequestHTTP::RoutingParameters::determine_host(const header_holder_type &holder) {
+minor_error RequestHTTP::RoutingParameters::determine_host(const header_holder_type &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
     const header_holder_type::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
     if (!hosts || hosts->size() == 0) {
-        // HTTP/1.1 なのに host がない場合, BadRequest を出す
+        // HTTP/1.1 なのに Host: がない場合, BadRequest を出す
         if (http_version == HTTP::V_1_1) {
-            throw http_error("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
+            return minor_error::make("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
         }
-        return;
+        // Host: がないけどHTTP/1.1でない
+        // TODO: okでいいの?
+        return minor_error::ok();
     }
     if (hosts->size() > 1) {
-        // Hostが複数ある場合, BadRequest を出す
-        throw http_error("multiple hosts", HTTP::STATUS_BAD_REQUEST);
+        // Host: が複数ある場合 -> BadRequest
+        return minor_error::make("multiple hosts", HTTP::STATUS_BAD_REQUEST);
     }
-    // Hostの値のバリデーション (と, 必要ならBadRequest)
+    // Host: の値のバリデーション (と, 必要ならBadRequest)
     const HTTP::light_string lhost(hosts->front());
     if (!HTTP::Validator::is_valid_header_host(lhost)) {
-        throw http_error("host is not valid", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("host is not valid", HTTP::STATUS_BAD_REQUEST);
     }
     pack_host(header_host, lhost);
+    return minor_error::ok();
 }
 
 const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const {
-    return given_request_target;
+    if (use_reroute) {
+        return reroute_request_target;
+    } else {
+        return given_request_target;
+    }
 }
 
 HTTP::t_method RequestHTTP::RoutingParameters::get_http_method() const {
@@ -667,12 +636,23 @@ bool RequestHTTP::is_freezed() const {
     return this->ps.is_freezed;
 }
 
+bool RequestHTTP::is_timeout(t_time_epoch_ms now) const {
+    return lifetime.is_timeout(now) || lifetime_header.is_timeout(now);
+}
+
 size_t RequestHTTP::receipt_size() const {
     return bytebuffer.size();
 }
 
 size_t RequestHTTP::parsed_body_size() const {
     return this->mid - this->ps.start_of_body;
+}
+
+size_t RequestHTTP::effective_parsed_body_size() const {
+    if (ps.parse_progress >= PP_OVER) {
+        return ps.end_of_body - ps.start_of_body;
+    }
+    return parsed_body_size();
 }
 
 size_t RequestHTTP::parsed_size() const {
@@ -711,17 +691,26 @@ RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
     return RequestHTTP::byte_string(bytebuffer.begin(), bytebuffer.begin() + mid);
 }
 
+void RequestHTTP::set_max_body_size(ssize_t size) {
+    client_max_body_size = size;
+    check_size_limitation();
+}
+
 RequestHTTP::light_string RequestHTTP::freeze() {
     if (this->ps.is_freezed) {
         return light_string();
     }
     this->ps.is_freezed = true;
-    return light_string(bytebuffer, mid);
+    lifetime.deactivate();
+    return light_string(bytebuffer, this->ps.end_of_body);
 }
 
 bool RequestHTTP::should_keep_in_touch() const {
     // TODO: 仮実装
-    return false;
+    if (this->rp.connection.close_) {
+        return false;
+    }
+    return true;
 }
 
 RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars() const {
@@ -730,4 +719,17 @@ RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars
 
 const IRequestMatchingParam &RequestHTTP::get_request_matching_param() const {
     return rp;
+}
+
+minor_error RequestHTTP::purge_error() {
+    if (ps.merror.is_ok()) {
+        return ps.merror;
+    }
+    minor_error to_purge = ps.merror;
+    ps.merror            = minor_error::ok();
+    return to_purge;
+}
+
+const minor_error &RequestHTTP::current_error() const {
+    return ps.merror;
 }

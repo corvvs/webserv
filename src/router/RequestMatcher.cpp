@@ -1,8 +1,13 @@
 #include "RequestMatcher.hpp"
 #include "../communication/RequestHTTP.hpp"
 #include "../config/Config.hpp"
+#include "../utils/File.hpp"
 #include "../utils/HTTPError.hpp"
+#include "../utils/LightString.hpp"
+#include "../utils/UtilsString.hpp"
 #include <sys/stat.h>
+
+RequestMatchingResult::RequestMatchingResult(const RequestTarget *target_) : target(target_), client_max_body_size(0) {}
 
 RequestMatcher::RequestMatcher() {}
 RequestMatcher::~RequestMatcher() {}
@@ -19,10 +24,16 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
     const config::Config &conf = get_config(configs, rp);
 
-    check_routable(rp, conf);
-
-    RequestMatchingResult res;
     const RequestTarget &target = rp.get_request_target();
+    RequestMatchingResult res(&target);
+    res.client_max_body_size = get_client_max_body_size(target, conf);
+    res.status_page_dict     = get_status_page_dict(target, conf);
+
+    res.error = check_routable(rp, conf);
+    if (res.error.is_error()) {
+        return res;
+    }
+
     if (is_redirect(target, conf)) {
         RequestMatcher::redirect_pair pair = get_redirect(target, conf);
         res.status_code                    = pair.first;
@@ -32,7 +43,6 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
     }
     res.client_max_body_size = get_client_max_body_size(target, conf);
     res.status_page_dict     = get_status_page_dict(target, conf);
-
     if (is_cgi(target, conf)) {
         return routing_cgi(res, target, conf);
     }
@@ -41,34 +51,81 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
 RequestMatchingResult
 RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf) {
-    cgi_resource_pair resource;
-    resource              = get_cgi_resource(target);
-    res.path_local        = resource.first;
-    res.path_after        = resource.second;
-    res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
+    res.cgi_resource      = make_cgi_resource(target, conf);
+    res.path_cgi_executor = get_path_cgi_executor(target, conf, res.cgi_resource.script_name);
     res.result_type       = RequestMatchingResult::RT_CGI;
     return res;
+}
+
+/**
+ * 以下の形式でパスを分割する
+ * リクエスト: `/cgi-bin/cgi.rb/pathinfo`
+ * root       : /cgi-bin
+ * cgi_script : /cgi.rb
+ * path_info  : /pathinfo
+ */
+RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const RequestTarget &target,
+                                                                     const config::Config &conf) const {
+    const HTTP::byte_string root = HTTP::strfy(conf.get_root(HTTP::restrfy(target.dpath())));
+    // ルートとパスをくっつける
+    const HTTP::light_string root_stripped    = HTTP::Utils::rstrip_path(root);
+    const HTTP::light_string path_stripped    = HTTP::Utils::lstrip_path(target.dpath());
+    const HTTP::byte_string full_request_path = HTTP::Utils::join_path(root_stripped, path_stripped);
+    const light_string path                   = full_request_path;
+    RequestMatchingResult::CGIResource resource;
+    resource.root = root_stripped.str();
+    for (size_t i = root_stripped.size();; i = path.find("/", i)) {
+        HTTP::light_string cur = path.substr(0, i);
+        HTTP::byte_string cb   = cur.str();
+        if (file::is_file(HTTP::restrfy(cb))) {
+            resource.fullpath    = cb;
+            resource.script_name = cur.substr(root_stripped.size()).str();
+            if (i != HTTP::npos) {
+                resource.path_info = path.substr(i).str();
+            }
+            QVOUT(resource.fullpath);
+            QVOUT(resource.root);
+            QVOUT(resource.script_name);
+            QVOUT(resource.path_info);
+            break;
+        }
+        if (i == HTTP::npos) {
+            break;
+        }
+        i += 1;
+    }
+    if (resource.script_name.empty()) {
+        throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+    }
+    return resource;
 }
 
 RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const RequestTarget &target,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
-    HTTP::byte_string path = make_resource_path(target, conf);
-    if (path.empty()) {
+    std::pair<HTTP::byte_string, bool> path_isdir = make_resource_path(target, conf);
+    if (target.form != RequestTarget::FORM_ORIGIN) {
+        throw http_error("form of a target is not an origin-form", HTTP::STATUS_BAD_REQUEST);
+    }
+    if (path_isdir.first.empty()) {
         throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
     }
-    res.path_local  = path;
+    res.path_local  = path_isdir.first;
     res.result_type = RequestMatchingResult::RT_FILE;
-    if (get_is_autoindex(target, conf)) {
-        res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+    if (path_isdir.second) {
+        if (get_is_executable(target, method, conf) && method == HTTP::METHOD_POST) {
+            res.result_type = RequestMatchingResult::RT_FILE_POST;
+        } else if (get_is_autoindex(target, conf)) {
+            res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
+        } else {
+            DXOUT("PMDD");
+            throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+        }
     } else if (get_is_executable(target, method, conf)) {
         switch (method) {
             case HTTP::METHOD_DELETE:
                 res.result_type = RequestMatchingResult::RT_FILE_DELETE;
-                break;
-            case HTTP::METHOD_POST:
-                res.result_type = RequestMatchingResult::RT_FILE_POST;
                 break;
             case HTTP::METHOD_PUT:
                 res.result_type = RequestMatchingResult::RT_FILE_PUT;
@@ -83,7 +140,7 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
 bool RequestMatcher::get_is_executable(const RequestTarget &target,
                                        const HTTP::t_method &method,
                                        const config::Config &conf) {
-    const std::string &path = HTTP::restrfy(target.path.str());
+    const std::string &path = HTTP::restrfy(target.dpath());
 
     switch (method) {
         case HTTP::METHOD_GET:
@@ -98,7 +155,7 @@ bool RequestMatcher::get_is_executable(const RequestTarget &target,
 }
 
 bool RequestMatcher::get_is_autoindex(const RequestTarget &target, const config::Config &conf) {
-    const std::string &path = HTTP::restrfy(target.path.str());
+    const std::string &path = HTTP::restrfy(target.dpath());
     return conf.get_autoindex(path);
 }
 
@@ -122,26 +179,30 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
     return configs.front();
 }
 
-void RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config &conf) {
+minor_error RequestMatcher::check_routable(const IRequestMatchingParam &rp, const config::Config &conf) {
     const RequestTarget &target = rp.get_request_target();
 
+    if (target.is_error) {
+        throw http_error("target has an error", HTTP::STATUS_BAD_REQUEST);
+    }
     if (!is_valid_scheme(target)) {
-        throw http_error("invalid scheme", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("invalid scheme", HTTP::STATUS_BAD_REQUEST);
     }
-    if (is_valid_path(target)) {
-        throw http_error("invalid url target", HTTP::STATUS_BAD_REQUEST);
+    if (!is_valid_path(target)) {
+        return minor_error::make("invalid url target", HTTP::STATUS_BAD_REQUEST);
     }
-    if (is_valid_request_method(target, rp.get_http_method(), conf)) {
-        throw http_error("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
+    if (!is_valid_request_method(target, rp.get_http_method(), conf)) {
+        return minor_error::make("method not allowed", HTTP::STATUS_METHOD_NOT_ALLOWED);
     }
+    return minor_error::ok();
 }
 
 bool RequestMatcher::is_valid_scheme(const RequestTarget &target) {
-    return target.scheme == "http";
+    return target.scheme == "http" || target.scheme == "";
 }
 
 bool RequestMatcher::is_valid_path(const RequestTarget &target) {
-    const std::vector<light_string> &splitted = target.path.split("/");
+    const std::vector<light_string> &splitted = light_string(target.dpath()).split("/");
 
     int depth = 0;
     for (std::vector<light_string>::const_iterator it = splitted.begin(); it != splitted.end(); ++it) {
@@ -160,7 +221,7 @@ bool RequestMatcher::is_valid_path(const RequestTarget &target) {
 bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
                                              const HTTP::t_method &method,
                                              const config::Config &conf) {
-    const std::string &path                   = HTTP::restrfy(target.path.str());
+    const std::string &path                   = HTTP::restrfy(target.dpath());
     const std::set<enum config::Methods> &lmt = conf.get_limit_except(path);
 
     switch (method) {
@@ -177,60 +238,32 @@ bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
 }
 
 bool RequestMatcher::is_redirect(const RequestTarget &target, const config::Config &conf) {
-    const std::string &path                         = HTTP::restrfy(target.path.str());
+    if (target.form != RequestTarget::FORM_ORIGIN) {
+        return false;
+    }
+    const std::string &path                         = HTTP::restrfy(target.dpath());
     std::pair<HTTP::t_status, std::string> redirect = conf.get_redirect(path);
     return redirect.first != HTTP::STATUS_REDIRECT_INIT;
 }
 
 bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &conf) {
-    const std::string &path = HTTP::restrfy(target.path.str());
-    return conf.get_exec_cgi(path);
-}
-
-bool RequestMatcher::is_regular_file(const std::string &path) const {
-    struct stat st;
-    if (stat(path.c_str(), &st) < 0) {
+    if (target.form != RequestTarget::FORM_ORIGIN) {
         return false;
     }
-    return S_ISREG(st.st_mode);
+    const std::string &path = HTTP::restrfy(target.dpath());
+    return conf.get_exec_cgi(path);
 }
 
 RequestMatcher::redirect_pair RequestMatcher::get_redirect(const RequestTarget &target,
                                                            const config::Config &conf) const {
-    const std::string &path                         = HTTP::restrfy(target.path.str());
+    const std::string &path                         = HTTP::restrfy(target.dpath());
     std::pair<HTTP::t_status, std::string> redirect = conf.get_redirect(path);
     return std::make_pair(redirect.first, HTTP::strfy(redirect.second));
 }
 
-// ファイルの権限を順番に見ていき、ファイルが存在した時点で、分割する
-RequestMatcher::cgi_resource_pair RequestMatcher::get_cgi_resource(const RequestTarget &target) const {
-    HTTP::byte_string resource_path;
-    HTTP::byte_string path_info;
-
-    light_string path = target.path;
-    for (size_t i = 0;; i = path.find("/", i)) {
-        light_string cur = path.substr(0, i);
-        if (is_regular_file(HTTP::restrfy(cur.str()))) {
-            resource_path = cur.str();
-            if (i != HTTP::npos) {
-                path_info = path.substr(i, path.size()).str();
-            }
-            break;
-        }
-        if (i == HTTP::npos) {
-            break;
-        }
-        i += 1;
-    }
-    if (resource_path.empty()) {
-        throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
-    }
-    return std::make_pair(resource_path, path_info);
-}
-
 RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(const RequestTarget &target,
                                                                              const config::Config &conf) const {
-    const std::string &path = HTTP::restrfy(target.path.str());
+    const std::string &path = HTTP::restrfy(target.dpath());
 
     const std::map<HTTP::t_status, std::string> error_pages = conf.get_error_page(path);
     RequestMatchingResult::status_dict_type res;
@@ -242,25 +275,34 @@ RequestMatchingResult::status_dict_type RequestMatcher::get_status_page_dict(con
 }
 
 long RequestMatcher::get_client_max_body_size(const RequestTarget &target, const config::Config &conf) const {
-    const std::string &path = HTTP::restrfy(target.path.str());
+    const std::string &path = HTTP::restrfy(target.dpath());
     return conf.get_client_max_body_size(path);
 }
 
 // 対応するrootを連結する + indexに対応するファイルを探す
-HTTP::byte_string RequestMatcher::make_resource_path(const RequestTarget &target, const config::Config &conf) const {
-    const std::string &path = HTTP::restrfy(target.path.str());
+std::pair<HTTP::byte_string, bool> RequestMatcher::make_resource_path(const RequestTarget &target,
+                                                                      const config::Config &conf) const {
+    const std::string &path = HTTP::restrfy(target.dpath());
 
-    const std::string root           = conf.get_root(path);
-    const std::string resource_path  = root + path;
+    const std::string root                   = conf.get_root(path);
+    const HTTP::byte_string resource_path_bs = HTTP::Utils::join_path(HTTP::strfy(root), target.dpath());
+    const std::string resource_path          = HTTP::restrfy(resource_path_bs);
+    if (!file::is_dir(resource_path)) {
+        if (file::is_file(resource_path)) {
+            return std::make_pair(resource_path_bs, false);
+        }
+        return std::make_pair(HTTP::strfy(""), false);
+    }
+
     std::vector<std::string> indexes = conf.get_index(path);
-
     for (std::vector<std::string>::iterator it = indexes.begin(); it != indexes.end(); ++it) {
-        const std::string &cur = resource_path + *it;
-        if (is_regular_file(cur)) {
-            return HTTP::strfy(cur);
+        const HTTP::byte_string cur_bs = HTTP::Utils::join_path(resource_path_bs, HTTP::strfy(*it));
+        const std::string cur          = HTTP::restrfy(cur_bs);
+        if (file::is_file(cur)) {
+            return std::make_pair(cur_bs, false);
         }
     }
-    return HTTP::strfy("");
+    return std::make_pair(resource_path_bs, true);
 }
 
 HTTP::byte_string RequestMatcher::get_path_cgi_executor(const RequestTarget &target,
@@ -271,8 +313,13 @@ HTTP::byte_string RequestMatcher::get_path_cgi_executor(const RequestTarget &tar
     if (pos == std::string::npos) {
         return HTTP::strfy("");
     }
-    const std::string &extension   = s.substr(pos + 1);
-    const std::string &path        = HTTP::restrfy(target.path.str());
-    config::cgi_path_map cgi_paths = conf.get_cgi_path(path);
-    return HTTP::strfy(cgi_paths[extension]);
+    // cgi_executers のキーは `.` を含む
+    const std::string &extension                      = s.substr(pos);
+    const std::string &path                           = HTTP::restrfy(target.dpath());
+    const config::cgi_executer_map cgi_executers      = conf.get_cgi_path(path);
+    const config::cgi_executer_map::const_iterator it = cgi_executers.find(extension);
+    if (it == cgi_executers.end()) {
+        return HTTP::strfy("");
+    }
+    return HTTP::strfy(it->second);
 }

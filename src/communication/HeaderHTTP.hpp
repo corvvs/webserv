@@ -27,9 +27,11 @@ const HTTP::byte_string te                  = ParserHelper::normalize_header_key
 const HTTP::byte_string vary                = ParserHelper::normalize_header_key(HTTP::strfy("Vary"));
 const HTTP::byte_string upgrade             = ParserHelper::normalize_header_key(HTTP::strfy("Upgrade"));
 const HTTP::byte_string via                 = ParserHelper::normalize_header_key(HTTP::strfy("Via"));
+const HTTP::byte_string date                = ParserHelper::normalize_header_key(HTTP::strfy("Date"));
 // for CGI
 const HTTP::byte_string status   = HTTP::strfy("status");
 const HTTP::byte_string location = HTTP::strfy("location");
+
 } // namespace HeaderHTTP
 
 // あるヘッダキーの属性
@@ -97,6 +99,7 @@ public:
 protected:
     list_type list;
     dict_type dict;
+    bool encountered_obs_fold;
 
 public:
     // 指定したキーに値を追加する
@@ -109,13 +112,15 @@ public:
     const header_val_type *get_back_val(const header_key_type &normalized_key) const;
     // 指定したキーの値をすべて取得する
     const value_list_type *get_vals(const header_key_type &normalized_key) const;
+    // 指定したキーの値をすべて削除する
+    void erase_vals(const header_key_type &normalized_key);
 
     const list_type &get_list() const;
     list_type::size_type get_list_size() const;
     dict_type::size_type get_dict_size() const;
 
-    static void parse_header_lines(const light_string &lines, AHeaderHolder *holder);
-    static void parse_header_line(const light_string &line, AHeaderHolder *holder);
+    static minor_error parse_header_lines(const light_string &lines, AHeaderHolder *holder);
+    static minor_error parse_header_line(const light_string &line, AHeaderHolder *holder);
 };
 
 class HeaderHolderHTTP : public AHeaderHolder {

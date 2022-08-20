@@ -1,5 +1,6 @@
 #include "FilePoster.hpp"
 #include "../event/time.hpp"
+#include "../utils/File.hpp"
 #include <sys/stat.h>
 #include <unistd.h>
 #define WRITE_SIZE 1024
@@ -16,8 +17,9 @@ HTTP::byte_string new_file_name(const HTTP::CH::ContentDisposition &content_disp
     const HTTP::IDictHolder::parameter_dict &params       = content_disposition.parameters;
     HTTP::IDictHolder::parameter_dict::const_iterator res = params.find(HTTP::strfy("filename"));
     if (res != params.end()) {
+        const HTTP::byte_string decoded = ParserHelper::decode_pct_encoded(res->second.unquote());
         file_name += HTTP::strfy("_");
-        file_name += res->second.unquote().str();
+        file_name += decoded;
     }
     return file_name;
 }
@@ -62,22 +64,18 @@ void FilePoster::post_files() {
 }
 
 void FilePoster::check_target_directory() {
-    struct stat st;
-    errno = 0;
     QVOUT(directory_path_);
-    const int result = stat(directory_path_.c_str(), &st);
-    if (result != 0) {
-        switch (errno) {
-            case ENOENT:
-                throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
-            case EACCES:
-                throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
-            default:
-                throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
-        }
+    errno = 0;
+    if (file::is_dir(directory_path_)) {
+        return;
     }
-    if (!S_ISDIR(st.st_mode)) {
-        throw http_error("not for a directory", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+    switch (errno) {
+        case ENOENT:
+            throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+        case EACCES:
+            throw http_error("can't search file", HTTP::STATUS_FORBIDDEN);
+        default:
+            throw http_error("something wrong", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
 }
 
@@ -190,7 +188,7 @@ void FilePoster::write_file(const FileEntry &file) const {
         ssize_t written_size = write(fd, &file.content[0] + written, write_max);
         if (written_size < 0) {
             close(fd);
-            throw http_error("read error", HTTP::STATUS_FORBIDDEN);
+            throw http_error("write error", HTTP::STATUS_FORBIDDEN);
         }
         if (written_size == 0) {
             DXOUT("Imcomplete?");
@@ -217,6 +215,11 @@ bool FilePoster::is_reroutable() const {
     return false;
 }
 
+HTTP::byte_string FilePoster::reroute_path() const {
+    assert(false);
+    return HTTP::byte_string();
+}
+
 bool FilePoster::is_responsive() const {
     return originated_;
 }
@@ -230,9 +233,21 @@ void FilePoster::leave() {
     delete this;
 }
 
-ResponseHTTP *FilePoster::respond(const RequestHTTP &request) {
-    response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request.get_http_version(), HTTP::STATUS_OK, NULL, &response_data);
+ResponseHTTP *FilePoster::respond(const RequestHTTP *request) {
+    ResponseHTTP::header_list_type headers;
+    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    switch (sm) {
+        case ResponseDataList::SM_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+            break;
+        case ResponseDataList::SM_NOT_CHUNKED:
+            headers.push_back(
+                std::make_pair(HeaderHTTP::content_length, ParserHelper::utos(response_data.current_total_size(), 10)));
+            break;
+        default:
+            break;
+    }
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }

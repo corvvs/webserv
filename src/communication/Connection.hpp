@@ -1,9 +1,8 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
-#include "../interface/IObserver.hpp"
-#include "../interface/IRouter.hpp"
-#include "../interface/ISocketLike.hpp"
+#include "../Interfaces.hpp"
 #include "../socket/SocketConnected.hpp"
+#include "Lifetime.hpp"
 #include "RequestHTTP.hpp"
 #include "ResponseHTTP.hpp"
 #include "RoundTrip.hpp"
@@ -43,28 +42,55 @@ public:
         Attribute();
     };
 
+    class NetworkBuffer {
+    public:
+        typedef std::list<byte_string> extra_buffer_type;
+
+    private:
+        ssize_t read_size;
+        // ソケットからのデータが入るバッファ
+        byte_string read_buffer;
+        // 「余ったデータ」が入るバッファ
+        extra_buffer_type extra_buffer;
+        // extra_buffer のサイズ合計
+        size_t extra_amount;
+
+        void check_extra_overflow();
+
+    public:
+        NetworkBuffer();
+
+        // ソケットから内部バッファにデータを受信する
+        // discard == true なら, 受信したデータを保存しない
+        ssize_t receive(SocketConnected &sock, bool discard = false);
+        // 内部バッファの先頭チャンクを取り出す
+        const byte_string &top_front() const;
+        // 内部バッファの先頭チャンクを除去する
+        void pop_front();
+        // 内部バッファの先頭にデータを追加する
+        void push_front(const light_string &data);
+        // 再実行すべきか
+        bool should_redo() const;
+    };
+
 private:
     Attribute attr;
 
     t_phase phase;
+
     // 今切断中かどうか
     bool dying;
+    bool unrecoverable;
 
     // 通信用ソケット
     SocketConnected *sock;
 
+    // ラウンドトリップ
     RoundTrip rt;
 
-    // 最終操作時刻
-    t_time_epoch_ms latest_operated_at;
+    Lifetime lifetime;
 
-    // 余剰データバッファ
-    // あるリクエストが終端以降のデータを持っている場合, それを受け取って保持しておく
-    // 次のリクエストがきたら, 受信データより優先的にこのデータを使ってリクエストを処理する
-    extra_buffer_type extra_data_buffer;
-
-    // 最終操作時刻を更新する
-    void touch();
+    NetworkBuffer net_buffer;
 
     void perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
     void perform_receiving(IObserver &observer);
@@ -80,8 +106,10 @@ private:
     // 以降すべての通知をシャットアウトする
     void die(IObserver &observer);
 
+    bool is_timeout(t_time_epoch_ms now) const;
+
 public:
-    Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs);
+    Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs, FileCacher &cacher);
     ~Connection();
 
     t_fd get_fd() const;

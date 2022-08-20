@@ -31,10 +31,21 @@ const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
 
 const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
     switch (status) {
+        // 2**
         case HTTP::STATUS_OK:
             return strfy("OK");
+        // 3**
+        case HTTP::STATUS_MOVED_PERMANENTLY:
+            return strfy("Moved Permanently");
         case HTTP::STATUS_FOUND:
             return strfy("Found");
+        case HTTP::STATUS_NOT_MODIFIED:
+            return strfy("Not Modified");
+        case HTTP::STATUS_TEMPORARY_REDIRECT:
+            return strfy("Temporary Redirect");
+        case HTTP::STATUS_PERMANENT_REDIRECT:
+            return strfy("Permanent Redirect");
+        // 4**
         case HTTP::STATUS_BAD_REQUEST:
             return strfy("Bad Request");
         case HTTP::STATUS_UNAUTHORIZED:
@@ -47,8 +58,15 @@ const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
             return strfy("Method Not Allowed");
         case HTTP::STATUS_TIMEOUT:
             return strfy("Connection Timed out");
+        case HTTP::STATUS_PAYLOAD_TOO_LARGE:
+            return strfy("Payload Too Large");
+        case HTTP::STATUS_URI_TOO_LONG:
+            return strfy("URI Too Long");
         case HTTP::STATUS_IM_A_TEAPOT:
             return strfy("I'm a teapot");
+        case HTTP::STATUS_HEADER_TOO_LARGE:
+            return strfy("Header Too Large");
+        // 5**
         case HTTP::STATUS_INTERNAL_SERVER_ERROR:
             return strfy("Internal Server Error");
         case HTTP::STATUS_NOT_IMPLEMENTED:

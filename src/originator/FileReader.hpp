@@ -2,6 +2,7 @@
 #define FILEREADER_HPP
 #include "../Interfaces.hpp"
 #include "../communication/RequestHTTP.hpp"
+#include "../utils/FileCacher.hpp"
 #include "../utils/http.hpp"
 #include <fstream>
 #include <map>
@@ -13,27 +14,33 @@ public:
     typedef HTTP::light_string light_string;
     typedef byte_string::size_type size_type;
 
-private:
+protected:
     char_string file_path_;
     bool originated_;
     ResponseDataList response_data;
+    FileCacher &cacher_;
 
     // ファイルからデータを読み出しておく
-    void read_from_file();
+    minor_error read_from_file();
+
+    // キャッシュデータを読み込む
+    bool read_from_cache();
 
 public:
-    FileReader(const RequestMatchingResult &match_result);
+    FileReader(const RequestMatchingResult &match_result, FileCacher &cacher);
+    FileReader(const char_string &path, FileCacher &cacher);
     ~FileReader();
 
-    void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
-    void inject_socketlike(ISocketLike *socket_like);
-    bool is_originatable() const;
-    bool is_reroutable() const;
-    bool is_responsive() const;
-    bool is_origination_started() const;
-    void start_origination(IObserver &observer);
-    void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    virtual void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
+    virtual void inject_socketlike(ISocketLike *socket_like);
+    virtual bool is_originatable() const;
+    virtual bool is_reroutable() const;
+    HTTP::byte_string reroute_path() const;
+    virtual bool is_responsive() const;
+    virtual bool is_origination_started() const;
+    virtual void start_origination(IObserver &observer);
+    virtual void leave();
+    virtual ResponseHTTP *respond(const RequestHTTP *request);
 };
 
 #endif

@@ -2,6 +2,7 @@
 #define CGI_HPP
 #include "../Interfaces.hpp"
 #include "../communication/HeaderHTTP.hpp"
+#include "../communication/Lifetime.hpp"
 #include "../communication/RequestHTTP.hpp"
 #include "../communication/ResponseDataList.hpp"
 #include "../communication/RoutingParameters.hpp"
@@ -91,6 +92,7 @@ public:
         CGIP::CH::ContentType content_type;
         CGIP::CH::Status status;
         CGIP::CH::Location location;
+        CGIP::CH::SetCookie set_cookie;
 
         // いろいろ抽出関数群
 
@@ -106,9 +108,14 @@ public:
     static const byte_string META_CONTENT_TYPE;
     static const byte_string META_SERVER_PORT;
     static const byte_string META_CONTENT_LENGTH;
+    static const byte_string META_PATH_INFO;
+    static const byte_string META_SCRIPT_NAME;
+    static const byte_string META_QUERY_STRING;
 
 private:
     Attribute attr;
+    Lifetime lifetime;
+
     metavar_dict_type metavar_;
     size_type to_script_content_length_;
     byte_string to_script_content_;
@@ -155,6 +162,10 @@ private:
     // 不整合があるなら http_error 例外を飛ばす
     void check_cgi_response_consistensy();
 
+    HTTP::t_status determine_response_status() const;
+    // ※ `from_script_header_holder`に対して破壊的
+    ResponseHTTP::header_list_type determine_response_headers_destructively();
+
 public:
     CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request);
     ~CGI();
@@ -169,18 +180,20 @@ public:
     void inject_socketlike(ISocketLike *socket_like);
     bool is_originatable() const;
     bool is_reroutable() const;
+    HTTP::byte_string reroute_path() const;
     bool is_responsive() const;
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP &request);
+    ResponseHTTP *respond(const RequestHTTP *request);
+    bool is_timeout(t_time_epoch_ms now) const;
 
     // 内部バッファにバイト列を追加する
     template <class InputItr>
     void inject_bytestring(const InputItr begin, const InputItr end) {
         bytebuffer.insert(bytebuffer.end(), begin, end);
-        VOUT(bytebuffer.size());
-        BVOUT(bytebuffer);
+        // VOUT(bytebuffer.size());
+        // BVOUT(bytebuffer);
     }
 
     void after_injection(bool is_disconnected);
