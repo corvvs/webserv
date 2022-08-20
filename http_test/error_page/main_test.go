@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 		}
 	}()
 	for {
-		c, _ := client.NewClient("", webservPort)
+		c, _ := client.NewClient("default", "", webservPort)
 		if c != nil {
 			c.Close()
 			break

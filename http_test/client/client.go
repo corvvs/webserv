@@ -16,7 +16,7 @@ type Response struct {
 	Body       []byte
 }
 
-var newClientMap map[string]func(request string, port string) (Client, error)
+var newClientMap = map[string]func(request string, port string) (Client, error){}
 
 func NewClient(clientType string, request string, port string) (Client, error) {
 	newclient, ok := newClientMap[clientType]

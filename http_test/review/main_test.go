@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 		}
 	}()
 	for {
-		c, _ := client.NewClient("", "8080")
+		c, _ := client.NewClient("default", "", "8080")
 		if c != nil {
 			c.Close()
 			break

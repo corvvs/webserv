@@ -30,6 +30,7 @@ func newSlowClient(request string, port string) (Client, error) {
 }
 
 func (c *SlowClient) send() error {
+
 	for _, b := range c.request {
 		_, err := c.conn.Write([]byte{b})
 		if err != nil {
