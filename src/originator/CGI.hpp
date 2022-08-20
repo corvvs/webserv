@@ -92,6 +92,7 @@ public:
         CGIP::CH::ContentType content_type;
         CGIP::CH::Status status;
         CGIP::CH::Location location;
+        CGIP::CH::SetCookie set_cookie;
 
         // いろいろ抽出関数群
 
@@ -160,6 +161,10 @@ private:
     // CGI応答の整合性をチェック
     // 不整合があるなら http_error 例外を飛ばす
     void check_cgi_response_consistensy();
+
+    HTTP::t_status determine_response_status() const;
+    // ※ `from_script_header_holder`に対して破壊的
+    ResponseHTTP::header_list_type determine_response_headers_destructively();
 
 public:
     CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request);

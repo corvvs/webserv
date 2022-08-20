@@ -31,6 +31,7 @@ const HTTP::byte_string date                = ParserHelper::normalize_header_key
 // for CGI
 const HTTP::byte_string status   = HTTP::strfy("status");
 const HTTP::byte_string location = HTTP::strfy("location");
+
 } // namespace HeaderHTTP
 
 // あるヘッダキーの属性
@@ -111,6 +112,8 @@ public:
     const header_val_type *get_back_val(const header_key_type &normalized_key) const;
     // 指定したキーの値をすべて取得する
     const value_list_type *get_vals(const header_key_type &normalized_key) const;
+    // 指定したキーの値をすべて削除する
+    void erase_vals(const header_key_type &normalized_key);
 
     const list_type &get_list() const;
     list_type::size_type get_list_size() const;

@@ -52,7 +52,7 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 RequestMatchingResult
 RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf) {
     res.cgi_resource      = make_cgi_resource(target, conf);
-    res.path_cgi_executor = get_path_cgi_executor(target, conf, res.path_local);
+    res.path_cgi_executor = get_path_cgi_executor(target, conf, res.cgi_resource.script_name);
     res.result_type       = RequestMatchingResult::RT_CGI;
     return res;
 }
@@ -313,8 +313,13 @@ HTTP::byte_string RequestMatcher::get_path_cgi_executor(const RequestTarget &tar
     if (pos == std::string::npos) {
         return HTTP::strfy("");
     }
-    const std::string &extension           = s.substr(pos + 1);
-    const std::string &path                = HTTP::restrfy(target.dpath());
-    config::cgi_executer_map cgi_executers = conf.get_cgi_path(path);
-    return HTTP::strfy(cgi_executers[extension]);
+    // cgi_executers のキーは `.` を含む
+    const std::string &extension                      = s.substr(pos);
+    const std::string &path                           = HTTP::restrfy(target.dpath());
+    const config::cgi_executer_map cgi_executers      = conf.get_cgi_path(path);
+    const config::cgi_executer_map::const_iterator it = cgi_executers.find(extension);
+    if (it == cgi_executers.end()) {
+        return HTTP::strfy("");
+    }
+    return HTTP::strfy(it->second);
 }

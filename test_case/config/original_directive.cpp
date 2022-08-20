@@ -139,6 +139,7 @@ http { \
             EXPECT_EQ(HTTP::strfy("./cgi"), res.cgi_resource.root);
             EXPECT_EQ(HTTP::strfy("/ruby/blank.rb"), res.cgi_resource.script_name);
             EXPECT_EQ(HTTP::strfy(""), res.cgi_resource.path_info);
+            EXPECT_EQ(HTTP::strfy("/usr/bin/ruby"), res.path_cgi_executor);
         });
     }
 
@@ -149,6 +150,7 @@ http { \
             EXPECT_EQ(HTTP::strfy("./cgi"), res.cgi_resource.root);
             EXPECT_EQ(HTTP::strfy("/ruby/blank.rb"), res.cgi_resource.script_name);
             EXPECT_EQ(HTTP::strfy("/path/after"), res.cgi_resource.path_info);
+            EXPECT_EQ(HTTP::strfy("/usr/bin/ruby"), res.path_cgi_executor);
         });
     }
 }

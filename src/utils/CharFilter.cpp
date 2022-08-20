@@ -202,6 +202,15 @@ const HTTP::CharFilter HTTP::CharFilter::controls          = (HTTP::CharFilter(0
 const HTTP::CharFilter HTTP::CharFilter::cd_separators     = "()<>@,;:\\\"/[]?={} \t";
 const HTTP::CharFilter HTTP::CharFilter::cd_token_char     = (ascii - controls - cd_separators);
 const HTTP::CharFilter HTTP::CharFilter::boundary_char     = (digit | alpha | "'+_-.");
+const HTTP::CharFilter HTTP::CharFilter::cookie_token_char = (ascii - controls - cd_separators);
+const HTTP::CharFilter HTTP::CharFilter::cookie_octet      = HTTP::CharFilter(0x21, 0x21) | HTTP::CharFilter(0x23, 0x2B)
+                                                        | HTTP::CharFilter(0x2D, 0x3A) | HTTP::CharFilter(0x3C, 0x5B)
+                                                        | HTTP::CharFilter(0x5D, 0x7E);
+const HTTP::CharFilter HTTP::CharFilter::cookie_attr_name = (alpha | " ");
+const HTTP::CharFilter HTTP::CharFilter::domain           = (alpha | digit | "-" | ".");
+const HTTP::CharFilter HTTP::CharFilter::domain_label     = (domain - ".");
+const HTTP::CharFilter HTTP::CharFilter::cookie_path      = (ascii - ";" - controls);
+const HTTP::CharFilter HTTP::CharFilter::cookie_extension = cookie_path;
 
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE

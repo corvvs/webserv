@@ -2,6 +2,7 @@
 
 from http import cookies
 import os
+import sys
 
 HEADER = "Content-type: text/html"
 APP_PAGE = """
@@ -12,7 +13,7 @@ APP_PAGE = """
     <script>
         function buttonClick() {
             document.cookie=`password=`
-            document.location="/cgi-bin/app.py"
+            document.location="__LOCATION__"
         }
     </script>
     <body>
@@ -30,7 +31,7 @@ LOGIN_PAGE = """
     <script>
         function submitOnClick() {
             document.cookie=`password=${document.getElementById("pass").value}`
-            document.location="/cgi-bin/app.py"
+            document.location="__LOCATION__"
         }
     </script>
     <body>
@@ -45,14 +46,19 @@ LOGIN_PAGE = """
 def is_logged_in():
     cookie = cookies.SimpleCookie()
     cookie.load(os.environ["HTTP_COOKIE"])
-    password = cookie["password"].value
-    return password == "1231"
+    if "password" in cookie:
+        password = cookie["password"].value
+        return password == "1231"
+    return False
 
 
 if __name__ == '__main__':
+    # for key, val in os.environ.items():
+    #     print(f"{key}={val}", file=sys.stderr)
+    print(HEADER)
+    page = ""
     if is_logged_in():
-        print(HEADER)
-        print(APP_PAGE)
+        page = APP_PAGE
     else:
-        print(HEADER)
-        print(LOGIN_PAGE)
+        page = LOGIN_PAGE
+    print(page.replace("__LOCATION__", os.environ["SCRIPT_NAME"]))

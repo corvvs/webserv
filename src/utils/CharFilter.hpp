@@ -88,7 +88,19 @@ public:
     static const CharFilter cd_token_char;
     // Content-Type: の boundary に使ってよい文字
     static const CharFilter boundary_char;
-
+    // Cookie: の token に使ってよい文字
+    static const CharFilter cookie_token_char;
+    // Cookie: の value として使ってよい文字
+    static const CharFilter cookie_octet;
+    // Set-Cookie: の属性名に使ってよい文字
+    static const CharFilter cookie_attr_name;
+    // ドメイン文字列として使ってよい文字
+    static const CharFilter domain;
+    // ドメインの"label"として使ってよい文字
+    static const CharFilter domain_label;
+    // Sei-Cookie: における Path=... の値として使ってよい文字
+    static const CharFilter cookie_path;
+    static const CharFilter cookie_extension;
     byte_string str() const;
 };
 } // namespace HTTP
