@@ -271,25 +271,22 @@ http { \
 
     {
         TestParam tp(HTTP::METHOD_GET, "/tests/%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
     }
 
     {
         // 先頭以外のスラッシュを"%2F"に置換
         TestParam tp(HTTP::METHOD_GET, "/tests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
     }
 
     {
         // 先頭のスラッシュを"%2F"に置換 → ヒットしなくなる
         TestParam tp(HTTP::METHOD_GET, "%2Ftests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp);, http_error);
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_TRUE(res.error.is_error());
     }
 
     {
@@ -298,10 +295,8 @@ http { \
                      HTTP::V_1_1,
                      "localhost",
                      "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./tests/ふぉーてぃーつー/banana.txt"), res.path_local);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./tests/ふぉーてぃーつー/banana.txt"), res.path_local);
     }
 }
 
