@@ -88,10 +88,12 @@ void RoundTrip::route(Connection &connection) {
     assert(request_ != NULL);
     reroute_count += 1;
     const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
+
+    // エラーページの情報をRoundTripに引き継ぐ
+    status_page_dict_ = result.status_page_dict;
     if (request_->current_error().is_error()) {
-        // TODO: リクエストがエラーを抱えている場合にエラーレスポンスを作る
         const minor_error me = request_->purge_error();
-        originator_          = new ErrorPageGenerator(me, result.status_page_dict, cacher_);
+        originator_          = new ErrorPageGenerator(me, status_page_dict_, cacher_);
         DXOUT("purged error: " << me);
     } else {
         originator_ = make_originator(result, *request_);
@@ -149,6 +151,7 @@ void RoundTrip::reroute(Connection &connection) {
     request_->inject_reroute_path(originator_->reroute_path());
 
     const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
+
     VOUT(result.result_type);
     IOriginator *reoriginator = make_originator(result, *request_);
     request_->set_max_body_size(result.client_max_body_size);
@@ -196,9 +199,7 @@ void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
     in_error_responding = true;
 
     destroy_originator();
-    // TODO: ほんとはここで「デフォルトのエラーページdict」があるとよい
-    const RequestMatchingResult::status_dict_type blank_dict;
-    originator_ = new ErrorPageGenerator(err, blank_dict, cacher_, true);
+    originator_ = new ErrorPageGenerator(err, status_page_dict_, cacher_, true);
     originator_->start_origination(observer);
     response_ = originator_->respond(request_);
 }

@@ -6,17 +6,30 @@ namespace config {
 static cgi_executer_map setup_executer_map();
 static const cgi_executer_map default_executers = setup_executer_map();
 
-ContextMain::ContextMain(void) {
+static std::map<HTTP::t_status, std::string> setup_default_error_pages() {
+    std::map<HTTP::t_status, std::string> error_pages;
+    error_pages[HTTP::STATUS_NOT_FOUND]             = "./error_page/404.html";
+    error_pages[HTTP::STATUS_METHOD_NOT_ALLOWED]    = "./error_page/405.html";
+    error_pages[HTTP::STATUS_INTERNAL_SERVER_ERROR] = "./error_page/500.html";
+    return error_pages;
+}
+
+ContextMain::ContextMain() {
     client_max_body_size = 1024;
     autoindex            = false;
+    error_pages          = setup_default_error_pages();
 }
-ContextMain::~ContextMain(void) {}
+ContextMain::~ContextMain() {}
 
-ContextServer::ContextServer(void) : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")) {}
-ContextServer::~ContextServer(void) {}
+ContextServer::ContextServer() : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")) {
+    error_pages = setup_default_error_pages();
+}
+ContextServer::~ContextServer() {}
 
-ContextLocation::ContextLocation(void)
-    : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")), cgi_executers(default_executers) {}
+ContextLocation::ContextLocation()
+    : redirect(std::make_pair(REDIRECT_INITIAL_VALUE, "")), cgi_executers(default_executers) {
+    error_pages = setup_default_error_pages();
+}
 
 ContextLocation::ContextLocation(const ContextServer &server) {
     client_max_body_size = server.client_max_body_size;
@@ -30,10 +43,10 @@ ContextLocation::ContextLocation(const ContextServer &server) {
     exec_delete          = false;
     cgi_executers        = default_executers;
 }
-ContextLocation::~ContextLocation(void) {}
+ContextLocation::~ContextLocation() {}
 
-ContextLimitExcept::ContextLimitExcept(void) {}
-ContextLimitExcept::~ContextLimitExcept(void) {}
+ContextLimitExcept::ContextLimitExcept() {}
+ContextLimitExcept::~ContextLimitExcept() {}
 
 // 事前に探しておくCGIのエグゼキュータのリスト
 static executer_vector setup_search_executers() {
