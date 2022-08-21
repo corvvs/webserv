@@ -119,7 +119,7 @@ const RequestTarget::byte_string &RequestTarget::dquery() const {
 }
 
 const RequestTarget::byte_string &RequestTarget::dpath_slash_reduced() const {
-    return decoded_parts.path;
+    return decoded_parts.path_slash_reduced;
 }
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {

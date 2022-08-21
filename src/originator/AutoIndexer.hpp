@@ -29,8 +29,12 @@ public:
     typedef std::vector<Entry> entry_list;
 
 private:
+    // ファイルシステム上のディレクトリパス
     char_string directory_path_;
+    // リクエストされたパス(パーセントデコード済み)
     char_string requested_path_;
+    // リクエストされたパス(パーセントデコード済み & スラッシュ縮約済み)
+    char_string effective_requested_path_;
     bool originated_;
     ResponseDataList response_data;
     DIR *dir;
