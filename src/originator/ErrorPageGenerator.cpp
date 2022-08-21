@@ -1,5 +1,6 @@
 #include "ErrorPageGenerator.hpp"
 #include "../utils/CSS.hpp"
+#include "../utils/HTML.hpp"
 #include <unistd.h>
 
 ErrorPageGenerator::ErrorPageGenerator(const minor_error &err,
@@ -36,7 +37,7 @@ void ErrorPageGenerator::generate_html() {
     if (error.message().empty()) {
         response_data.inject(HTTP::reason(error.status_code()), false);
     } else {
-        response_data.inject(HTTP::strfy(error.message()), false);
+        response_data.inject(HTTP::strfy(HTML::escape_html(error.message())), false);
     }
     response_data.inject(HTTP::strfy("</h3>\n"
                                      "<hr>\n"),
