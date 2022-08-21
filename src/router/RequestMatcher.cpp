@@ -7,6 +7,17 @@
 #include "../utils/UtilsString.hpp"
 #include <sys/stat.h>
 
+bool is_acceptable_form(const RequestTarget &target) {
+    switch (target.form) {
+        case RequestTarget::FORM_ORIGIN:
+        case RequestTarget::FORM_ABSOLUTE:
+            return true;
+        default:
+            break;
+    }
+    return false;
+}
+
 RequestMatchingResult::RequestMatchingResult(const RequestTarget *target_) : target(target_), client_max_body_size(0) {}
 
 RequestMatcher::RequestMatcher() {}
@@ -109,8 +120,8 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
     std::pair<HTTP::byte_string, bool> path_isdir = make_resource_path(target, conf);
-    if (target.form != RequestTarget::FORM_ORIGIN) {
-        res.error = minor_error::make("form of a target is not an origin-form", HTTP::STATUS_BAD_REQUEST);
+    if (!is_acceptable_form(target)) {
+        res.error = minor_error::make("form of a target is not acceptable", HTTP::STATUS_BAD_REQUEST);
         return res;
     }
     if (path_isdir.first.empty()) {
@@ -245,7 +256,7 @@ bool RequestMatcher::is_valid_request_method(const RequestTarget &target,
 }
 
 bool RequestMatcher::is_redirect(const RequestTarget &target, const config::Config &conf) {
-    if (target.form != RequestTarget::FORM_ORIGIN) {
+    if (!is_acceptable_form(target)) {
         return false;
     }
     const std::string &path                         = HTTP::restrfy(target.dpath_slash_reduced());
@@ -254,7 +265,7 @@ bool RequestMatcher::is_redirect(const RequestTarget &target, const config::Conf
 }
 
 bool RequestMatcher::is_cgi(const RequestTarget &target, const config::Config &conf) {
-    if (target.form != RequestTarget::FORM_ORIGIN) {
+    if (!is_acceptable_form(target)) {
         return false;
     }
     const std::string &path = HTTP::restrfy(target.dpath_slash_reduced());
