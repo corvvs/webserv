@@ -68,7 +68,7 @@ IOriginator *RoundTrip::make_originator(const RequestMatchingResult &result, con
         case RequestMatchingResult::RT_CGI:
             return new CGI(result, request);
         case RequestMatchingResult::RT_FILE_DELETE:
-            return new FileDeleter(result, cacher_);
+            return new FileDeleter(result);
         case RequestMatchingResult::RT_FILE_POST:
             return new FilePoster(result, request);
         case RequestMatchingResult::RT_AUTO_INDEX:
@@ -95,6 +95,8 @@ void RoundTrip::route(Connection &connection) {
         const minor_error me = request_->purge_error();
         originator_          = new ErrorPageGenerator(me, status_page_dict_, cacher_);
         DXOUT("purged error: " << me);
+    } else if (result.error.is_error()) {
+        originator_ = new ErrorPageGenerator(result.error, status_page_dict_, cacher_);
     } else {
         originator_ = make_originator(result, *request_);
         request_->set_max_body_size(result.client_max_body_size);
