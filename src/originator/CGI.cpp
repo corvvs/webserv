@@ -763,7 +763,7 @@ ResponseHTTP::header_list_type CGI::determine_response_headers(const IResponseDa
     return headers;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP *request) {
+ResponseHTTP *CGI::respond(const RequestHTTP *request, bool should_close) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
@@ -778,7 +778,7 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     from_script_header_holder.erase_vals(HeaderHTTP::content_type);
     IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
-    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
+    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, should_close);
 
     // 例外安全のための copy and swap
     ResponseHTTP *r = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, NULL, false);

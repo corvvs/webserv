@@ -97,7 +97,8 @@ ErrorPageGenerator::determine_response_headers(const IResponseDataConsumer::t_se
     return headers;
 }
 
-ResponseHTTP *ErrorPageGenerator::respond(const RequestHTTP *request) {
+ResponseHTTP *ErrorPageGenerator::respond(const RequestHTTP *request, bool should_close) {
+    (void)should_close;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
     const HTTP::t_version response_http_v    = request ? request->get_http_version() : HTTP::DEFAULT_HTTP_VERSION;

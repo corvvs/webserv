@@ -45,13 +45,14 @@ void Redirector::leave() {
     delete this;
 }
 
-ResponseHTTP *Redirector::respond(const RequestHTTP *request) {
+ResponseHTTP *Redirector::respond(const RequestHTTP *request, bool should_close) {
     response_data.inject("", 0, true);
     response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers;
     // redirect_to を Location: に設定
     headers.push_back(std::make_pair(HeaderHTTP::location, redirect_to));
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, false);
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, should_close);
     res->start();
     return res;
 }
