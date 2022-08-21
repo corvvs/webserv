@@ -4,14 +4,9 @@
 #include "../Originators.hpp"
 #include "../communication/Channel.hpp"
 #include "../config/Config.hpp"
+#include "../config/Validator.hpp"
 #include "../utils/FileCacher.hpp"
 #include <map>
-
-class MockMatcher : public IRequestMatcher {
-public:
-    RequestMatchingResult request_match(const std::vector<config::Config> &configs,
-                                        const IRequestMatchingParam &request);
-};
 
 // [サーバクラス]
 // [責務]
@@ -29,8 +24,6 @@ private:
     channel_map channels;
     config::config_dict configs_;
 
-    MockMatcher mock_matcher;
-
 public:
     HTTPServer(IObserver *observer);
 
@@ -45,6 +38,8 @@ public:
     void run();
 
     RequestMatchingResult route(const IRequestMatchingParam &request, const config::config_vector &configs);
+
+    static int test_configuration(const std::string &path);
 
 private:
     void listen(t_socket_domain sdomain,

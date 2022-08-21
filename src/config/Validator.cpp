@@ -249,11 +249,6 @@ bool is_correct_number_of_args(Directive dire, int mask) {
         return true;
     }
 
-    // 引数の数が0以上か
-    if ((mask & ANY) != 0) {
-        return true;
-    }
-
     // 引数の数が1以上か
     if ((mask & MORE1) != 0 && dire.args.size() >= 1) {
         return true;
