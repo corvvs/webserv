@@ -500,7 +500,7 @@ void RequestHTTP::check_size_limitation() {
 // [RequestHTTP::RoutingParameters]
 
 RequestHTTP::RoutingParameters::RoutingParameters()
-    : use_reroute(false), http_method(HTTP::METHOD_UNKNOWN), http_version(HTTP::V_UNKNOWN), is_body_chunked(false) {}
+    : use_reroute(false), http_method(HTTP::METHOD_UNKNOWN), is_body_chunked(false) {}
 
 void RequestHTTP::RoutingParameters::determine_body_size() {
     // https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length
@@ -584,10 +584,15 @@ void RequestHTTP::RoutingParameters::determine_body_size() {
 
 minor_error RequestHTTP::RoutingParameters::determine_host(const header_holder_type &holder) {
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
+    if (http_version.is_null()) {
+        // この時点で null なのはおかしい
+        throw http_error("version is undefined", HTTP::STATUS_BAD_REQUEST);
+    }
+
     const header_holder_type::value_list_type *hosts = holder.get_vals(HeaderHTTP::host);
     if (!hosts || hosts->size() == 0) {
         // HTTP/1.1 なのに Host: がない場合, BadRequest を出す
-        if (http_version == HTTP::V_1_1) {
+        if (http_version.value() == HTTP::V_1_1) {
             return minor_error::make("no host for HTTP/1.1", HTTP::STATUS_BAD_REQUEST);
         }
         // Host: がないけどHTTP/1.1でない
@@ -620,7 +625,10 @@ HTTP::t_method RequestHTTP::RoutingParameters::get_http_method() const {
 }
 
 HTTP::t_version RequestHTTP::RoutingParameters::get_http_version() const {
-    return http_version;
+    if (http_version.is_null()) {
+        return HTTP::DEFAULT_HTTP_VERSION;
+    }
+    return http_version.value();
 }
 
 const HTTP::CH::Host &RequestHTTP::RoutingParameters::get_host() const {
@@ -663,7 +671,7 @@ size_t RequestHTTP::parsed_size() const {
 }
 
 HTTP::t_version RequestHTTP::get_http_version() const {
-    return this->rp.http_version;
+    return this->rp.get_http_version();
 }
 
 HTTP::t_method RequestHTTP::get_method() const {
