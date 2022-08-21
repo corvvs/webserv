@@ -44,6 +44,10 @@ private:
     // エラーレスポンス中かどうか
     bool in_error_responding;
 
+    // あるHTTPステータスの時はこのファイルの中身を返す, という時の
+    // ステータスとファイルパスの辞書.
+    RequestMatchingResult::status_dict_type status_page_dict_;
+
     // オリジネーターを生成する
     IOriginator *make_originator(const RequestMatchingResult &result, const RequestHTTP &request);
     void destroy_request();

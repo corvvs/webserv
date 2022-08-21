@@ -10,10 +10,10 @@
 #include <vector>
 
 namespace {
-class config_original : public testing::Test {
+class original_directive_test : public testing::Test {
 protected:
-    config_original() {}
-    virtual ~config_original() {}
+    original_directive_test() {}
+    virtual ~original_directive_test() {}
     void setup_based_on_str(const std::string &data) {
         configs = parser.parse(data);
     }
@@ -22,7 +22,7 @@ protected:
     std::map<config::host_port_pair, std::vector<config::Config> > configs;
 };
 
-TEST_F(config_original, get_exec_cgi) {
+TEST_F(original_directive_test, get_exec_cgi) {
     const std::string config_data = "\
 http { \
     server { \
@@ -45,7 +45,7 @@ http { \
     EXPECT_EQ(false, conf.get_exec_cgi("/off/"));
 }
 
-TEST_F(config_original, get_exec_delete) {
+TEST_F(original_directive_test, get_exec_delete) {
     const std::string config_data = "\
 http { \
     server { \
@@ -67,7 +67,7 @@ http { \
     EXPECT_EQ(false, conf.get_exec_delete("/off/"));
 }
 
-TEST_F(config_original, get_cgi_path) {
+TEST_F(original_directive_test, get_cgi_path) {
     const std::string config_data = "\
 http { \
     server { \
@@ -110,7 +110,7 @@ http { \
     }
 }
 
-TEST_F(config_original, request_match_cgi_found) {
+TEST_F(original_directive_test, request_match_cgi_found) {
     const std::string config_data = "\
 http { \
     server { \
@@ -155,7 +155,7 @@ http { \
     }
 }
 
-TEST_F(config_original, request_match_cgi_not_found) {
+TEST_F(original_directive_test, request_match_cgi_not_found) {
     const std::string config_data = "\
 http { \
     server { \
@@ -179,12 +179,8 @@ http { \
 
     {
         TestParam tp(HTTP::METHOD_GET, "/ruby/not_exist.rb/path/after", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(
-            {
-                RequestMatchingResult res = rm.request_match(configs[hp], tp);
-                EXPECT_TRUE(res.error.is_error());
-            },
-            http_error);
+        RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_TRUE(res.error.is_error());
     }
 }
 
