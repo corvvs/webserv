@@ -98,7 +98,8 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
 
 AutoIndexer::AutoIndexer(const RequestMatchingResult &match_result)
     : directory_path_(HTTP::restrfy(match_result.path_local))
-    , requested_path_(HTTP::restrfy(match_result.target->dpath_slash_reduced()))
+    , requested_path_(HTTP::restrfy(match_result.target->dpath()))
+    , effective_requested_path_(HTTP::restrfy(match_result.target->dpath_slash_reduced()))
     , originated_(false)
     , dir(NULL) {}
 
@@ -171,7 +172,7 @@ void AutoIndexer::render_html() {
                                      "<head>\n"
                                      "  <title>\n"),
                          false);
-    response_data.inject(HTTP::strfy(requested_path_), false);
+    response_data.inject(HTTP::strfy(effective_requested_path_), false);
     response_data.inject(HTTP::strfy("  </title>\n"
                                      "  <style>\n" CSS_AUTOINDEXER "  </style>\n"
                                      "</head>\n"
@@ -179,7 +180,6 @@ void AutoIndexer::render_html() {
                          false);
 
     // 見出し部
-    QVOUT(requested_path_);
     response_data.inject(HTTP::strfy("<h2>Index of " + requested_path_ + "</h2>\n"), false);
     response_data.inject(HTTP::strfy("<hr>"), false);
     // テーブル部
@@ -195,7 +195,7 @@ void AutoIndexer::render_html() {
                          false);
     for (entry_list::size_type i = 0; i < entries.size(); ++i) {
         const Entry &ent             = entries[i];
-        HTTP::byte_string serialized = ent.serialize(requested_path_);
+        HTTP::byte_string serialized = ent.serialize(effective_requested_path_);
         response_data.inject(serialized, false);
     }
     response_data.inject(HTTP::strfy("  </tbody>\n"
