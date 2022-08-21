@@ -134,7 +134,10 @@ void CGI::start_origination(IObserver &observer) {
         // child: CGI process
         delete socks.first;
         // 引数の準備
-        char **argv = flatten_argv(attr.executor_path_, attr.script_path_);
+        const light_string script_path = HTTP::Utils::is_relative_path(attr.script_path_)
+                                             ? HTTP::Utils::basename(attr.script_path_)
+                                             : attr.script_path_;
+        char **argv = flatten_argv(attr.executor_path_, script_path.str());
         if (argv == NULL) {
             exit(1);
         }
