@@ -214,6 +214,7 @@ const HTTP::CharFilter HTTP::CharFilter::domain_label              = (domain - "
 const HTTP::CharFilter HTTP::CharFilter::cookie_path               = (ascii - ";" - controls);
 const HTTP::CharFilter HTTP::CharFilter::cookie_extension          = cookie_path;
 const HTTP::CharFilter HTTP::CharFilter::request_path_unacceptable = nul;
+const HTTP::CharFilter HTTP::CharFilter::escape_html               = "<>&'\"";
 
 // parameter      = token "=" ( token / quoted-string )
 // quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
