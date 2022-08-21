@@ -155,9 +155,9 @@ HTTP::byte_string FileReader::infer_content_type() const {
     return ct.serialize();
 }
 
-ResponseHTTP::header_list_type FileReader::determine_response_headers() {
+ResponseHTTP::header_list_type
+FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
         case ResponseDataList::SM_CHUNKED:
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -175,7 +175,8 @@ ResponseHTTP::header_list_type FileReader::determine_response_headers() {
 }
 
 ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
-    ResponseHTTP::header_list_type headers = determine_response_headers();
+    const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
