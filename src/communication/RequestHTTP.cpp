@@ -361,6 +361,9 @@ void RequestHTTP::parse_reqline(const light_string &raw_req_line) {
             this->rp.http_method = discriminate_request_method(splitted[0]);
             DXOUT(splitted[0] << " -> http_method: " << this->rp.http_method);
             this->rp.given_request_target = RequestTarget(splitted[1]);
+            if (this->rp.given_request_target.decoded_target_has_unacceptable()) {
+                throw http_error("request target has unacceptable data", HTTP::STATUS_BAD_REQUEST);
+            }
             DXOUT("given_request_target:");
             DXOUT(this->rp.given_request_target);
             if (splitted.size() == 3) {
