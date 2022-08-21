@@ -277,13 +277,17 @@ http { \
 
     {
         // 先頭以外のスラッシュを"%2F"に置換
+        // -> スラッシュはデコードされないので404になる
         TestParam tp(HTTP::METHOD_GET, "/tests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
-        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-        EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_TRUE(res.error.is_error());
+        });
     }
 
     {
         // 先頭のスラッシュを"%2F"に置換 → ヒットしなくなる
+        // (そもそもデコードされないので当然)
         TestParam tp(HTTP::METHOD_GET, "%2Ftests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
         const RequestMatchingResult res = rm.request_match(configs[hp], tp);
         EXPECT_TRUE(res.error.is_error());

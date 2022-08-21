@@ -165,6 +165,7 @@ std::ostream &operator<<(std::ostream &ost, const HTTP::CharFilter &f) {
     return ost << "(" << f.size() << "):[" << f.str() << "]";
 }
 
+const HTTP::CharFilter HTTP::CharFilter::empty             = "";
 const HTTP::CharFilter HTTP::CharFilter::alpha_low         = HTTP::strfy("abcdefghijklmnopqrstuvwxyz");
 const HTTP::CharFilter HTTP::CharFilter::alpha_up          = HTTP::strfy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 const HTTP::CharFilter HTTP::CharFilter::alpha             = alpha_low | alpha_up;
