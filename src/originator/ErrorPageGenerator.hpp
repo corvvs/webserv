@@ -15,6 +15,7 @@ private:
     bool should_close_;
 
     void generate_html();
+    ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:
     ErrorPageGenerator(const minor_error &error,
@@ -25,7 +26,7 @@ public:
 
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP *request);
+    ResponseHTTP *respond(const RequestHTTP *request, bool should_close);
 };
 
 #endif

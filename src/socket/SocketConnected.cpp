@@ -6,6 +6,7 @@ SocketConnected::SocketConnected(t_socket_domain sdomain, t_socket_type stype) :
 
 SocketConnected::SocketConnected(t_fd accepted_fd, SocketListening &listening_socket)
     : ASocket(accepted_fd, listening_socket.get_domain(), listening_socket.get_type()) {
+    set_nonblock();
     port = listening_socket.get_port();
 }
 
@@ -27,11 +28,13 @@ SocketConnected *SocketConnected::connect(t_socket_domain sdomain, t_socket_type
     // localhost の IP アドレスを引く
     hostent *hostent = gethostbyname("localhost");
     if (hostent == NULL) {
+        delete sock;
         throw std::runtime_error("failed to gethostbyname");
     }
     std::memcpy(&sa.sin_addr, hostent->h_addr_list[0], sizeof(sa.sin_addr));
     // 接続
     if (::connect(fd, (struct sockaddr *)&sa, sizeof(struct sockaddr_in)) == -1) {
+        delete sock;
         throw std::runtime_error("failed to connect");
     }
     sock->port = port;
@@ -39,27 +42,25 @@ SocketConnected *SocketConnected::connect(t_socket_domain sdomain, t_socket_type
 }
 
 SocketConnected *SocketConnected::wrap(t_fd fd, SocketListening &listening) {
-    SocketConnected *sock = new SocketConnected(fd, listening);
-    sock->set_nonblock();
-    return sock;
+    return new SocketConnected(fd, listening);
 }
 
-ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) {
+ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) throw() {
     return ::send(fd, buffer, len, flags);
 }
 
-ssize_t SocketConnected::receive(void *buffer, size_t len, int flags) {
+ssize_t SocketConnected::receive(void *buffer, size_t len, int flags) throw() {
     return ::recv(fd, buffer, len, flags);
 }
 
-int SocketConnected::shutdown() {
+int SocketConnected::shutdown() throw() {
     return ::shutdown(get_fd(), SHUT_RDWR);
 }
 
-int SocketConnected::shutdown_write() {
+int SocketConnected::shutdown_write() throw() {
     return ::shutdown(get_fd(), SHUT_WR);
 }
 
-int SocketConnected::shutdown_read() {
+int SocketConnected::shutdown_read() throw() {
     return ::shutdown(get_fd(), SHUT_RD);
 }

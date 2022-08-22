@@ -45,6 +45,7 @@ private:
     // entries をHTMLに起こす
     void render_html();
     void close_if_needed();
+    ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:
     AutoIndexer(const RequestMatchingResult &match_result);
@@ -59,7 +60,7 @@ public:
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP *request);
+    ResponseHTTP *respond(const RequestHTTP *request, bool should_close);
 };
 
 #endif

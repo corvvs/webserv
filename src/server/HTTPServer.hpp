@@ -16,12 +16,10 @@
 // - TODO: リクエストを適切にルーティングしてレスポンスを生成すること
 class HTTPServer : public IRouter {
 public:
-    typedef std::map<Channel::t_channel_id, Channel *> channel_map;
     FileCacher cacher_;
 
 private:
     IObserver *socket_observer_;
-    channel_map channels;
     config::config_dict configs_;
 
 public:

@@ -15,10 +15,10 @@ ChunkedBody::byte_string ChunkedBody::body() const {
     return rv;
 }
 
-ChunkedBody::size_type ChunkedBody::size() const {
+ChunkedBody::size_type ChunkedBody::size() const throw() {
     return body_size;
 }
 
-bool ChunkedBody::is_complete() const {
+bool ChunkedBody::is_complete() const throw() {
     return chunks.size() > 0 && chunks.back().chunk_size == 0;
 }

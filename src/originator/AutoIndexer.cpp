@@ -1,6 +1,7 @@
 #include "AutoIndexer.hpp"
 #include "../utils/CSS.hpp"
 #include "../utils/File.hpp"
+#include "../utils/HTML.hpp"
 #include <algorithm>
 #include <ctime>
 #include <unistd.h>
@@ -31,7 +32,7 @@ bool compare_entry_by_type(const AutoIndexer::Entry &s1, const AutoIndexer::Entr
 HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &requested_path) const {
     HTTP::byte_string str;
     HTTP::char_string s;
-    HTTP::byte_string basename = name;
+    HTTP::byte_string basename = HTML::escape_html(name);
     if (is_dir) {
         basename += HTTP::strfy("/");
     }
@@ -43,7 +44,7 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
         // URL
         HTTP::byte_string relative_url;
         relative_url += HTTP::strfy("      <a href=\"");
-        relative_url += HTTP::strfy(requested_path);
+        relative_url += HTTP::strfy(HTML::escape_html(requested_path));
         if (requested_path.size() > 1 && requested_path[requested_path.size() - 1] != '/') {
             relative_url += HTTP::strfy("/");
         }
@@ -119,8 +120,7 @@ void AutoIndexer::scan_from_directory() {
     if (originated_) {
         return;
     }
-    errno = 0;
-    QVOUT(directory_path_);
+    errno     = 0;
     DIR *dird = opendir(directory_path_.c_str());
     if (dird == NULL) {
         switch (errno) {
@@ -172,7 +172,7 @@ void AutoIndexer::render_html() {
                                      "<head>\n"
                                      "  <title>\n"),
                          false);
-    response_data.inject(HTTP::strfy(effective_requested_path_), false);
+    response_data.inject(HTTP::strfy(HTML::escape_html(effective_requested_path_)), false);
     response_data.inject(HTTP::strfy("  </title>\n"
                                      "  <style>\n" CSS_AUTOINDEXER "  </style>\n"
                                      "</head>\n"
@@ -180,7 +180,7 @@ void AutoIndexer::render_html() {
                          false);
 
     // 見出し部
-    response_data.inject(HTTP::strfy("<h2>Index of " + requested_path_ + "</h2>\n"), false);
+    response_data.inject(HTTP::strfy("<h2>Index of " + HTML::escape_html(requested_path_) + "</h2>\n"), false);
     response_data.inject(HTTP::strfy("<hr>"), false);
     // テーブル部
     response_data.inject(HTTP::strfy("<table class=\"autoindex-table\">\n"
@@ -249,9 +249,9 @@ void AutoIndexer::leave() {
     delete this;
 }
 
-ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
+ResponseHTTP::header_list_type
+AutoIndexer::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
         case ResponseDataList::SM_CHUNKED:
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -264,8 +264,19 @@ ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
             break;
     }
     // MIMEタイプ設定
-    headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::strfy("text/html")));
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
-    res->start();
+    {
+        HTTP::CH::ContentType ct;
+        ct.value   = HTTP::strfy("text/html");
+        ct.charset = HTTP::strfy("UTF-8");
+        headers.push_back(std::make_pair(HeaderHTTP::content_type, ct.serialize()));
+    }
+    return headers;
+}
+
+ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request, bool should_close) {
+    const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, should_close);
     return res;
 }

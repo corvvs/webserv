@@ -19,7 +19,7 @@ ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) : port(0) {
     setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, (const char *)&yes, sizeof(yes));
 }
 
-ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) : fd(sock_fd), port(0) {
+ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) throw() : fd(sock_fd), port(0) {
     domain = sdomain;
     type   = stype;
     int yes;
@@ -52,22 +52,22 @@ void ASocket::set_nonblock() {
     }
 }
 
-int ASocket::get_fd() const {
+int ASocket::get_fd() const throw() {
     return fd;
 }
 
-t_socket_domain ASocket::get_domain() const {
+t_socket_domain ASocket::get_domain() const throw() {
     return domain;
 }
 
-t_socket_type ASocket::get_type() const {
+t_socket_type ASocket::get_type() const throw() {
     return type;
 }
 
-t_port ASocket::get_port() const {
+t_port ASocket::get_port() const throw() {
     return port;
 }
 
-void ASocket::destroy() {
+void ASocket::destroy() throw() {
     close(fd);
 }

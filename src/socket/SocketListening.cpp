@@ -3,7 +3,9 @@
 #include "SocketConnected.hpp"
 #include "strings.h"
 
-SocketListening::SocketListening(t_socket_domain sdomain, t_socket_type stype) : ASocket(sdomain, stype) {}
+SocketListening::SocketListening(t_socket_domain sdomain, t_socket_type stype) : ASocket(sdomain, stype) {
+    set_nonblock();
+}
 
 SocketListening &SocketListening::operator=(const SocketListening &rhs) {
     static_cast<ASocket &>(*this) = static_cast<const ASocket &>(rhs);
@@ -12,8 +14,7 @@ SocketListening &SocketListening::operator=(const SocketListening &rhs) {
 
 SocketListening *SocketListening::bind(t_socket_domain sdomain, t_socket_type stype, t_port port) {
     SocketListening *sock = new SocketListening(sdomain, stype);
-    sock->set_nonblock();
-    t_fd fd = sock->fd;
+    t_fd fd               = sock->fd;
 
     sockaddr_in sa;
     bzero(&sa, sizeof(sa));
@@ -23,7 +24,7 @@ SocketListening *SocketListening::bind(t_socket_domain sdomain, t_socket_type st
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
     DXOUT("binding asocket for: " << port << ", " << sa.sin_addr.s_addr << "...");
     if (::bind(fd, (struct sockaddr *)&sa, sizeof(struct sockaddr_in)) == -1) {
-        //        std::cerr << strerror(errno) << std::endl;
+        delete sock;
         throw std::runtime_error("failed to bind a asocket");
     }
     DXOUT("bound asocket.");

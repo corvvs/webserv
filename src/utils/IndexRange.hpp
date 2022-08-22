@@ -6,16 +6,16 @@
 #include <utility>
 
 struct IndexRange : public std::pair<ssize_t, ssize_t> {
-    IndexRange();
-    IndexRange(ssize_t f, ssize_t t);
-    bool is_invalid() const;
-    ssize_t length() const;
+    IndexRange() throw();
+    IndexRange(ssize_t f, ssize_t t) throw();
+    bool is_invalid() const throw();
+    ssize_t length() const throw();
 
-    first_type &from();
-    const first_type &from() const;
+    first_type &from() throw();
+    const first_type &from() const throw();
 
-    second_type &to();
-    const second_type &to() const;
+    second_type &to() throw();
+    const second_type &to() const throw();
 };
 
 std::ostream &operator<<(std::ostream &out, const IndexRange &r);

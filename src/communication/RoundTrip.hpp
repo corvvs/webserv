@@ -20,7 +20,6 @@ class RoundTrip {
 public:
     typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
-    typedef std::deque<HTTP::char_type> extra_buffer_type;
 
 private:
     IRouter &router;
@@ -112,7 +111,7 @@ public:
     void respond();
 
     // エラーレスポンスを生成し, 送信を開始する
-    void respond_error(IObserver &observer, const http_error &err);
+    void respond_unrecoverable_error(IObserver &observer, const http_error &err);
 
     // 構成要素全てをdeleteし, 初期状態に戻す.
     void wipeout();

@@ -14,22 +14,22 @@ std::pair<SocketUNIX *, t_fd> SocketUNIX::socket_pair() {
     return std::pair<SocketUNIX *, t_fd>(new SocketUNIX(fds[0]), fds[1]);
 }
 
-ssize_t SocketUNIX::send(const void *buffer, size_t len, int flags) {
+ssize_t SocketUNIX::send(const void *buffer, size_t len, int flags) throw() {
     return ::send(fd, buffer, len, flags);
 }
 
-ssize_t SocketUNIX::receive(void *buffer, size_t len, int flags) {
+ssize_t SocketUNIX::receive(void *buffer, size_t len, int flags) throw() {
     return ::recv(fd, buffer, len, flags);
 }
 
-int SocketUNIX::shutdown() {
+int SocketUNIX::shutdown() throw() {
     return ::shutdown(get_fd(), SHUT_RDWR);
 }
 
-int SocketUNIX::shutdown_write() {
+int SocketUNIX::shutdown_write() throw() {
     return ::shutdown(get_fd(), SHUT_WR);
 }
 
-int SocketUNIX::shutdown_read() {
+int SocketUNIX::shutdown_read() throw() {
     return ::shutdown(get_fd(), SHUT_RD);
 }

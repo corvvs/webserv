@@ -106,11 +106,13 @@ public:
     static const byte_string META_REQUEST_METHOD;
     static const byte_string META_SERVER_PROTOCOL;
     static const byte_string META_CONTENT_TYPE;
+    static const byte_string META_SERVER_NAME;
     static const byte_string META_SERVER_PORT;
     static const byte_string META_CONTENT_LENGTH;
     static const byte_string META_PATH_INFO;
     static const byte_string META_SCRIPT_NAME;
     static const byte_string META_QUERY_STRING;
+    static const byte_string META_REQUEST_URI;
 
 private:
     bool leaving;
@@ -165,7 +167,7 @@ private:
 
     HTTP::t_status determine_response_status() const;
     // ※ `from_script_header_holder`に対して破壊的
-    ResponseHTTP::header_list_type determine_response_headers_destructively();
+    ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:
     CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request);
@@ -186,7 +188,7 @@ public:
     bool is_origination_started() const;
     void start_origination(IObserver &observer);
     void leave();
-    ResponseHTTP *respond(const RequestHTTP *request);
+    ResponseHTTP *respond(const RequestHTTP *request, bool should_close);
     bool is_timeout(t_time_epoch_ms now) const;
 
     // 内部バッファにバイト列を追加する

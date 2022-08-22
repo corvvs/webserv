@@ -52,7 +52,7 @@ public:
     virtual void start_origination(IObserver &observer) = 0;
 
     // レスポンスをヒープに確保し, 送信可能な状態にして返す
-    virtual ResponseHTTP *respond(const RequestHTTP *request) = 0;
+    virtual ResponseHTTP *respond(const RequestHTTP *request, bool should_close) = 0;
 
     // オリジネータ自身の破壊手続きを行う
     // 大抵は`delete this;だがソケットライクだったりすると違う

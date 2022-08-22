@@ -36,18 +36,18 @@ public:
     // シリアライズデータの未送信部分の先頭を取得
     virtual const HTTP::byte_string::value_type *serialized_head() const = 0;
     // シリアライズデータの未送信部分のサイズを取得
-    virtual size_t rest_serialized() const = 0;
+    virtual size_t rest_serialized() const throw() = 0;
     // 送信したシリアライズデータのバイト数を記録
-    virtual void mark_sent(size_t n) = 0;
+    virtual void mark_sent(size_t n) throw() = 0;
 
     // 現行シリアライズデータ送信中
-    virtual bool is_sending_current() const = 0;
+    virtual bool is_sending_current() const throw() = 0;
     // 現行シリアライズデータの送信完了
-    virtual bool is_sent_current() const = 0;
+    virtual bool is_sent_current() const throw() = 0;
     // 送信が完了したかどうか
-    virtual bool is_sending_over() const = 0;
+    virtual bool is_sending_over() const throw() = 0;
 
-    virtual t_sending_mode get_sending_mode() const = 0;
+    virtual t_sending_mode get_sending_mode() const throw() = 0;
 };
 
 // レスポンスのchunked本文のchunk1つ分
@@ -55,7 +55,7 @@ struct ResponseDataBucket {
     HTTP::byte_string buffer; // データバッファ
     bool is_completed;
 
-    ResponseDataBucket();
+    ResponseDataBucket() throw();
 };
 
 // レスポンスのchunked本文全体
@@ -70,12 +70,12 @@ private:
     size_t sent_serialized;      // serialized_data のうち送信済みのバイト数
     t_sending_mode sending_mode; // 送信モード
 
-    void set_mode(t_sending_mode mode);
+    void set_mode(t_sending_mode mode) throw();
 
     // シリアライズ実行可能
     bool is_serializable() const;
     // 全chunkシリアライズ完了
-    bool is_all_serialized() const;
+    bool is_all_serialized() const throw();
 
 public:
     ResponseDataList();
@@ -84,13 +84,13 @@ public:
     // データ注入完了
     bool is_injection_closed() const;
     // 現行シリアライズデータ送信中
-    bool is_sending_current() const;
+    bool is_sending_current() const throw();
     // 現行シリアライズデータの送信完了
-    bool is_sent_current() const;
+    bool is_sent_current() const throw();
     // 全データ送信完了
-    bool is_sending_over() const;
+    bool is_sending_over() const throw();
 
-    size_t current_total_size() const;
+    size_t current_total_size() const throw();
 
     // 長さ n のデータを注入
     void inject(const char *src, size_t n, bool is_completed);
@@ -110,10 +110,15 @@ public:
     void start(const HTTP::byte_string &initial_data);
 
     const HTTP::byte_string::value_type *serialized_head() const;
-    size_t rest_serialized() const;
-    void mark_sent(size_t n);
+    size_t rest_serialized() const throw();
+    void mark_sent(size_t n) throw();
 
-    t_sending_mode get_sending_mode() const;
+    t_sending_mode get_sending_mode() const throw();
+
+    // 現在バケットが空かどうか
+    bool empty() const throw();
+    // 先頭のバケットの中身の要素を返す
+    const HTTP::byte_string &top() const;
 };
 
 #endif

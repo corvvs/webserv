@@ -106,20 +106,26 @@ void RequestTarget::decode_pct_encoded() {
     }
 }
 
-const RequestTarget::byte_string &RequestTarget::dauthority() const {
+const RequestTarget::byte_string &RequestTarget::dauthority() const throw() {
     return decoded_parts.authority;
 }
 
-const RequestTarget::byte_string &RequestTarget::dpath() const {
+const RequestTarget::byte_string &RequestTarget::dpath() const throw() {
     return decoded_parts.path;
 }
 
-const RequestTarget::byte_string &RequestTarget::dquery() const {
+const RequestTarget::byte_string &RequestTarget::dquery() const throw() {
     return decoded_parts.query;
 }
 
-const RequestTarget::byte_string &RequestTarget::dpath_slash_reduced() const {
+const RequestTarget::byte_string &RequestTarget::dpath_slash_reduced() const throw() {
     return decoded_parts.path_slash_reduced;
+}
+
+bool RequestTarget::decoded_target_has_unacceptable() const {
+    const light_string::size_type unacceptable_pos
+        = light_string(decoded_parts.path).find_first_of(HTTP::CharFilter::request_path_unacceptable);
+    return unacceptable_pos != light_string::npos;
 }
 
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {

@@ -26,12 +26,12 @@ public:
     // サーバ用factory関数
     static SocketConnected *wrap(t_fd fd, SocketListening &listening);
 
-    ssize_t send(const void *buffer, size_t len, int flags);
-    ssize_t receive(void *buffer, size_t len, int flags);
+    ssize_t send(const void *buffer, size_t len, int flags) throw();
+    ssize_t receive(void *buffer, size_t len, int flags) throw();
 
-    int shutdown();
-    int shutdown_write();
-    int shutdown_read();
+    int shutdown() throw();
+    int shutdown_write() throw();
+    int shutdown_read() throw();
 };
 
 #endif

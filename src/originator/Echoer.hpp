@@ -32,7 +32,7 @@ public:
     HTTP::byte_string reroute_path() const;
     bool is_responsive() const;
     void start_origination(IObserver &observer);
-    ResponseHTTP *respond(const RequestHTTP *request);
+    ResponseHTTP *respond(const RequestHTTP *request, bool should_close);
     void leave();
 };
 

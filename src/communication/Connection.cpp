@@ -5,14 +5,6 @@
 #define MAX_REQLINE_END 8192
 #define MAX_EXTRA_AMOUNT 1048576
 
-// [[Attribute]]
-
-Connection::Attribute::Attribute() {
-    http_version  = HTTP::DEFAULT_HTTP_VERSION;
-    is_persistent = true;
-    timeout       = 60 * 1000;
-}
-
 // [[NetwotkBuffer]]
 
 Connection::NetworkBuffer::NetworkBuffer() : read_size(0), extra_amount(0) {
@@ -95,8 +87,7 @@ Connection::Connection(IRouter *router,
                        SocketConnected *sock_given,
                        const config::config_vector &configs,
                        FileCacher &cacher)
-    : attr(Attribute())
-    , phase(CONNECTION_ESTABLISHED)
+    : phase(CONNECTION_ESTABLISHED)
     , dying(false)
     , unrecoverable(false)
     , sock(sock_given)
@@ -160,7 +151,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
         if (phase != CONNECTION_SHUTTING_DOWN && !rt.is_responding()) {
             try {
                 // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
-                rt.respond_error(observer, err);
+                rt.respond_unrecoverable_error(observer, err);
                 observer.reserve_set(this, IObserver::OT_WRITE);
                 return;
             } catch (const http_error &err) {
