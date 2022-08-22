@@ -32,7 +32,7 @@ private:
     byte_string message_text;
     ResponseDataList local_datalist;
     IResponseDataConsumer *data_consumer_;
-    bool should_close_;
+    const bool should_close_;
 
     IResponseDataConsumer *consumer() throw();
     const IResponseDataConsumer *consumer() const throw();
@@ -75,8 +75,6 @@ public:
     bool is_timeout(t_time_epoch_ms now) const throw();
     // predicate: このレスポンスを送り終わった後, HTTP接続を閉じるべきかどうか
     bool should_close() const throw();
-
-    static void swap(ResponseHTTP &lhs, ResponseHTTP &rhs) throw();
 };
 
 #endif

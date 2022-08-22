@@ -1,4 +1,5 @@
 #include "Channel.hpp"
+#include "../utils/ObjectHolder.hpp"
 #include "Connection.hpp"
 
 Channel::Channel(IRouter *router,
@@ -38,9 +39,21 @@ void Channel::notify(IObserver &observer, IObserver::observation_category cat, t
                 // acceptするものが残っていない場合 NULL が返ってくる
                 break;
             }
-            Connection *con = new Connection(router_, connected, configs_, cacher_);
-            observer.reserve_hold(con);
-            observer.reserve_set(con, IObserver::OT_READ);
+            ObjectHolder<SocketConnected> sh(connected);
+            // [メモリ安全にするメカニズム]
+            // 1. new した Connection をまず ObjectHolder で受ける.
+            //    これで ObjectHolder が所有権(= delete する責任)を持つ.
+            // 2. ObjectHolder に所有権を持たせたまま reserve_hold する
+            //    もし reserve_hold が例外を投げた場合, ObjectHolder がスコープを抜けるときに
+            //    ObjectHolder が delete を呼ぶ.
+            // 3. reserve_hold が成功すると, 所有権は observer に以降するので,
+            //    waive を呼んで ObjectHolder の所有権を放棄させる.
+            //    以降, 例外が発生しても ObjectHolder は delete を呼ばない.
+            ObjectHolder<Connection> ch(new Connection(router_, sh.value(), configs_, cacher_));
+            sh.waive();
+            observer.reserve_hold(ch.value());
+            ch.waive();
+            observer.reserve_set(ch.value(), IObserver::OT_READ);
         }
     } catch (...) {
         DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd());

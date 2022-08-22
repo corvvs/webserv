@@ -28,11 +28,13 @@ SocketConnected *SocketConnected::connect(t_socket_domain sdomain, t_socket_type
     // localhost の IP アドレスを引く
     hostent *hostent = gethostbyname("localhost");
     if (hostent == NULL) {
+        delete sock;
         throw std::runtime_error("failed to gethostbyname");
     }
     std::memcpy(&sa.sin_addr, hostent->h_addr_list[0], sizeof(sa.sin_addr));
     // 接続
     if (::connect(fd, (struct sockaddr *)&sa, sizeof(struct sockaddr_in)) == -1) {
+        delete sock;
         throw std::runtime_error("failed to connect");
     }
     sock->port = port;

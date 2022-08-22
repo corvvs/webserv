@@ -261,6 +261,5 @@ ResponseHTTP *FilePoster::respond(const RequestHTTP *request, bool should_close)
     ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
     ResponseHTTP *res
         = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_CREATED, &headers, &response_data, should_close);
-    res->start();
     return res;
 }
