@@ -17,13 +17,12 @@ private:
     char_string file_path_;
     ResponseDataList response_data;
     bool originated_;
-    FileCacher &cacher_;
 
     // ターゲットの削除を試みる
     void delete_file();
 
 public:
-    FileDeleter(const RequestMatchingResult &match_result, FileCacher &cacher);
+    FileDeleter(const RequestMatchingResult &match_result);
     ~FileDeleter();
 
     void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
