@@ -180,24 +180,24 @@ std::ostream &operator<<(std::ostream &ost, const HTTP::CharFilter &f) {
 }
 
 const HTTP::CharFilter HTTP::CharFilter::empty             = "";
-const HTTP::CharFilter HTTP::CharFilter::alpha_low         = HTTP::strfy("abcdefghijklmnopqrstuvwxyz");
-const HTTP::CharFilter HTTP::CharFilter::alpha_up          = HTTP::strfy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+const HTTP::CharFilter HTTP::CharFilter::alpha_low         = "abcdefghijklmnopqrstuvwxyz";
+const HTTP::CharFilter HTTP::CharFilter::alpha_up          = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const HTTP::CharFilter HTTP::CharFilter::alpha             = alpha_low | alpha_up;
-const HTTP::CharFilter HTTP::CharFilter::digit             = HTTP::strfy("0123456789");
+const HTTP::CharFilter HTTP::CharFilter::digit             = "0123456789";
 const HTTP::CharFilter HTTP::CharFilter::hexdig            = digit | "abcdef" | "ABCDEF";
 const HTTP::CharFilter HTTP::CharFilter::unreserved        = alpha | digit | "-._~";
-const HTTP::CharFilter HTTP::CharFilter::gen_delims        = HTTP::strfy(":/?#[]@");
-const HTTP::CharFilter HTTP::CharFilter::sub_delims        = HTTP::strfy("!$&'()*+.;=");
+const HTTP::CharFilter HTTP::CharFilter::gen_delims        = ":/?#[]@";
+const HTTP::CharFilter HTTP::CharFilter::sub_delims        = "!$&'()*+.;=";
 const HTTP::CharFilter HTTP::CharFilter::tchar             = alpha | digit | "!#$%&'*+-.^_`|~";
-const HTTP::CharFilter HTTP::CharFilter::sp                = HTTP::strfy(" ");
+const HTTP::CharFilter HTTP::CharFilter::sp                = " ";
 const HTTP::CharFilter HTTP::CharFilter::bad_sp            = sp;
-const HTTP::CharFilter HTTP::CharFilter::ws                = HTTP::strfy(" \t");
-const HTTP::CharFilter HTTP::CharFilter::crlf              = HTTP::strfy("\r\n");
-const HTTP::CharFilter HTTP::CharFilter::cr                = HTTP::strfy("\r");
-const HTTP::CharFilter HTTP::CharFilter::lf                = HTTP::strfy("\n");
-const HTTP::CharFilter HTTP::CharFilter::htab              = HTTP::strfy("\t");
-const HTTP::CharFilter HTTP::CharFilter::dquote            = HTTP::strfy("\"");
-const HTTP::CharFilter HTTP::CharFilter::bslash            = HTTP::strfy("\\");
+const HTTP::CharFilter HTTP::CharFilter::ws                = " \t";
+const HTTP::CharFilter HTTP::CharFilter::crlf              = "\r\n";
+const HTTP::CharFilter HTTP::CharFilter::cr                = "\r";
+const HTTP::CharFilter HTTP::CharFilter::lf                = "\n";
+const HTTP::CharFilter HTTP::CharFilter::htab              = "\t";
+const HTTP::CharFilter HTTP::CharFilter::dquote            = "\"";
+const HTTP::CharFilter HTTP::CharFilter::bslash            = "\\";
 const HTTP::CharFilter HTTP::CharFilter::obs_text          = HTTP::CharFilter(0x80, 0xff);
 const HTTP::CharFilter HTTP::CharFilter::vchar             = HTTP::CharFilter(0x21, 0x7e);
 const HTTP::CharFilter HTTP::CharFilter::printables        = HTTP::CharFilter(0x20, 0x7e);
@@ -208,8 +208,8 @@ const HTTP::CharFilter HTTP::CharFilter::reserved          = gen_delims | sub_de
 const HTTP::CharFilter HTTP::CharFilter::cgi_mark          = "-_.!~*'()";
 const HTTP::CharFilter HTTP::CharFilter::cgi_reserved      = ";/?:@&=+$,[]";
 const HTTP::CharFilter HTTP::CharFilter::cgi_unreserved    = alpha | digit | cgi_mark;
-const HTTP::CharFilter HTTP::CharFilter::cgi_sp            = HTTP::strfy(" ");
-const HTTP::CharFilter HTTP::CharFilter::cgi_extra         = HTTP::strfy(":@&=+$,");
+const HTTP::CharFilter HTTP::CharFilter::cgi_sp            = " ";
+const HTTP::CharFilter HTTP::CharFilter::cgi_extra         = ":@&=+$,";
 const HTTP::CharFilter HTTP::CharFilter::pchar_without_pct = unreserved | sub_delims | ":@";
 const HTTP::CharFilter HTTP::CharFilter::uri_scheme        = alpha | digit | "+-.";
 const HTTP::CharFilter HTTP::CharFilter::nul               = HTTP::CharFilter(0, 0);
