@@ -80,13 +80,9 @@ CGI::~CGI() {
         ::kill(attr.cgi_pid, SIGKILL);
         int wstatus;
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
+        (void)pid;
         lifetime.deactivate();
-        // VOUT(pid);
         assert(pid > 0);
-        // VOUT(WIFEXITED(wstatus));
-        // VOUT(WEXITSTATUS(wstatus));
-        // VOUT(WIFSIGNALED(wstatus));
-        // VOUT(WTERMSIG(wstatus));
         attr.cgi_pid = 0;
     }
     delete attr.sock;
@@ -201,6 +197,7 @@ void CGI::capture_script_termination() {
             }
         } else if (WIFSIGNALED(wstatus)) {
             int signal = WTERMSIG(wstatus);
+            (void)signal;
             VOUT(signal);
             // throw http_error("CGI script finished by signal", HTTP::STATUS_INTERNAL_SERVER_ERROR);
         }
