@@ -152,10 +152,10 @@ public:
         // リクエストのボディサイズ(にかかわるパラメータ)を決定する
         void determine_body_size();
 
-        const RequestTarget &get_request_target() const;
-        HTTP::t_method get_http_method() const;
+        const RequestTarget &get_request_target() const throw();
+        HTTP::t_method get_http_method() const throw();
         HTTP::t_version get_http_version() const;
-        const HTTP::CH::Host &get_host() const;
+        const HTTP::CH::Host &get_host() const throw();
 
         RoutingParameters();
     };
@@ -222,24 +222,20 @@ public:
     // リクエストを凍結し, 余ったデータを返す
     light_string freeze();
 
-    // 受信済み(未解釈含む)データサイズ
-    size_t receipt_size() const;
     // 解釈済みボディサイズ
     // 「受信したデータのうち解釈済みのもの」なので、実際のボディサイズとは限らない(特にchunkedの場合は明確に異なる)
-    size_t parsed_body_size() const;
-    // 解釈済みデータサイズ
-    size_t parsed_size() const;
+    size_t parsed_body_size() const throw();
 
-    size_t effective_parsed_body_size() const;
+    size_t effective_parsed_body_size() const throw();
 
     // リクエストのHTTPバージョン
-    HTTP::t_version get_http_version() const;
+    HTTP::t_version get_http_version() const throw();
     // リクエストのHTTPメソッド
-    HTTP::t_method get_method() const;
+    HTTP::t_method get_method() const throw();
 
-    HTTP::byte_string get_content_type() const;
-    const HTTP::CH::ContentType &get_content_type_item() const;
-    const HTTP::CH::ContentDisposition &get_content_disposition_item() const;
+    HTTP::byte_string get_content_type() const throw();
+    const HTTP::CH::ContentType &get_content_type_item() const throw();
+    const HTTP::CH::ContentDisposition &get_content_disposition_item() const throw();
 
     // 受信したデータから本文を抽出して返す
     byte_string get_body() const;
@@ -249,23 +245,23 @@ public:
     void set_max_body_size(ssize_t size);
 
     // predicate: ナビゲーション(ルーティング)できる状態になったかどうか
-    bool is_routable() const;
+    bool is_routable() const throw();
     // predicate: レスポンスの受信が完了したかどうか
-    bool is_complete() const;
+    bool is_complete() const throw();
     // predicate: レスポンスを凍結したかどうか
-    bool is_freezed() const;
+    bool is_freezed() const throw();
     // predicate: このリクエストに対するレスポンスを送り終わった後, 接続を維持すべきかどうか
-    bool should_keep_in_touch() const;
+    bool should_keep_in_touch() const throw();
 
     void inject_reroute_path(const HTTP::byte_string &path);
 
     // 各種サイズの制限を調べる
     // 違反していれば対応する例外を投げる(すべてunrecovarable扱い)
     void check_size_limitation();
-    bool is_timeout(t_time_epoch_ms now) const;
+    bool is_timeout(t_time_epoch_ms now) const throw();
 
     header_holder_type::joined_dict_type get_cgi_meta_vars() const;
-    const IRequestMatchingParam &get_request_matching_param() const;
+    const IRequestMatchingParam &get_request_matching_param() const throw();
 
     // 「現在抱えているエラー」を返す.
     // ** 副作用として「現在抱えているエラー」はOKになる. **

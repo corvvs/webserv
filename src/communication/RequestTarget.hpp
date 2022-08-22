@@ -63,10 +63,10 @@ struct RequestTarget {
         byte_string path_slash_reduced;
     };
 
-    const byte_string &dauthority() const;
-    const byte_string &dpath() const;
-    const byte_string &dquery() const;
-    const byte_string &dpath_slash_reduced() const;
+    const byte_string &dauthority() const throw();
+    const byte_string &dpath() const throw();
+    const byte_string &dquery() const throw();
+    const byte_string &dpath_slash_reduced() const throw();
 
     // デコード後のpathが使用不能文字を含んでいるかどうか
     bool decoded_target_has_unacceptable() const;

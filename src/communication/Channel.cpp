@@ -15,11 +15,11 @@ Channel::~Channel() {
     delete sock;
 }
 
-t_fd Channel::get_fd() const {
+t_fd Channel::get_fd() const throw() {
     return sock->get_fd();
 }
 
-t_port Channel::get_port() const {
+t_port Channel::get_port() const throw() {
     return sock->get_port();
 }
 
@@ -47,6 +47,6 @@ void Channel::notify(IObserver &observer, IObserver::observation_category cat, t
     }
 }
 
-Channel::t_channel_id Channel::get_id() const {
+Channel::t_channel_id Channel::get_id() const throw() {
     return Channel::t_channel_id(sock->get_domain(), sock->get_port());
 }

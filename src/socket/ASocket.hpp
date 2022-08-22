@@ -21,20 +21,20 @@ private:
 protected:
     ASocket(t_socket_domain sdomain, t_socket_type stype);
 
-    ASocket(int fd, t_socket_domain sdomain, t_socket_type stype);
+    ASocket(int fd, t_socket_domain sdomain, t_socket_type stype) throw();
 
     ASocket(const ASocket &other);
-    void destroy();
+    void destroy() throw();
 
 public:
     virtual ~ASocket();
     ASocket &operator=(const ASocket &rhs);
 
     void set_nonblock();
-    int get_fd() const;
-    t_socket_domain get_domain() const;
-    t_socket_type get_type() const;
-    t_port get_port() const;
+    int get_fd() const throw();
+    t_socket_domain get_domain() const throw();
+    t_socket_type get_type() const throw();
+    t_port get_port() const throw();
 };
 
 #endif

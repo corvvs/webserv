@@ -15,32 +15,33 @@ private:
     u64t filter[256 / sizeof(u64t) / 8];
 
 public:
-    CharFilter(const byte_string &chars);
-    CharFilter(const char *chars);
-    CharFilter(const CharFilter &other);
+    CharFilter(const byte_string &chars) throw();
+    CharFilter(const char *chars) throw();
+    CharFilter(const CharFilter &other) throw();
     // by exclusive char-range
-    CharFilter(byte_type from, byte_type to);
+    CharFilter(byte_type from, byte_type to) throw();
 
-    CharFilter &operator=(const CharFilter &rhs);
-    CharFilter &operator=(const byte_string &rhs);
+    CharFilter &operator=(const CharFilter &rhs) throw();
+    CharFilter &operator=(const byte_string &rhs) throw();
 
     // set union
-    CharFilter operator|(const CharFilter &rhs) const;
+    CharFilter operator|(const CharFilter &rhs) const throw();
     // set intersection
-    CharFilter operator&(const CharFilter &rhs) const;
+    CharFilter operator&(const CharFilter &rhs) const throw();
     // set symmetric difference
-    CharFilter operator^(const CharFilter &rhs) const;
+    CharFilter operator^(const CharFilter &rhs) const throw();
     // set complement
-    CharFilter operator~() const;
-    CharFilter operator-(const CharFilter &rhs) const;
+    CharFilter operator~() const throw();
+    CharFilter operator-(const CharFilter &rhs) const throw();
 
     // 文字集合を文字列`chars`を使って初期化する
-    void fill(const byte_string &chars);
-    void fill(byte_type from, byte_type to);
+    void fill(const byte_string &chars) throw();
+    void fill(const byte_string::value_type *from, const byte_string::value_type *to) throw();
+    void fill(byte_type from, byte_type to) throw();
     // `c` が文字集合に含まれるかどうか
-    bool includes(byte_type c) const;
+    bool includes(byte_type c) const throw();
     // 文字集合のサイズ
-    byte_string::size_type size() const;
+    byte_string::size_type size() const throw();
 
     static const CharFilter empty;
     // アルファベット・小文字

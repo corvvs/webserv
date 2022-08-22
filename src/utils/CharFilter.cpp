@@ -5,35 +5,35 @@
 #define ELEMS (256 / BITS_IN_ELEM)      // 4
 #define OCTETS (sizeof(u64t) * ELEMS)   // 32
 
-HTTP::CharFilter::CharFilter(const byte_string &chars) {
+HTTP::CharFilter::CharFilter(const byte_string &chars) throw() {
     fill(chars);
 }
 
-HTTP::CharFilter::CharFilter(const char *chars) {
-    fill(byte_string(chars, chars + strlen(chars)));
+HTTP::CharFilter::CharFilter(const char *chars) throw() {
+    fill(chars, chars + strlen(chars));
 }
 
-HTTP::CharFilter::CharFilter(byte_type from, byte_type to) {
+HTTP::CharFilter::CharFilter(byte_type from, byte_type to) throw() {
     fill(from, to);
 }
 
-HTTP::CharFilter::CharFilter(const CharFilter &other) {
+HTTP::CharFilter::CharFilter(const CharFilter &other) throw() {
     *this = other;
 }
 
-HTTP::CharFilter &HTTP::CharFilter::operator=(const CharFilter &rhs) {
+HTTP::CharFilter &HTTP::CharFilter::operator=(const CharFilter &rhs) throw() {
     if (this != &rhs) {
         memcpy(filter, rhs.filter, OCTETS);
     }
     return *this;
 }
 
-HTTP::CharFilter &HTTP::CharFilter::operator=(const byte_string &rhs) {
+HTTP::CharFilter &HTTP::CharFilter::operator=(const byte_string &rhs) throw() {
     fill(rhs);
     return *this;
 }
 
-HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter &rhs) const {
+HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter &rhs) const throw() {
     CharFilter n(*this);
     for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] |= rhs.filter[i];
@@ -41,7 +41,7 @@ HTTP::CharFilter HTTP::CharFilter::operator|(const CharFilter &rhs) const {
     return n;
 }
 
-HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter &rhs) const {
+HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter &rhs) const throw() {
     CharFilter n(*this);
     for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] &= rhs.filter[i];
@@ -49,7 +49,7 @@ HTTP::CharFilter HTTP::CharFilter::operator&(const CharFilter &rhs) const {
     return n;
 }
 
-HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter &rhs) const {
+HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter &rhs) const throw() {
     CharFilter n(*this);
     for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] ^= rhs.filter[i];
@@ -57,7 +57,7 @@ HTTP::CharFilter HTTP::CharFilter::operator^(const CharFilter &rhs) const {
     return n;
 }
 
-HTTP::CharFilter HTTP::CharFilter::operator~() const {
+HTTP::CharFilter HTTP::CharFilter::operator~() const throw() {
     CharFilter n(*this);
     for (unsigned int i = 0; i < ELEMS; ++i) {
         n.filter[i] = ~n.filter[i];
@@ -65,11 +65,11 @@ HTTP::CharFilter HTTP::CharFilter::operator~() const {
     return n;
 }
 
-HTTP::CharFilter HTTP::CharFilter::operator-(const CharFilter &rhs) const {
+HTTP::CharFilter HTTP::CharFilter::operator-(const CharFilter &rhs) const throw() {
     return *this & ~rhs;
 }
 
-void HTTP::CharFilter::fill(const byte_string &chars) {
+void HTTP::CharFilter::fill(const byte_string &chars) throw() {
     memset(filter, 0, OCTETS);
     for (byte_string::size_type i = 0; i < chars.size(); ++i) {
         byte_type c                = chars[i];
@@ -79,7 +79,21 @@ void HTTP::CharFilter::fill(const byte_string &chars) {
     }
 }
 
-void HTTP::CharFilter::fill(byte_type from, byte_type to) {
+void HTTP::CharFilter::fill(const byte_string::value_type *from, const byte_string::value_type *to) throw() {
+    if (from > to) {
+        fill(to, from);
+        return;
+    }
+    memset(filter, 0, OCTETS);
+    for (; from < to; ++from) {
+        byte_type c                = *from;
+        unsigned int element_index = c / BITS_IN_ELEM;
+        unsigned int bit_index     = c & (BITS_IN_ELEM - 1);
+        filter[element_index] |= (u64t)1 << bit_index;
+    }
+}
+
+void HTTP::CharFilter::fill(byte_type from, byte_type to) throw() {
     memset(filter, 0, OCTETS);
     for (; from <= to; ++from) {
         byte_type c                = from;
@@ -92,7 +106,7 @@ void HTTP::CharFilter::fill(byte_type from, byte_type to) {
     }
 }
 
-bool HTTP::CharFilter::includes(byte_type c) const {
+bool HTTP::CharFilter::includes(byte_type c) const throw() {
     unsigned int element_index = c / BITS_IN_ELEM;
     unsigned int bit_index     = c & (BITS_IN_ELEM - 1);
     int x                      = !!(filter[element_index] & ((u64t)1 << bit_index));
@@ -134,7 +148,7 @@ bool HTTP::CharFilter::includes(byte_type c) const {
 // 0x0f0f = 0b0000111100001111 0xf0f0 = 0b1111000011110000 4
 // 0x00ff = 0b0000000011111111 0xff00 = 0b1111111100000000 8
 
-HTTP::byte_string::size_type HTTP::CharFilter::size() const {
+HTTP::byte_string::size_type HTTP::CharFilter::size() const throw() {
     byte_string::size_type n = 0;
     for (unsigned int i = 0; i < ELEMS; ++i) {
         u64t x = filter[i];

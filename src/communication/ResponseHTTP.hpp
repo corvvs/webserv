@@ -34,8 +34,8 @@ private:
     IResponseDataConsumer *data_consumer_;
     bool should_close_;
 
-    IResponseDataConsumer *consumer();
-    const IResponseDataConsumer *consumer() const;
+    IResponseDataConsumer *consumer() throw();
+    const IResponseDataConsumer *consumer() const throw();
 
 public:
     // 通常(エラーでない)応答を構築する
@@ -51,11 +51,6 @@ public:
 
     ~ResponseHTTP();
 
-    // HTTPバージョンを設定
-    void set_version(HTTP::t_version version);
-    // 応答ステータスを設定
-    void set_status(HTTP::t_status status);
-
     // HTTPヘッダを追加する
     void feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val, bool overwrite = false);
 
@@ -64,24 +59,24 @@ public:
     void start();
 
     // renderされたHTTPメッセージデータ全体を返す
-    const byte_string &get_message_text() const;
+    const byte_string &get_message_text() const throw();
     // 未送信のHTTPメッセージデータを返す
     const byte_string::value_type *get_unsent_head();
     // 送信済みバイト数を増やす
-    void mark_sent(ssize_t sent);
+    void mark_sent(ssize_t sent) throw();
     // 未送信のHTTPメッセージデータのサイズを返す
-    size_t get_unsent_size() const;
+    size_t get_unsent_size() const throw();
 
     // predicate: メッセージ全体の送信が完了したかどうか
-    bool is_complete() const;
+    bool is_complete() const throw();
     // predicate: エラー応答かどうか
-    bool is_error() const;
+    bool is_error() const throw();
     // predicate: タイムアウトしているかどうか
-    bool is_timeout(t_time_epoch_ms now) const;
+    bool is_timeout(t_time_epoch_ms now) const throw();
     // predicate: このレスポンスを送り終わった後, HTTP接続を閉じるべきかどうか
-    bool should_close() const;
+    bool should_close() const throw();
 
-    static void swap(ResponseHTTP &lhs, ResponseHTTP &rhs);
+    static void swap(ResponseHTTP &lhs, ResponseHTTP &rhs) throw();
 };
 
 #endif

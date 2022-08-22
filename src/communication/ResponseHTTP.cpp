@@ -49,14 +49,6 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version, const minor_error &error, bo
 
 ResponseHTTP::~ResponseHTTP() {}
 
-void ResponseHTTP::set_version(HTTP::t_version version) {
-    version_ = version;
-}
-
-void ResponseHTTP::set_status(HTTP::t_status status) {
-    status_ = status;
-}
-
 void ResponseHTTP::feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val, bool overwrite) {
     if (!overwrite && header_dict.find(key) != header_dict.end() && !is_error()) {
         DXOUT("warning: duplicate header: " << key);
@@ -87,7 +79,7 @@ void ResponseHTTP::start() {
     consumer()->start(serialize_former_part());
 }
 
-const ResponseHTTP::byte_string &ResponseHTTP::get_message_text() const {
+const ResponseHTTP::byte_string &ResponseHTTP::get_message_text() const throw() {
     return message_text;
 }
 
@@ -96,7 +88,7 @@ const ResponseHTTP::byte_string::value_type *ResponseHTTP::get_unsent_head() {
     return consumer()->serialized_head();
 }
 
-void ResponseHTTP::mark_sent(ssize_t sent) {
+void ResponseHTTP::mark_sent(ssize_t sent) throw() {
     if (sent < 0) {
         return;
     }
@@ -106,11 +98,11 @@ void ResponseHTTP::mark_sent(ssize_t sent) {
     }
 }
 
-size_t ResponseHTTP::get_unsent_size() const {
+size_t ResponseHTTP::get_unsent_size() const throw() {
     return consumer()->rest_serialized();
 }
 
-bool ResponseHTTP::is_complete() const {
+bool ResponseHTTP::is_complete() const throw() {
     // VOUT(status_);
     // VOUT(getpid());
     // VOUT(this);
@@ -118,7 +110,7 @@ bool ResponseHTTP::is_complete() const {
     return consumer() != NULL && consumer()->is_sending_over();
 }
 
-void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) {
+void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) throw() {
     std::swap(lhs.version_, rhs.version_);
     std::swap(lhs.status_, rhs.status_);
     std::swap(lhs.merror, rhs.merror);
@@ -132,22 +124,22 @@ void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) {
     std::swap(lhs.should_close_, rhs.should_close_);
 }
 
-bool ResponseHTTP::is_error() const {
+bool ResponseHTTP::is_error() const throw() {
     return merror.is_error();
 }
 
-bool ResponseHTTP::is_timeout(t_time_epoch_ms now) const {
+bool ResponseHTTP::is_timeout(t_time_epoch_ms now) const throw() {
     return lifetime.is_timeout(now);
 }
 
-bool ResponseHTTP::should_close() const {
+bool ResponseHTTP::should_close() const throw() {
     return should_close_;
 }
 
-IResponseDataConsumer *ResponseHTTP::consumer() {
+IResponseDataConsumer *ResponseHTTP::consumer() throw() {
     return (data_consumer_ != NULL) ? data_consumer_ : &local_datalist;
 }
 
-const IResponseDataConsumer *ResponseHTTP::consumer() const {
+const IResponseDataConsumer *ResponseHTTP::consumer() const throw() {
     return (data_consumer_ != NULL) ? data_consumer_ : &local_datalist;
 }

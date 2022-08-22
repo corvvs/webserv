@@ -610,7 +610,7 @@ minor_error RequestHTTP::RoutingParameters::determine_host(const header_holder_t
     return minor_error::ok();
 }
 
-const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const {
+const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const throw() {
     if (use_reroute) {
         return reroute_request_target;
     } else {
@@ -618,7 +618,7 @@ const RequestTarget &RequestHTTP::RoutingParameters::get_request_target() const 
     }
 }
 
-HTTP::t_method RequestHTTP::RoutingParameters::get_http_method() const {
+HTTP::t_method RequestHTTP::RoutingParameters::get_http_method() const throw() {
     return http_method;
 }
 
@@ -629,62 +629,54 @@ HTTP::t_version RequestHTTP::RoutingParameters::get_http_version() const {
     return http_version.value();
 }
 
-const HTTP::CH::Host &RequestHTTP::RoutingParameters::get_host() const {
+const HTTP::CH::Host &RequestHTTP::RoutingParameters::get_host() const throw() {
     return header_host;
 }
 
-bool RequestHTTP::is_routable() const {
+bool RequestHTTP::is_routable() const throw() {
     return this->ps.parse_progress >= PP_BODY;
 }
 
-bool RequestHTTP::is_complete() const {
+bool RequestHTTP::is_complete() const throw() {
     return this->ps.parse_progress >= PP_OVER;
 }
 
-bool RequestHTTP::is_freezed() const {
+bool RequestHTTP::is_freezed() const throw() {
     return this->ps.is_freezed;
 }
 
-bool RequestHTTP::is_timeout(t_time_epoch_ms now) const {
+bool RequestHTTP::is_timeout(t_time_epoch_ms now) const throw() {
     return lifetime.is_timeout(now) || lifetime_header.is_timeout(now);
 }
 
-size_t RequestHTTP::receipt_size() const {
-    return bytebuffer.size();
-}
-
-size_t RequestHTTP::parsed_body_size() const {
+size_t RequestHTTP::parsed_body_size() const throw() {
     return this->mid - this->ps.start_of_body;
 }
 
-size_t RequestHTTP::effective_parsed_body_size() const {
+size_t RequestHTTP::effective_parsed_body_size() const throw() {
     if (ps.parse_progress >= PP_OVER) {
         return ps.end_of_body - ps.start_of_body;
     }
     return parsed_body_size();
 }
 
-size_t RequestHTTP::parsed_size() const {
-    return this->mid;
-}
-
-HTTP::t_version RequestHTTP::get_http_version() const {
+HTTP::t_version RequestHTTP::get_http_version() const throw() {
     return this->rp.get_http_version();
 }
 
-HTTP::t_method RequestHTTP::get_method() const {
+HTTP::t_method RequestHTTP::get_method() const throw() {
     return this->rp.http_method;
 }
 
-RequestHTTP::byte_string RequestHTTP::get_content_type() const {
+RequestHTTP::byte_string RequestHTTP::get_content_type() const throw() {
     return this->rp.content_type.value;
 }
 
-const HTTP::CH::ContentType &RequestHTTP::get_content_type_item() const {
+const HTTP::CH::ContentType &RequestHTTP::get_content_type_item() const throw() {
     return this->rp.content_type;
 }
 
-const HTTP::CH::ContentDisposition &RequestHTTP::get_content_disposition_item() const {
+const HTTP::CH::ContentDisposition &RequestHTTP::get_content_disposition_item() const throw() {
     return this->rp.content_disposition;
 }
 
@@ -714,8 +706,7 @@ RequestHTTP::light_string RequestHTTP::freeze() {
     return light_string(bytebuffer, this->ps.end_of_body);
 }
 
-bool RequestHTTP::should_keep_in_touch() const {
-    // TODO: 仮実装
+bool RequestHTTP::should_keep_in_touch() const throw() {
     if (this->rp.connection.close_) {
         return false;
     }
@@ -726,7 +717,7 @@ RequestHTTP::header_holder_type::joined_dict_type RequestHTTP::get_cgi_meta_vars
     return header_holder.get_cgi_meta_vars();
 }
 
-const IRequestMatchingParam &RequestHTTP::get_request_matching_param() const {
+const IRequestMatchingParam &RequestHTTP::get_request_matching_param() const throw() {
     return rp;
 }
 

@@ -106,19 +106,19 @@ void RequestTarget::decode_pct_encoded() {
     }
 }
 
-const RequestTarget::byte_string &RequestTarget::dauthority() const {
+const RequestTarget::byte_string &RequestTarget::dauthority() const throw() {
     return decoded_parts.authority;
 }
 
-const RequestTarget::byte_string &RequestTarget::dpath() const {
+const RequestTarget::byte_string &RequestTarget::dpath() const throw() {
     return decoded_parts.path;
 }
 
-const RequestTarget::byte_string &RequestTarget::dquery() const {
+const RequestTarget::byte_string &RequestTarget::dquery() const throw() {
     return decoded_parts.query;
 }
 
-const RequestTarget::byte_string &RequestTarget::dpath_slash_reduced() const {
+const RequestTarget::byte_string &RequestTarget::dpath_slash_reduced() const throw() {
     return decoded_parts.path_slash_reduced;
 }
 

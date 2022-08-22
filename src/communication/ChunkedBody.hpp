@@ -32,9 +32,9 @@ public:
 
     void add_chunk(Chunk &chunk);
     byte_string body() const;
-    size_type size() const;
+    size_type size() const throw();
     // 完全か = 最終チャンクが受信済みか?
-    bool is_complete() const;
+    bool is_complete() const throw();
 };
 
 #endif

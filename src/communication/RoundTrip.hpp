@@ -20,7 +20,6 @@ class RoundTrip {
 public:
     typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
-    typedef std::deque<HTTP::char_type> extra_buffer_type;
 
 private:
     IRouter &router;

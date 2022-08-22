@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-// 別のstringの一部分をiteratorペアとして参照する軽量string
+// 別のvectorの一部分をiteratorペアとして参照する軽量vector
 // C++17以降にある string_view と思えば良いか
 // **元の文字列の変更は許可しない**
 template <class T>
@@ -34,11 +34,11 @@ private:
     size_type last;
 
 public:
-    LightString() : base(NULL) {
+    LightString() throw() : base(NULL) {
         first = last = 0;
     }
 
-    LightString(const string_class &str) : base(&str), first(0), last(str.size()) {}
+    LightString(const string_class &str) throw() : base(&str), first(0), last(str.size()) {}
 
     LightString(const string_class &str, const_iterator f, const_iterator l)
         : base(&str)
@@ -54,18 +54,18 @@ public:
     LightString(const LightString &lstr, size_type fi, size_type li = npos)
         : base(lstr.base), first(lstr.first + fi), last(std::max(first, lstr.first + std::min(lstr.size(), li))) {}
 
-    LightString(const LightString &other) {
+    LightString(const LightString &other) throw() {
         *this = other;
     }
 
-    LightString &operator=(const LightString &rhs) {
+    LightString &operator=(const LightString &rhs) throw() {
         base  = rhs.base;
         first = rhs.first;
         last  = rhs.last;
         return *this;
     }
 
-    LightString &operator=(const string_class &rhs) {
+    LightString &operator=(const string_class &rhs) throw() {
         base  = &rhs;
         first = 0;
         last  = rhs.size();
@@ -73,19 +73,19 @@ public:
     }
 
     // 参照先文字列を取得
-    const string_class &get_base() const {
+    const string_class &get_base() const throw() {
         return *base;
     }
 
-    size_type get_first() const {
+    size_type get_first() const throw() {
         return first;
     }
 
-    size_type get_last() const {
+    size_type get_last() const throw() {
         return last;
     }
 
-    // std::string を生成
+    // byte_string を生成
     string_class str() const {
         if (!base || first == last) {
             return HTTP::strfy("");
@@ -96,40 +96,40 @@ public:
         return string_class(base->begin() + first, base->begin() + last);
     }
 
-    // ダブルクオートで囲んだ std::string を生成
+    // ダブルクオートで囲んだ byte_string を生成
     string_class qstr() const {
         return HTTP::strfy("\"") + str() + HTTP::strfy("\"");
     }
 
-    size_type size() const {
+    size_type size() const throw() {
         return last - first;
     }
 
-    size_type length() const {
+    size_type length() const throw() {
         return last - first;
     }
 
-    iterator begin() {
+    iterator begin() throw() {
         return base->begin() + first;
     }
 
-    const_iterator begin() const {
+    const_iterator begin() const throw() {
         return base->begin() + first;
     }
 
-    iterator end() {
+    iterator end() throw() {
         return base->begin() + last;
     }
 
-    const_iterator end() const {
+    const_iterator end() const throw() {
         return base->begin() + last;
     }
 
-    const_reference operator[](size_type pos) const {
+    const_reference operator[](size_type pos) const throw() {
         return (*base)[first + pos];
     }
 
-    element operator[](size_type pos) {
+    element operator[](size_type pos) throw() {
         return (*base)[first + pos];
     }
 

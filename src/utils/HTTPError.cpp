@@ -26,7 +26,7 @@ minor_error::minor_error(const http_error &other) {
     second = other.get_status();
 }
 
-minor_error &minor_error::operator=(const minor_error &rhs) {
+minor_error &minor_error::operator=(const minor_error &rhs) throw() {
     if (this != &rhs) {
         first  = rhs.first;
         second = rhs.second;
@@ -34,19 +34,19 @@ minor_error &minor_error::operator=(const minor_error &rhs) {
     return *this;
 }
 
-bool minor_error::is_ok() const {
+bool minor_error::is_ok() const throw() {
     return !is_error();
 }
 
-bool minor_error::is_error() const {
+bool minor_error::is_error() const throw() {
     return first.size() > 0;
 }
 
-minor_error::first_type minor_error::message() const {
+minor_error::first_type minor_error::message() const throw() {
     return first;
 }
 
-minor_error::second_type minor_error::status_code() const {
+minor_error::second_type minor_error::status_code() const throw() {
     return second;
 }
 

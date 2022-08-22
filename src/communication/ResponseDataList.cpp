@@ -1,7 +1,7 @@
 #include "ResponseDataList.hpp"
 #include <cassert>
 
-ResponseDataBucket::ResponseDataBucket() : is_completed(false) {}
+ResponseDataBucket::ResponseDataBucket() throw() : is_completed(false) {}
 
 ResponseDataList::ResponseDataList() : total(0), sent_serialized(0), sending_mode(SM_UNKNOWN) {
     list.push_back(ResponseDataBucket());
@@ -50,7 +50,7 @@ bool ResponseDataList::is_injection_closed() const {
     return is_all_serialized() || list.back().is_completed;
 }
 
-void ResponseDataList::set_mode(t_sending_mode mode) {
+void ResponseDataList::set_mode(t_sending_mode mode) throw() {
     assert(mode != SM_UNKNOWN);
     sending_mode = mode;
 }
@@ -100,27 +100,27 @@ const HTTP::byte_string::value_type *ResponseDataList::serialized_head() const {
     return &serialized_data.front() + sent_serialized;
 }
 
-size_t ResponseDataList::rest_serialized() const {
+size_t ResponseDataList::rest_serialized() const throw() {
     return serialized_data.size() - sent_serialized;
 }
 
-void ResponseDataList::mark_sent(size_t n) {
+void ResponseDataList::mark_sent(size_t n) throw() {
     sent_serialized += n;
 }
 
-bool ResponseDataList::is_sending_current() const {
+bool ResponseDataList::is_sending_current() const throw() {
     return sending_mode != SM_UNKNOWN && sent_serialized < serialized_data.size();
 }
 
-bool ResponseDataList::is_sent_current() const {
+bool ResponseDataList::is_sent_current() const throw() {
     return sending_mode != SM_UNKNOWN && !is_sending_current();
 }
 
-bool ResponseDataList::is_sending_over() const {
+bool ResponseDataList::is_sending_over() const throw() {
     return is_all_serialized() && is_sent_current();
 }
 
-size_t ResponseDataList::current_total_size() const {
+size_t ResponseDataList::current_total_size() const throw() {
     return total;
 }
 
@@ -130,7 +130,7 @@ bool ResponseDataList::is_serializable() const {
     return list.size() > 0 && list.front().is_completed;
 }
 
-bool ResponseDataList::is_all_serialized() const {
+bool ResponseDataList::is_all_serialized() const throw() {
     return list.size() == 0;
 }
 
@@ -164,11 +164,11 @@ HTTP::byte_string ResponseDataList::serialize_bucket(const ResponseDataBucket &b
     return serialized;
 }
 
-ResponseDataList::t_sending_mode ResponseDataList::get_sending_mode() const {
+ResponseDataList::t_sending_mode ResponseDataList::get_sending_mode() const throw() {
     return sending_mode;
 }
 
-bool ResponseDataList::empty() const {
+bool ResponseDataList::empty() const throw() {
     return list.empty();
 }
 

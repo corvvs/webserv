@@ -1,6 +1,6 @@
 #include "SocketType.hpp"
 
-int sockdomain(t_socket_domain d) {
+int sockdomain(t_socket_domain d) throw() {
     switch (d) {
         case SD_IP4:
             return AF_INET;
@@ -9,11 +9,12 @@ int sockdomain(t_socket_domain d) {
         case SD_UNIX:
             return AF_UNIX;
         default:
-            throw std::runtime_error("unexpected socket domain");
+            assert(false);
+            return AF_UNSPEC;
     }
 }
 
-int socktype(t_socket_type t) {
+int socktype(t_socket_type t) throw() {
     switch (t) {
         case ST_TCP:
         case ST_STREAM:
@@ -21,6 +22,7 @@ int socktype(t_socket_type t) {
         case ST_UDP:
             return SOCK_DGRAM;
         default:
-            throw std::runtime_error("unexpected asocket type");
+            assert(false);
+            return AF_UNSPEC;
     }
 }

@@ -28,46 +28,46 @@ private:
     t_time_epoch_ms deactivated_at;
     t_time_epoch_ms activated_at;
 
-    bool is_active() const;
+    bool is_active() const throw();
 
 public:
-    Lifetime(const t_time_epoch_ms &active, const t_time_epoch_ms &inactive);
+    Lifetime(const t_time_epoch_ms &active, const t_time_epoch_ms &inactive) throw();
 
-    void activate();
-    void deactivate();
-    bool is_timeout(t_time_epoch_ms now) const;
+    void activate() throw();
+    void deactivate() throw();
+    bool is_timeout(t_time_epoch_ms now) const throw();
 
     // [Factory関数群]
 
     // コネクションができてからすぐにデータを送ってこない場合のための設定
     static const t_time_epoch_ms LIFETIME_CONNECTION_ACTIVE;
     static const t_time_epoch_ms LIFETIME_CONNECTION_INACTIVE;
-    static Lifetime make_connection();
+    static Lifetime make_connection() throw();
 
     // ラウンドトリップの持続時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_ROUNDTRIP_ACTIVE;
     static const t_time_epoch_ms LIFETIME_ROUNDTRIP_INACTIVE;
-    static Lifetime make_round_trip();
+    static Lifetime make_round_trip() throw();
 
     // リクエストの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_REQUEST_HEADER_ACTIVE;
     static const t_time_epoch_ms LIFETIME_REQUEST_HEADER_INACTIVE;
-    static Lifetime make_request();
+    static Lifetime make_request() throw();
 
     // リクエストのヘッダの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_REQUEST_ACTIVE;
     static const t_time_epoch_ms LIFETIME_REQUEST_INACTIVE;
-    static Lifetime make_request_header();
+    static Lifetime make_request_header() throw();
 
     // レスポンスの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_RESPONSE_ACTIVE;
     static const t_time_epoch_ms LIFETIME_RESPONSE_INACTIVE;
-    static Lifetime make_response();
+    static Lifetime make_response() throw();
 
     // CGIの処理時間が長すぎる場合のための設定
     static const t_time_epoch_ms LIFETIME_CGI_ACTIVE;
     static const t_time_epoch_ms LIFETIME_CGI_INACTIVE;
-    static Lifetime make_cgi();
+    static Lifetime make_cgi() throw();
 };
 
 #endif

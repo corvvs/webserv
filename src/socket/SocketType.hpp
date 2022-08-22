@@ -22,7 +22,7 @@ typedef int t_fd;
 typedef u16t t_port;
 typedef u32t t_addressv4;
 
-int sockdomain(t_socket_domain d);
-int socktype(t_socket_type t);
+int sockdomain(t_socket_domain d) throw();
+int socktype(t_socket_type t) throw();
 
 #endif

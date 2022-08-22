@@ -5,29 +5,29 @@
 #define SECOND_IN_MS 1000
 #define MINUTE_IN_MS 60000
 
-Lifetime::Lifetime(const t_time_epoch_ms &active, const t_time_epoch_ms &inactive)
+Lifetime::Lifetime(const t_time_epoch_ms &active, const t_time_epoch_ms &inactive) throw()
     : lifetime_active(active), lifetime_inactive(inactive) {
     deactivated_at = WSTime::get_epoch_ms();
     activated_at   = 0;
 }
 
-bool Lifetime::is_active() const {
+bool Lifetime::is_active() const throw() {
     return activated_at >= deactivated_at;
 }
 
-void Lifetime::activate() {
+void Lifetime::activate() throw() {
     if (!is_active()) {
         activated_at = WSTime::get_epoch_ms();
     }
 }
 
-void Lifetime::deactivate() {
+void Lifetime::deactivate() throw() {
     if (is_active()) {
         deactivated_at = WSTime::get_epoch_ms();
     }
 }
 
-bool Lifetime::is_timeout(t_time_epoch_ms now) const {
+bool Lifetime::is_timeout(t_time_epoch_ms now) const throw() {
     if (is_active()) {
         // アクティブ状態
         const bool is_mortal           = lifetime_active > 0;
@@ -49,36 +49,36 @@ bool Lifetime::is_timeout(t_time_epoch_ms now) const {
 
 const t_time_epoch_ms Lifetime::LIFETIME_CONNECTION_ACTIVE   = 0;
 const t_time_epoch_ms Lifetime::LIFETIME_CONNECTION_INACTIVE = 5 * SECOND_IN_MS;
-Lifetime Lifetime::make_connection() {
+Lifetime Lifetime::make_connection() throw() {
     return Lifetime(LIFETIME_CONNECTION_ACTIVE, LIFETIME_CONNECTION_INACTIVE);
 }
 
 const t_time_epoch_ms Lifetime::LIFETIME_ROUNDTRIP_ACTIVE   = 60 * SECOND_IN_MS;
 const t_time_epoch_ms Lifetime::LIFETIME_ROUNDTRIP_INACTIVE = 60 * SECOND_IN_MS;
-Lifetime Lifetime::make_round_trip() {
+Lifetime Lifetime::make_round_trip() throw() {
     return Lifetime(LIFETIME_ROUNDTRIP_ACTIVE, LIFETIME_ROUNDTRIP_INACTIVE);
 }
 
 const t_time_epoch_ms Lifetime::LIFETIME_REQUEST_ACTIVE   = 30 * SECOND_IN_MS;
 const t_time_epoch_ms Lifetime::LIFETIME_REQUEST_INACTIVE = 0;
-Lifetime Lifetime::make_request() {
+Lifetime Lifetime::make_request() throw() {
     return Lifetime(LIFETIME_REQUEST_ACTIVE, LIFETIME_REQUEST_INACTIVE);
 }
 
 const t_time_epoch_ms Lifetime::LIFETIME_REQUEST_HEADER_ACTIVE   = 15 * SECOND_IN_MS;
 const t_time_epoch_ms Lifetime::LIFETIME_REQUEST_HEADER_INACTIVE = 0;
-Lifetime Lifetime::make_request_header() {
+Lifetime Lifetime::make_request_header() throw() {
     return Lifetime(LIFETIME_REQUEST_HEADER_ACTIVE, LIFETIME_REQUEST_HEADER_INACTIVE);
 }
 
 const t_time_epoch_ms Lifetime::LIFETIME_RESPONSE_ACTIVE   = 30 * SECOND_IN_MS;
 const t_time_epoch_ms Lifetime::LIFETIME_RESPONSE_INACTIVE = 0;
-Lifetime Lifetime::make_response() {
+Lifetime Lifetime::make_response() throw() {
     return Lifetime(LIFETIME_RESPONSE_ACTIVE, LIFETIME_RESPONSE_INACTIVE);
 }
 
 const t_time_epoch_ms Lifetime::LIFETIME_CGI_ACTIVE   = 60 * SECOND_IN_MS;
 const t_time_epoch_ms Lifetime::LIFETIME_CGI_INACTIVE = 0;
-Lifetime Lifetime::make_cgi() {
+Lifetime Lifetime::make_cgi() throw() {
     return Lifetime(LIFETIME_CGI_ACTIVE, LIFETIME_CGI_INACTIVE);
 }
