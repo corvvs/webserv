@@ -1,4 +1,4 @@
-package simple
+package longest_match
 
 import (
 	"http_test/client"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestSimple(t *testing.T) {
+func TestNest(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
@@ -15,28 +15,10 @@ func TestSimple(t *testing.T) {
 		body       []byte
 	}{
 		{
-			name:       "root",
-			request:    "GET /html HTTP/1.1\r\n" + validHeader,
-			statusCode: http.StatusOK,
-			body:       indexHtml,
-		},
-		{
-			name:       "indexHtml",
+			name:       "longest_match",
 			request:    "GET /html/index.html HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusOK,
 			body:       indexHtml,
-		},
-		{
-			name:       "sampleHtml",
-			request:    "GET /html/sample.html HTTP/1.1\r\n" + validHeader,
-			statusCode: http.StatusOK,
-			body:       sampleHtml,
-		},
-		{
-			name:       "dirHtml",
-			request:    "GET /dir HTTP/1.1\r\n" + validHeader,
-			statusCode: http.StatusOK,
-			body:       dirHtml,
 		},
 	}
 	for _, tt := range tests {
