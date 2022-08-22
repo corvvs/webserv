@@ -3,8 +3,8 @@
 #define WRITE_SIZE 1024
 #define NON_FD -1
 
-FileDeleter::FileDeleter(const RequestMatchingResult &match_result, FileCacher &cacher)
-    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
+FileDeleter::FileDeleter(const RequestMatchingResult &match_result)
+    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false) {}
 
 FileDeleter::~FileDeleter() {}
 
@@ -36,8 +36,6 @@ void FileDeleter::delete_file() {
         }
         return;
     }
-    // cacheも削除する
-    cacher_.erase(file_path_.c_str());
     response_data.inject("", 0, true);
     originated_ = true;
 }

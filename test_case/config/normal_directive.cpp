@@ -39,8 +39,8 @@ TEST_F(normal_directive_test, get_error_page) {
 
     const std::string target = "/";
     std::map<HTTP::t_status, std::string> error_page;
-    //    error_page[404] = "";
-    EXPECT_EQ(error_page, conf.get_error_page(target));
+    config::ContextLocation loc;
+    EXPECT_EQ(loc.error_pages, conf.get_error_page(target));
 }
 
 TEST_F(normal_directive_test, get_index) {
@@ -161,18 +161,27 @@ TEST_F(normal_directive_test, get_error_page_from_mix_context) {
     const config::host_port_pair hp = std::make_pair("127.0.0.1", 80);
     const config::Config conf       = configs[hp].front();
 
-    std::map<HTTP::t_status, std::string> error_page;
-    error_page[HTTP::STATUS_BAD_REQUEST] = "error.html";
-    EXPECT_EQ(error_page, conf.get_error_page("/"));
-    error_page.clear();
-    error_page[HTTP::STATUS_UNAUTHORIZED] = "error1.html";
-    EXPECT_EQ(error_page, conf.get_error_page("/dir1"));
-    error_page.clear();
-    error_page[(HTTP::t_status)402] = "error2.html";
-    EXPECT_EQ(error_page, conf.get_error_page("/dir2"));
-    error_page.clear();
-    error_page[HTTP::STATUS_FORBIDDEN] = "error3.html";
-    EXPECT_EQ(error_page, conf.get_error_page("/dir2/dir3"));
+    {
+        std::map<HTTP::t_status, std::string> error_page;
+        config::ContextLocation loc;
+        loc.error_pages[HTTP::STATUS_BAD_REQUEST] = "error.html";
+        EXPECT_EQ(loc.error_pages, conf.get_error_page("/"));
+    }
+    {
+        config::ContextLocation loc;
+        loc.error_pages[HTTP::STATUS_UNAUTHORIZED] = "error1.html";
+        EXPECT_EQ(loc.error_pages, conf.get_error_page("/dir1"));
+    }
+    {
+        config::ContextLocation loc;
+        loc.error_pages[(HTTP::t_status)402] = "error2.html";
+        EXPECT_EQ(loc.error_pages, conf.get_error_page("/dir2"));
+    }
+    {
+        config::ContextLocation loc;
+        loc.error_pages[HTTP::STATUS_FORBIDDEN] = "error3.html";
+        EXPECT_EQ(loc.error_pages, conf.get_error_page("/dir2/dir3"));
+    }
 }
 
 TEST_F(normal_directive_test, get_index_from_mix_context) {
