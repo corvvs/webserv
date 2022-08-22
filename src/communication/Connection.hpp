@@ -21,7 +21,6 @@ class Connection : public ISocketLike {
 public:
     typedef HTTP::byte_string byte_string;
     typedef HTTP::light_string light_string;
-    typedef std::deque<HTTP::char_type> extra_buffer_type;
 
     // コネクションオブジェクトの内部状態
     enum t_phase {
@@ -30,15 +29,6 @@ public:
         // Gracefulに接続を切っていくモード
         CONNECTION_SHUTTING_DOWN,
         CONNECTION_DUMMY
-    };
-
-    // 準静的なコネクションの性質
-    // "準静的" = リクエストの内容次第で変更されうるが, それ以外(=時間変化など)によっては変わらない
-    struct Attribute {
-        bool is_persistent;
-        t_time_epoch_ms timeout;
-
-        Attribute();
     };
 
     class NetworkBuffer {
@@ -73,8 +63,6 @@ public:
     };
 
 private:
-    Attribute attr;
-
     t_phase phase;
 
     // 今切断中かどうか

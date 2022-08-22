@@ -5,13 +5,6 @@
 #define MAX_REQLINE_END 8192
 #define MAX_EXTRA_AMOUNT 1048576
 
-// [[Attribute]]
-
-Connection::Attribute::Attribute() {
-    is_persistent = true;
-    timeout       = 60 * 1000;
-}
-
 // [[NetwotkBuffer]]
 
 Connection::NetworkBuffer::NetworkBuffer() : read_size(0), extra_amount(0) {
@@ -94,8 +87,7 @@ Connection::Connection(IRouter *router,
                        SocketConnected *sock_given,
                        const config::config_vector &configs,
                        FileCacher &cacher)
-    : attr(Attribute())
-    , phase(CONNECTION_ESTABLISHED)
+    : phase(CONNECTION_ESTABLISHED)
     , dying(false)
     , unrecoverable(false)
     , sock(sock_given)

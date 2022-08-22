@@ -61,8 +61,6 @@ enum t_method {
 
 // HTTPバージョン
 enum t_version {
-    V_UNKNOWN,
-
     V_0_9,
     V_1_0,
     V_1_1,
