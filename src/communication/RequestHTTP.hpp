@@ -44,6 +44,7 @@ public:
     virtual header_holder_type::joined_dict_type get_cgi_meta_vars() const  = 0;
     virtual HTTP::byte_string get_content_type() const                      = 0;
     virtual HTTP::byte_string get_body() const                              = 0;
+    virtual bool is_complete() const                                        = 0;
 };
 
 class IContentProvider {

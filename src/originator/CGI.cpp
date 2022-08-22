@@ -46,7 +46,8 @@ const CGI::byte_string CGI::META_SCRIPT_NAME       = HTTP::strfy("SCRIPT_NAME");
 const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
-    : attr(Attribute(match_result, request))
+    : leaving(false)
+    , attr(Attribute(match_result, request))
     , lifetime(Lifetime::make_response())
     , metavar_(request.get_cgi_meta_vars())
     , to_script_content_length_(0)
@@ -250,7 +251,9 @@ char **CGI::flatten_metavar(const metavar_dict_type &metavar) {
         }
         memcpy(item, &(it->first.front()), it->first.size());
         item[it->first.size()] = '=';
-        memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
+        if (it->second.size() > 0) {
+            memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
+        }
         frame[i]    = item;
         frame[i][j] = '\0';
         // VOUT(frame[i]);
@@ -300,6 +303,9 @@ t_port CGI::get_port() const {
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     // DXOUT("CGI received: " << cat);
+    if (leaving) {
+        return;
+    }
     if (attr.master) {
         switch (cat) {
             case IObserver::OT_WRITE:
@@ -402,7 +408,7 @@ void CGI::perform_receiving(IObserver &observer) {
 }
 
 bool CGI::is_originatable() const {
-    return !status.is_started;
+    return attr.configuration_provider_.is_complete() && !status.is_started;
 }
 
 bool CGI::is_origination_started() const {
@@ -427,11 +433,17 @@ HTTP::byte_string CGI::reroute_path() const {
 }
 
 void CGI::leave() {
+    if (leaving) {
+        DXOUT("now already leaving.");
+        return;
+    }
     DXOUT("leaving.");
+    leaving = true;
     if (attr.observer != NULL) {
         attr.observer->reserve_unhold(this);
     } else {
         // Observerに渡される前に leave されることがある
+        DXOUT("leaving immediately.");
         delete this;
     }
 }
