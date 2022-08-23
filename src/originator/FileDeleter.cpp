@@ -3,8 +3,8 @@
 #define WRITE_SIZE 1024
 #define NON_FD -1
 
-FileDeleter::FileDeleter(const RequestMatchingResult &match_result, FileCacher &cacher)
-    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
+FileDeleter::FileDeleter(const RequestMatchingResult &match_result)
+    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false) {}
 
 FileDeleter::~FileDeleter() {}
 
@@ -36,8 +36,8 @@ void FileDeleter::delete_file() {
         }
         return;
     }
-    // cacheも削除する
-    cacher_.erase(file_path_.c_str());
+    const byte_string msg = HTTP::strfy("\"" + file_path_ + "\"" + " was successfully deleted.\n");
+    response_data.inject(msg, false);
     response_data.inject("", 0, true);
     originated_ = true;
 }
@@ -77,8 +77,20 @@ void FileDeleter::leave() {
 }
 
 ResponseHTTP *FileDeleter::respond(const RequestHTTP *request) {
-    response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, false);
+    ResponseHTTP::header_list_type headers;
+    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    switch (sm) {
+        case ResponseDataList::SM_CHUNKED:
+            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+            break;
+        case ResponseDataList::SM_NOT_CHUNKED:
+            headers.push_back(
+                std::make_pair(HeaderHTTP::content_length, ParserHelper::utos(response_data.current_total_size(), 10)));
+            break;
+        default:
+            break;
+    }
+    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;
 }
