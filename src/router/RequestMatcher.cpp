@@ -104,11 +104,34 @@ RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const Reque
     return resource;
 }
 
+bool RequestMatcher::is_post(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf) {
+    if (method != HTTP::METHOD_POST) {
+        return false;
+    }
+    const std::string &upload_store = conf.get_upload_store(HTTP::restrfy(target.dpath_slash_reduced()));
+    return !upload_store.empty();
+}
+
+std::pair<HTTP::byte_string, bool> RequestMatcher::make_post_path(const RequestTarget &target,
+                                                                  const config::Config &conf) const {
+    const std::string upload_store = conf.get_upload_store(HTTP::restrfy(target.dpath_slash_reduced()));
+    if (file::is_dir(upload_store)) {
+        return std::make_pair(HTTP::strfy(upload_store), true);
+    }
+    return std::make_pair(HTTP::strfy(""), false);
+}
+
 RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const RequestTarget &target,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
-    std::pair<HTTP::byte_string, bool> path_isdir = make_resource_path(target, conf);
+    std::pair<HTTP::byte_string, bool> path_isdir;
+    if (is_post(target, method, conf)) {
+        path_isdir = make_post_path(target, conf);
+    } else {
+        path_isdir = make_resource_path(target, conf);
+    }
+
     if (target.form != RequestTarget::FORM_ORIGIN) {
         res.error = minor_error::make("form of a target is not an origin-form", HTTP::STATUS_BAD_REQUEST);
         return res;
