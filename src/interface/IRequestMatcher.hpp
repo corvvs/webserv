@@ -62,6 +62,10 @@ struct RequestMatchingResult {
     // 外部リダイレクトの行先
     HTTP::byte_string redirect_location;
 
+    // マッチしたサーバブロックの server_name
+    // (適当な値がない場合は空文字列)
+    HTTP::byte_string server_name;
+
     long client_max_body_size;
 
     RequestMatchingResult(const RequestTarget *target);

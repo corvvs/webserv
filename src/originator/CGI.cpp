@@ -40,13 +40,16 @@ const CGI::byte_string CGI::META_REQUEST_METHOD    = HTTP::strfy("REQUEST_METHOD
 const CGI::byte_string CGI::META_SERVER_PROTOCOL   = HTTP::strfy("SERVER_PROTOCOL");
 const CGI::byte_string CGI::META_CONTENT_TYPE      = HTTP::strfy("CONTENT_TYPE");
 const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
+const CGI::byte_string CGI::META_SERVER_NAME       = HTTP::strfy("SERVER_NAME");
 const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
 const CGI::byte_string CGI::META_PATH_INFO         = HTTP::strfy("PATH_INFO");
 const CGI::byte_string CGI::META_SCRIPT_NAME       = HTTP::strfy("SCRIPT_NAME");
 const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING");
+const CGI::byte_string CGI::META_REQUEST_URI       = HTTP::strfy("REQUEST_URI");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
-    : attr(Attribute(match_result, request))
+    : leaving(false)
+    , attr(Attribute(match_result, request))
     , lifetime(Lifetime::make_response())
     , metavar_(request.get_cgi_meta_vars())
     , to_script_content_length_(0)
@@ -63,6 +66,12 @@ CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvi
     }
     metavar_[META_PATH_INFO]    = match_result.cgi_resource.path_info;
     metavar_[META_QUERY_STRING] = match_result.target->query.str();
+    metavar_[META_REQUEST_URI]  = match_result.target->path.str();
+    if (match_result.target->query.size() > 0) {
+        metavar_[META_REQUEST_URI] += HTTP::strfy("?");
+        metavar_[META_REQUEST_URI] += match_result.target->query.str();
+    }
+    metavar_[META_SERVER_NAME] = match_result.server_name;
 }
 
 CGI::~CGI() {
@@ -73,6 +82,7 @@ CGI::~CGI() {
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
         lifetime.deactivate();
         // VOUT(pid);
+        (void)pid;
         assert(pid > 0);
         // VOUT(WIFEXITED(wstatus));
         // VOUT(WEXITSTATUS(wstatus));
@@ -189,6 +199,7 @@ void CGI::capture_script_termination() {
             }
         } else if (WIFSIGNALED(wstatus)) {
             int signal = WTERMSIG(wstatus);
+            (void)signal;
             VOUT(signal);
             // throw http_error("CGI script finished by signal", HTTP::STATUS_INTERNAL_SERVER_ERROR);
         }
@@ -250,7 +261,9 @@ char **CGI::flatten_metavar(const metavar_dict_type &metavar) {
         }
         memcpy(item, &(it->first.front()), it->first.size());
         item[it->first.size()] = '=';
-        memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
+        if (it->second.size() > 0) {
+            memcpy(item + it->first.size() + 1, &(it->second.front()), it->second.size());
+        }
         frame[i]    = item;
         frame[i][j] = '\0';
         // VOUT(frame[i]);
@@ -300,6 +313,9 @@ t_port CGI::get_port() const {
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     // DXOUT("CGI received: " << cat);
+    if (leaving) {
+        return;
+    }
     if (attr.master) {
         switch (cat) {
             case IObserver::OT_WRITE:
@@ -402,7 +418,7 @@ void CGI::perform_receiving(IObserver &observer) {
 }
 
 bool CGI::is_originatable() const {
-    return !status.is_started;
+    return attr.configuration_provider_.is_complete() && !status.is_started;
 }
 
 bool CGI::is_origination_started() const {
@@ -427,11 +443,17 @@ HTTP::byte_string CGI::reroute_path() const {
 }
 
 void CGI::leave() {
+    if (leaving) {
+        DXOUT("now already leaving.");
+        return;
+    }
     DXOUT("leaving.");
+    leaving = true;
     if (attr.observer != NULL) {
         attr.observer->reserve_unhold(this);
     } else {
         // Observerに渡される前に leave されることがある
+        DXOUT("leaving immediately.");
         delete this;
     }
 }

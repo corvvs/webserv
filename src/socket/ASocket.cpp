@@ -22,6 +22,9 @@ ASocket::ASocket(t_socket_domain sdomain, t_socket_type stype) : port(0) {
 ASocket::ASocket(t_fd sock_fd, t_socket_domain sdomain, t_socket_type stype) : fd(sock_fd), port(0) {
     domain = sdomain;
     type   = stype;
+    int yes;
+    yes = 1;
+    setsockopt(sock_fd, SOL_SOCKET, SO_NOSIGPIPE, (const char *)&yes, sizeof(yes));
 }
 
 ASocket::ASocket(const ASocket &other) {

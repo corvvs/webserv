@@ -577,11 +577,11 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
     return std::make_pair(false, 0);
 }
 
-HTTP::byte_string ParserHelper::decode_pct_encoded(const byte_string &str) {
-    return decode_pct_encoded(light_string(str));
+HTTP::byte_string ParserHelper::decode_pct_encoded(const byte_string &str, const HTTP::CharFilter &exclude) {
+    return decode_pct_encoded(light_string(str), exclude);
 }
 
-HTTP::byte_string ParserHelper::decode_pct_encoded(const light_string &str) {
+HTTP::byte_string ParserHelper::decode_pct_encoded(const light_string &str, const HTTP::CharFilter &exclude) {
 
     byte_string decoded;
     light_string work = str;
@@ -590,23 +590,24 @@ HTTP::byte_string ParserHelper::decode_pct_encoded(const light_string &str) {
         if (prefix.size() > 0) {
             decoded += prefix.str();
             work = work.substr(prefix.size());
-        } else {
-            assert(work.size() > 0);
-            assert(work[0] == '%');
-            if (work.size() >= 3) {
-                const light_string hex = work.substr(1, 2).substr_while(HTTP::CharFilter::hexdig);
-                if (hex.size() == 2) {
-                    std::pair<bool, unsigned int> res = ParserHelper::xtou(hex);
-                    if (res.first) {
-                        decoded.push_back(res.second);
-                        work = work.substr(3);
-                        continue;
-                    }
+            continue;
+        }
+        assert(work.size() > 0);
+        assert(work[0] == '%');
+        if (work.size() >= 3) {
+            const light_string hex = work.substr(1, 2).substr_while(HTTP::CharFilter::hexdig);
+            if (hex.size() == 2) {
+                // 変換できそう
+                std::pair<bool, unsigned char> res = ParserHelper::xtou(hex);
+                if (res.first && !exclude.includes(res.second)) {
+                    decoded.push_back(res.second);
+                    work = work.substr(3);
+                    continue;
                 }
             }
-            decoded += HTTP::strfy("%");
-            work = work.substr(1);
         }
+        decoded += HTTP::strfy("%");
+        work = work.substr(1);
     }
     return decoded;
 }
