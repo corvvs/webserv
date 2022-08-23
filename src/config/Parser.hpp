@@ -25,6 +25,10 @@ struct Directive {
 
 class Parser {
 public:
+    typedef std::vector<Config> config_vector;
+    typedef std::map<host_port_pair, config_vector> config_dict;
+
+public:
     Parser(void);
     ~Parser(void);
     config_dict parse(const std::string &file_data);
@@ -39,10 +43,10 @@ private:
     Lexer lexer_;
     std::vector<ContextServer> ctx_servers_;
     ContextMain ctx_main_;
-    std::map<std::string, Parser::add_directive_functions> adder_maps;
+    DirectiveFunctionsMap adder_maps;
 
     /// Member functions
-    std::map<host_port_pair, config_vector> create_configs(const std::vector<ContextServer> &ctx_servers);
+    config_dict create_configs(const std::vector<ContextServer> &ctx_servers);
     DirectiveFunctionsMap setting_directive_functions(void);
     std::string brace_balanced(void);
 
@@ -80,11 +84,13 @@ private:
 
     /// Debug
 
-    void
-    print_directives(const std::vector<Directive> &d, const bool &is_block = false, const std::string &before = "");
-    void print_location(const std::vector<ContextLocation> &loc);
-    void print_server(const ContextServer &serv);
-    void print_limit_except(const ContextLimitExcept &lmt);
+    void print_directives(const std::vector<Directive> &d,
+                          const bool &is_block      = false,
+                          const std::string &before = "") const;
+    void print_location(const std::vector<ContextLocation> &loc) const;
+    void print_server(const ContextServer &serv) const;
+    void print_limit_except(const ContextLimitExcept &lmt) const;
+    void debug_print(const std::vector<ContextServer> &servers) const;
 };
 } // namespace config
 
