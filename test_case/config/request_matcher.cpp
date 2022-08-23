@@ -304,4 +304,50 @@ http { \
     }
 }
 
+TEST_F(request_matcher_test, file_upload) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        location /upload/ { \
+            upload_store ./src/; \
+        } \
+        location /upload/2/ { \
+            root /root_is_not_used/; \
+            upload_store ./src/; \
+        } \
+        location /not_found/ { \
+            upload_store ./not_found/; \
+        } \
+    } \
+} \
+";
+
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+
+    {
+        TestParam tp(HTTP::METHOD_POST, "/upload/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./src/"), res.path_local);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_POST, "/upload/2/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./src/"), res.path_local);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_POST, "/not_found/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("file not found", HTTP::STATUS_NOT_FOUND), res.error);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/upload/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("file not found", HTTP::STATUS_NOT_FOUND), res.error);
+    }
+}
 } // namespace
