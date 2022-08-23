@@ -40,10 +40,12 @@ const CGI::byte_string CGI::META_REQUEST_METHOD    = HTTP::strfy("REQUEST_METHOD
 const CGI::byte_string CGI::META_SERVER_PROTOCOL   = HTTP::strfy("SERVER_PROTOCOL");
 const CGI::byte_string CGI::META_CONTENT_TYPE      = HTTP::strfy("CONTENT_TYPE");
 const CGI::byte_string CGI::META_SERVER_PORT       = HTTP::strfy("SERVER_PORT");
+const CGI::byte_string CGI::META_SERVER_NAME       = HTTP::strfy("SERVER_NAME");
 const CGI::byte_string CGI::META_CONTENT_LENGTH    = HTTP::strfy("CONTENT_LENGTH");
 const CGI::byte_string CGI::META_PATH_INFO         = HTTP::strfy("PATH_INFO");
 const CGI::byte_string CGI::META_SCRIPT_NAME       = HTTP::strfy("SCRIPT_NAME");
 const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING");
+const CGI::byte_string CGI::META_REQUEST_URI       = HTTP::strfy("REQUEST_URI");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
     : leaving(false)
@@ -64,6 +66,12 @@ CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvi
     }
     metavar_[META_PATH_INFO]    = match_result.cgi_resource.path_info;
     metavar_[META_QUERY_STRING] = match_result.target->query.str();
+    metavar_[META_REQUEST_URI]  = match_result.target->path.str();
+    if (match_result.target->query.size() > 0) {
+        metavar_[META_REQUEST_URI] += HTTP::strfy("?");
+        metavar_[META_REQUEST_URI] += match_result.target->query.str();
+    }
+    metavar_[META_SERVER_NAME] = match_result.server_name;
 }
 
 CGI::~CGI() {

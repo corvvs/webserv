@@ -26,6 +26,9 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
     const RequestTarget &target = rp.get_request_target();
     RequestMatchingResult res(&target);
+    if (!conf.get_server_name().empty()) {
+        res.server_name = HTTP::strfy(conf.get_server_name().front());
+    }
     res.client_max_body_size = get_client_max_body_size(target, conf);
     res.status_page_dict     = get_status_page_dict(target, conf);
 
