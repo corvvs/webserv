@@ -82,6 +82,7 @@ CGI::~CGI() {
         pid_t pid = waitpid(attr.cgi_pid, &wstatus, 0);
         lifetime.deactivate();
         // VOUT(pid);
+        (void)pid;
         assert(pid > 0);
         // VOUT(WIFEXITED(wstatus));
         // VOUT(WEXITSTATUS(wstatus));
@@ -198,6 +199,7 @@ void CGI::capture_script_termination() {
             }
         } else if (WIFSIGNALED(wstatus)) {
             int signal = WTERMSIG(wstatus);
+            (void)signal;
             VOUT(signal);
             // throw http_error("CGI script finished by signal", HTTP::STATUS_INTERNAL_SERVER_ERROR);
         }
