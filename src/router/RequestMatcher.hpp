@@ -35,8 +35,19 @@ private:
     bool is_cgi(const RequestTarget &target, const config::Config &conf);
     bool is_post(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
 
-    bool get_is_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
-    bool get_is_autoindex(const RequestTarget &target, const config::Config &conf);
+    RequestMatchingResult::ResultType get_result_type(const RequestTarget &target,
+                                                      const HTTP::t_method &method,
+                                                      const config::Config &conf,
+                                                      const bool &isdir) const;
+    RequestMatchingResult::ResultType get_result_type_from_dir(const RequestTarget &target,
+                                                               const HTTP::t_method &method,
+                                                               const config::Config &conf) const;
+    RequestMatchingResult::ResultType get_result_type_from_file(const RequestTarget &target,
+                                                                const HTTP::t_method &method,
+                                                                const config::Config &conf) const;
+
+    bool is_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf) const;
+    bool is_autoindex(const RequestTarget &target, const config::Config &conf) const;
     long get_client_max_body_size(const RequestTarget &target, const config::Config &conf) const;
     redirect_pair get_redirect(const RequestTarget &target, const config::Config &conf) const;
     RequestMatchingResult::status_dict_type get_status_page_dict(const RequestTarget &target,
