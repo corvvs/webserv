@@ -249,9 +249,9 @@ void AutoIndexer::leave() {
     delete this;
 }
 
-ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
+ResponseHTTP::header_list_type
+AutoIndexer::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
         case ResponseDataList::SM_CHUNKED:
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -264,7 +264,18 @@ ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
             break;
     }
     // MIMEタイプ設定
-    headers.push_back(std::make_pair(HeaderHTTP::content_type, HTTP::strfy("text/html")));
+    {
+        HTTP::CH::ContentType ct;
+        ct.value   = HTTP::strfy("text/html");
+        ct.charset = HTTP::strfy("UTF-8");
+        headers.push_back(std::make_pair(HeaderHTTP::content_type, ct.serialize()));
+    }
+    return headers;
+}
+
+ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
+    const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;

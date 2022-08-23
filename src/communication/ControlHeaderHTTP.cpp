@@ -180,8 +180,10 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     // HTTPにはOWSがあるが, CGIにはない.
     // -> OWSがあるのはparameter部分だけなので, そこに差異を押し込められそう.
 
-    const byte_string *ct = holder.get_val(HeaderHTTP::content_type);
     this->value.clear();
+    charset.unset();
+    parameters.clear();
+    const byte_string *ct = holder.get_val(HeaderHTTP::content_type);
     if (!ct || ct->size() == 0) {
         // this->value = HTTP::CH::ContentType::default_value;
         return minor_error::ok();
@@ -217,6 +219,18 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     // parameter  = 1*tchar "=" ( 1*tchar / quoted-string )
     light_string parameters_str(lct, subtype_end);
     ARoutingParameters::decompose_semicoron_separated_kvlist(parameters_str, *this);
+    {
+        HTTP::IDictHolder::parameter_dict::const_iterator it = parameters.find(HTTP::strfy("charset"));
+        if (it != parameters.end()) {
+            charset = it->second.str();
+            parameters.erase(it);
+        }
+        if (charset.is_null()) {
+            if (!default_charset.is_null() && light_string(value).starts_with("text/")) {
+                charset = default_charset;
+            }
+        }
+    }
 
     // boundary の検出
     if (value == "multipart/form-data") {
@@ -234,12 +248,28 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
             }
         }
     }
-    // QVOUT(boundary);
     return minor_error::ok();
 }
 
 HTTP::byte_string HTTP::CH::ContentType::normalize(const HTTP::byte_string &str) {
     return HTTP::Utils::downcase(str);
+}
+
+void HTTP::CH::ContentType::set_default_charset(const HTTP::byte_string &default_val) {
+    default_charset = default_val;
+}
+
+HTTP::byte_string HTTP::CH::ContentType::serialize() const {
+    HTTP::byte_string rv;
+    if (value.empty()) {
+        return rv;
+    }
+    rv += value;
+    if (!charset.is_null()) {
+        rv += HTTP::strfy("; charset=");
+        rv += charset.value();
+    }
+    return rv;
 }
 
 // [ContentDisposition]

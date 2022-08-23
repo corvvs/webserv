@@ -2,6 +2,7 @@
 #include "event/Eventpollloop.hpp"
 #include "event/Eventselectloop.hpp"
 #include "server/HTTPServer.hpp"
+#include "utils/MIME.hpp"
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2 * !!(condition)]))
 
 static void assert_sizeoftype() {
@@ -28,6 +29,7 @@ int main(int argc, char **argv) {
     // HTTPServer http_server(new EventSelectLoop());
     HTTPServer http_server(new EventPollLoop());
     try {
+        HTTP::MIME::setup_mime_map();
         http_server.init(conf_path);
         http_server.run();
     } catch (const std::exception &e) {

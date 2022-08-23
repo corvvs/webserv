@@ -137,6 +137,15 @@ public:
 } // namespace HTTP
 
 std::ostream &operator<<(std::ostream &ost, const HTTP::byte_string &f);
+template <class K, class V>
+std::ostream &operator<<(std::ostream &ost, const std::map<K, V> &f) {
+    ost << "{ " << std::endl;
+    for (typename std::map<K, V>::const_iterator it = f.begin(); it != f.end(); ++it) {
+        ost << "  " << it->first << ": " << it->second << "," << std::endl;
+    }
+    ost << " }" << std::endl;
+    return ost;
+}
 bool operator==(const HTTP::byte_string &lhs, const char *rhs);
 bool operator==(const char *lhs, const HTTP::byte_string &rhs);
 HTTP::byte_string operator+(const HTTP::byte_string &lhs, const HTTP::byte_string &rhs);

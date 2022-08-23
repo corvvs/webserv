@@ -81,6 +81,7 @@ public:
     static const CharFilter cgi_extra;
     static const CharFilter pchar_without_pct;
     static const CharFilter uri_scheme;
+    static const CharFilter nul;
     static const CharFilter ascii;
     static const CharFilter controls;
     // Content-Disposition: における separator

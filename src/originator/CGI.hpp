@@ -167,7 +167,7 @@ private:
 
     HTTP::t_status determine_response_status() const;
     // ※ `from_script_header_holder`に対して破壊的
-    ResponseHTTP::header_list_type determine_response_headers_destructively();
+    ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:
     CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request);

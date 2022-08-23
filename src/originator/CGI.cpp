@@ -502,9 +502,7 @@ void CGI::analyze_headers(IndexRange res) {
     this->ps.start_of_body = res.second;
     DXOUT("DETECTED END of HEADER: " << this->ps.end_of_header);
     // -> [start_of_header, end_of_header) を解析する
-    VOUT(this->ps.start_of_header);
     const light_string header_lines(bytebuffer, this->ps.start_of_header, this->ps.end_of_header);
-    BVOUT(header_lines);
     this->from_script_header_holder.parse_header_lines(header_lines, &this->from_script_header_holder);
     extract_control_headers();
 }
@@ -570,6 +568,7 @@ void CGI::after_injection(bool is_disconnected) {
 void CGI::extract_control_headers() {
     // 取得したヘッダから制御用の情報を抽出する.
     minor_error me;
+    this->rp.content_type.set_default_charset(HTTP::strfy("ISO-8859-1"));
     me = erroneous(me, this->rp.content_type.determine(from_script_header_holder));
     me = erroneous(me, this->rp.status.determine(from_script_header_holder));
     me = erroneous(me, this->rp.location.determine(from_script_header_holder));
@@ -578,11 +577,9 @@ void CGI::extract_control_headers() {
     if (me.is_error()) {
         throw http_error(me);
     }
-    VOUT(rp.get_response_type());
 }
 
 void CGI::check_cgi_response_consistensy() {
-    VOUT(rp.get_response_type());
     switch (rp.get_response_type()) {
         case CGIRES_DOCUMENT: {
             // 特に何もチェックしなくて良さそう
@@ -717,7 +714,7 @@ HTTP::t_status CGI::determine_response_status() const {
     return HTTP::STATUS_DUMMY;
 }
 
-ResponseHTTP::header_list_type CGI::determine_response_headers_destructively() {
+ResponseHTTP::header_list_type CGI::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
     // [伝送に関する決め事]
     // CGIが送ってきた Transfer-Encoding: や Content-Length: を破棄する
@@ -725,10 +722,7 @@ ResponseHTTP::header_list_type CGI::determine_response_headers_destructively() {
     // chunkedでない場合, Content-Length: を与える
     // 本文がある場合は Content-Type: をセット
     // (なければ何もセットしない)
-    from_script_header_holder.erase_vals(HeaderHTTP::transfer_encoding);
-    from_script_header_holder.erase_vals(HeaderHTTP::content_length);
-    IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
-    const t_cgi_response_type response_type  = rp.get_response_type();
+    const t_cgi_response_type response_type = rp.get_response_type();
     const bool is_redirection
         = response_type == CGIRES_REDIRECT_CLIENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
     const bool must_have_body = response_type == CGIRES_DOCUMENT || response_type == CGIRES_REDIRECT_CLIENT_DOCUMENT;
@@ -737,11 +731,10 @@ ResponseHTTP::header_list_type CGI::determine_response_headers_destructively() {
     }
     // Content-Type:
     if (must_have_body) {
-        const HeaderHolderCGI::header_val_type *val = from_script_header_holder.get_back_val(HeaderHTTP::content_type);
-        if (val) {
-            headers.push_back(std::make_pair(HeaderHTTP::content_type, *val));
-        } else {
+        if (rp.content_type.value.empty()) {
             headers.push_back(std::make_pair(HeaderHTTP::content_type, CGIP::CH::ContentType::default_value));
+        } else {
+            headers.push_back(std::make_pair(HeaderHTTP::content_type, rp.content_type.serialize()));
         }
         // 伝送方式
         switch (sm) {
@@ -757,11 +750,6 @@ ResponseHTTP::header_list_type CGI::determine_response_headers_destructively() {
         }
     }
     // その他のヘッダ
-    from_script_header_holder.erase_vals(HeaderHTTP::transfer_encoding);
-    from_script_header_holder.erase_vals(HeaderHTTP::content_length);
-    from_script_header_holder.erase_vals(HeaderHTTP::status);
-    from_script_header_holder.erase_vals(HeaderHTTP::location);
-    from_script_header_holder.erase_vals(HeaderHTTP::content_type);
     if (response_type != CGIRES_REDIRECT_CLIENT) {
         const AHeaderHolder::list_type &header_list = from_script_header_holder.get_list();
         for (AHeaderHolder::list_type::const_iterator hit = header_list.begin(); hit != header_list.end(); ++hit) {
@@ -782,7 +770,13 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     HTTP::t_status response_status = determine_response_status();
 
     // HTTPレスポンスヘッダを生成する
-    ResponseHTTP::header_list_type headers = determine_response_headers_destructively();
+    from_script_header_holder.erase_vals(HeaderHTTP::status);
+    from_script_header_holder.erase_vals(HeaderHTTP::transfer_encoding);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_length);
+    from_script_header_holder.erase_vals(HeaderHTTP::location);
+    from_script_header_holder.erase_vals(HeaderHTTP::content_type);
+    IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
+    ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
     ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
 
     // 例外安全のための copy and swap
