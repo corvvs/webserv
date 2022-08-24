@@ -68,6 +68,9 @@ struct RequestTarget {
     const byte_string &dquery() const;
     const byte_string &dpath_slash_reduced() const;
 
+    // デコード後のpathが使用不能文字を含んでいるかどうか
+    bool decoded_target_has_unacceptable() const;
+
     RequestTarget();
     RequestTarget(const light_string &target);
 

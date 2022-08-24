@@ -122,6 +122,12 @@ const RequestTarget::byte_string &RequestTarget::dpath_slash_reduced() const {
     return decoded_parts.path_slash_reduced;
 }
 
+bool RequestTarget::decoded_target_has_unacceptable() const {
+    const light_string::size_type unacceptable_pos
+        = light_string(decoded_parts.path).find_first_of(HTTP::CharFilter::request_path_unacceptable);
+    return unacceptable_pos != light_string::npos;
+}
+
 std::ostream &operator<<(std::ostream &ost, const RequestTarget &f) {
     return ost << "(" << f.form << (f.is_error ? "E" : "") << ") \"" << f.given << "\", scheme: \"" << f.scheme
                << "\", authority: \"" << f.authority << "\", path: \"" << f.path << "\", query: \"" << f.query;
