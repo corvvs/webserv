@@ -31,12 +31,12 @@ private:
     bool is_valid_scheme(const RequestTarget &target);
     bool is_valid_path(const RequestTarget &target);
     bool is_valid_request_method(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
-
     bool is_redirect(const RequestTarget &target, const config::Config &conf);
     bool is_cgi(const RequestTarget &target, const config::Config &conf);
+    bool is_post(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
+
     bool get_is_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf);
     bool get_is_autoindex(const RequestTarget &target, const config::Config &conf);
-
     long get_client_max_body_size(const RequestTarget &target, const config::Config &conf) const;
     redirect_pair get_redirect(const RequestTarget &target, const config::Config &conf) const;
     RequestMatchingResult::status_dict_type get_status_page_dict(const RequestTarget &target,
@@ -47,6 +47,7 @@ private:
 
     std::pair<HTTP::byte_string, bool> make_resource_path(const RequestTarget &target,
                                                           const config::Config &conf) const;
+    std::pair<HTTP::byte_string, bool> make_post_path(const RequestTarget &target, const config::Config &conf) const;
     RequestMatchingResult::CGIResource make_cgi_resource(const RequestTarget &target, const config::Config &conf) const;
 };
 

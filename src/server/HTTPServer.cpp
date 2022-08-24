@@ -3,32 +3,29 @@
 #include "../router/RequestMatcher.hpp"
 #include "../utils/File.hpp"
 
-RequestMatchingResult MockMatcher::request_match(const std::vector<config::Config> &configs,
-                                                 const IRequestMatchingParam &param) {
-    (void)configs;
-    const RequestTarget &given_target = param.get_request_target();
-    RequestMatchingResult result(&given_target);
-    const HTTP::light_string path   = given_target.dpath();
-    HTTP::light_string::size_type i = path.rfind(".rb");
-    if (i != HTTP::light_string::npos && i + strlen(".rb") == path.size()) {
-        result.result_type = RequestMatchingResult::RT_CGI;
-    } else if (path.size() > 0 && path[path.size() - 1] == '/') {
-        result.result_type = RequestMatchingResult::RT_AUTO_INDEX;
-    } else {
-        result.result_type = RequestMatchingResult::RT_FILE;
-    }
-    result.path_local           = HTTP::strfy(".") + given_target.dpath();
-    result.path_cgi_executor    = HTTP::strfy("/usr/bin/ruby");
-    result.status_code          = HTTP::STATUS_MOVED_PERMANENTLY;
-    result.redirect_location    = HTTP::strfy("/mmmmm");
-    result.client_max_body_size = 1024; // 仮
-    return result;
-}
-
 HTTPServer::HTTPServer(IObserver *observer) : socket_observer_(observer) {}
 
 HTTPServer::~HTTPServer() {
     delete socket_observer_;
+}
+
+int HTTPServer::test_configuration(const std::string &path) {
+    file::ErrorType err;
+    if ((err = file::check(path)) != file::NONE) {
+        std::cerr << file::error_message(err) << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    config::Parser parser;
+    try {
+        parser.parse(file::read(path));
+    } catch (const config::SyntaxError &err) {
+        std::cout << err.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "webserv: the configuration file " + path + " syntax is ok" << std::endl;
+    return EXIT_SUCCESS;
 }
 
 void HTTPServer::init(const std::string &config_path) {

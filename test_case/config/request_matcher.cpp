@@ -271,24 +271,26 @@ http { \
 
     {
         TestParam tp(HTTP::METHOD_GET, "/tests/%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./tests/ばなな.html"), res.path_local);
     }
 
     {
         // 先頭以外のスラッシュを"%2F"に置換
         // -> スラッシュはデコードされないので404になる
         TestParam tp(HTTP::METHOD_GET, "/tests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp), http_error);
+        EXPECT_NO_THROW({
+            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+            EXPECT_TRUE(res.error.is_error());
+        });
     }
 
     {
         // 先頭のスラッシュを"%2F"に置換 → ヒットしなくなる
         // (そもそもデコードされないので当然)
         TestParam tp(HTTP::METHOD_GET, "%2Ftests%2F%E3%81%B0%E3%81%AA%E3%81%AA.html", HTTP::V_1_1, "localhost", "80");
-        EXPECT_THROW(rm.request_match(configs[hp], tp);, http_error);
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_TRUE(res.error.is_error());
     }
 
     {
@@ -297,11 +299,55 @@ http { \
                      HTTP::V_1_1,
                      "localhost",
                      "80");
-        EXPECT_NO_THROW({
-            const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-            EXPECT_EQ(HTTP::strfy("./tests/ふぉーてぃーつー/banana.txt"), res.path_local);
-        });
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./tests/ふぉーてぃーつー/banana.txt"), res.path_local);
     }
 }
 
+TEST_F(request_matcher_test, file_upload) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        location /upload/ { \
+            upload_store ./src/; \
+        } \
+        location /upload/2/ { \
+            root /root_is_not_used/; \
+            upload_store ./src/; \
+        } \
+        location /not_found/ { \
+            upload_store ./not_found/; \
+        } \
+    } \
+} \
+";
+
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+
+    {
+        TestParam tp(HTTP::METHOD_POST, "/upload/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./src/"), res.path_local);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_POST, "/upload/2/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("./src/"), res.path_local);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_POST, "/not_found/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("file not found", HTTP::STATUS_NOT_FOUND), res.error);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/upload/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(minor_error::make("file not found", HTTP::STATUS_NOT_FOUND), res.error);
+    }
+}
 } // namespace

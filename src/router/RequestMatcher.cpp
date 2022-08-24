@@ -54,7 +54,11 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
 RequestMatchingResult
 RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &target, const config::Config &conf) {
-    res.cgi_resource      = make_cgi_resource(target, conf);
+    res.cgi_resource = make_cgi_resource(target, conf);
+    if (res.cgi_resource.script_name.empty()) {
+        res.error = minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
+        return res;
+    }
     res.path_cgi_executor = get_path_cgi_executor(target, conf, res.cgi_resource.script_name);
     res.result_type       = RequestMatchingResult::RT_CGI;
     return res;
@@ -97,22 +101,44 @@ RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const Reque
         }
         i += 1;
     }
-    if (resource.script_name.empty()) {
-        throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
-    }
     return resource;
+}
+
+bool RequestMatcher::is_post(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf) {
+    if (method != HTTP::METHOD_POST) {
+        return false;
+    }
+    const std::string &upload_store = conf.get_upload_store(HTTP::restrfy(target.dpath_slash_reduced()));
+    return !upload_store.empty();
+}
+
+std::pair<HTTP::byte_string, bool> RequestMatcher::make_post_path(const RequestTarget &target,
+                                                                  const config::Config &conf) const {
+    const std::string upload_store = conf.get_upload_store(HTTP::restrfy(target.dpath_slash_reduced()));
+    if (file::is_dir(upload_store)) {
+        return std::make_pair(HTTP::strfy(upload_store), true);
+    }
+    return std::make_pair(HTTP::strfy(""), false);
 }
 
 RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const RequestTarget &target,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
-    std::pair<HTTP::byte_string, bool> path_isdir = make_resource_path(target, conf);
+    std::pair<HTTP::byte_string, bool> path_isdir;
+    if (is_post(target, method, conf)) {
+        path_isdir = make_post_path(target, conf);
+    } else {
+        path_isdir = make_resource_path(target, conf);
+    }
+
     if (target.form != RequestTarget::FORM_ORIGIN) {
-        throw http_error("form of a target is not an origin-form", HTTP::STATUS_BAD_REQUEST);
+        res.error = minor_error::make("form of a target is not an origin-form", HTTP::STATUS_BAD_REQUEST);
+        return res;
     }
     if (path_isdir.first.empty()) {
-        throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
+        res.error = minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
+        return res;
     }
     res.path_local  = path_isdir.first;
     res.result_type = RequestMatchingResult::RT_FILE;
@@ -123,7 +149,8 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
             res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
         } else {
             DXOUT("PMDD");
-            throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+            res.error = minor_error::make("permission denied", HTTP::STATUS_FORBIDDEN);
+            return res;
         }
     } else if (get_is_executable(target, method, conf)) {
         switch (method) {
@@ -186,7 +213,7 @@ minor_error RequestMatcher::check_routable(const IRequestMatchingParam &rp, cons
     const RequestTarget &target = rp.get_request_target();
 
     if (target.is_error) {
-        throw http_error("target has an error", HTTP::STATUS_BAD_REQUEST);
+        return minor_error::make("target has an error", HTTP::STATUS_BAD_REQUEST);
     }
     if (!is_valid_scheme(target)) {
         return minor_error::make("invalid scheme", HTTP::STATUS_BAD_REQUEST);

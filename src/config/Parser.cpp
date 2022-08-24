@@ -41,7 +41,10 @@ Parser::DirectiveFunctionsMap Parser::setting_directive_functions(void) {
     return directives;
 }
 
-std::map<host_port_pair, config_vector> Parser::parse(const std::string &file_data) {
+Parser::config_dict Parser::parse(const std::string &file_data) {
+    if (file_data.empty()) {
+        throw SyntaxError("config: file is empty");
+    }
     lexer_.tokenize(file_data);
 
     ErrorMsg err;
@@ -60,13 +63,10 @@ std::map<host_port_pair, config_vector> Parser::parse(const std::string &file_da
     return create_configs(server_configs);
 }
 
-std::map<host_port_pair, config_vector> Parser::create_configs(const std::vector<ContextServer> &ctx_servers) {
-    std::map<host_port_pair, config_vector> configs;
+Parser::config_dict Parser::create_configs(const std::vector<ContextServer> &ctx_servers) {
+    config_dict configs;
     std::vector<ContextServer>::const_iterator it = ctx_servers.begin();
     for (; it != ctx_servers.end(); ++it) {
-#ifdef NDEBUG
-        print_server(*it);
-#endif
         for (size_t i = 0; i < it->host_ports.size(); ++i) {
             Config conf(*it);
             conf.set_host_port(it->host_ports[i]);
@@ -74,6 +74,9 @@ std::map<host_port_pair, config_vector> Parser::create_configs(const std::vector
             configs[it->host_ports[i]].push_back(conf);
         }
     }
+#ifndef NDEBUG
+    debug_print(ctx_servers);
+#endif
     return configs;
 }
 
@@ -558,7 +561,14 @@ std::vector<ContextServer> Parser::forestize(std::vector<Directive> vdir, std::s
 
 /// Debug functions
 
-void Parser::print_directives(const std::vector<Directive> &d, const bool &is_block, const std::string &before) {
+void Parser::debug_print(const std::vector<ContextServer> &servers) const {
+    std::vector<ContextServer>::const_iterator it = servers.begin();
+    for (; it != servers.end(); ++it) {
+        print_server(*it);
+    }
+}
+
+void Parser::print_directives(const std::vector<Directive> &d, const bool &is_block, const std::string &before) const {
     std::string dir = is_block ? "Dire" : "Block";
 
     for (size_t i = 0; i < d.size(); i++) {
@@ -580,7 +590,7 @@ void Parser::print_directives(const std::vector<Directive> &d, const bool &is_bl
     }
 }
 
-void Parser::print_limit_except(const ContextLimitExcept &lmt) {
+void Parser::print_limit_except(const ContextLimitExcept &lmt) const {
     std::cout << std::setw(INDENT_SIZE) << std::left << "  LimitExcept"
               << ": { ";
     for (std::set<enum Methods>::iterator it = lmt.allowed_methods.begin(); it != lmt.allowed_methods.end(); ++it) {
@@ -603,7 +613,7 @@ void Parser::print_limit_except(const ContextLimitExcept &lmt) {
     std::cout << " }" << std::endl;
 }
 
-void Parser::print_location(const std::vector<ContextLocation> &loc) {
+void Parser::print_location(const std::vector<ContextLocation> &loc) const {
     if (loc.size() == 0) {
         std::cout << std::setw(INDENT_SIZE) << std::left << "Locations"
                   << ": {  }" << std::endl;
@@ -623,13 +633,14 @@ void Parser::print_location(const std::vector<ContextLocation> &loc) {
         print_key_value("redirect", pair_to_string(it->redirect), true);
         print_key_value("exec_cgi", (it->exec_cgi ? "on" : "off"), true);
         print_key_value("exec_delete", (it->exec_delete ? "on" : "off"), true);
+        print_key_value("cgi_path", map_to_string(it->cgi_executers));
         print_limit_except(it->limit_except);
         print_location(it->locations);
         std::cout << "}" << std::endl;
     }
 }
 
-void Parser::print_server(const ContextServer &srv) {
+void Parser::print_server(const ContextServer &srv) const {
     print_key_value("client_max_body_size", srv.client_max_body_size);
     print_key_value("autoindex", (srv.autoindex ? "on" : "off"));
     print_key_value("root", srv.root);
