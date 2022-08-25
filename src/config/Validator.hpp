@@ -1,5 +1,5 @@
-#ifndef ANALYZER_HPP
-#define ANALYZER_HPP
+#ifndef VALIDATOR_HPP
+#define VALIDATOR_HPP
 #include "Parser.hpp"
 #include <map>
 #include <string>
@@ -10,7 +10,7 @@ namespace config {
 typedef std::string ErrorMsg;
 class SyntaxError : public std::runtime_error {
 public:
-    SyntaxError(void) : std::runtime_error("config: validation error") {}
+    SyntaxError(void) : std::runtime_error("validation error") {}
     SyntaxError(const std::string &what) : std::runtime_error(what) {}
 };
 
@@ -39,10 +39,8 @@ std::string validation_error(const std::string &message, const size_t &line, con
 const unsigned int NOARGS = 0x00000001; // 0 args
 const unsigned int TAKE1  = 0x00000002; // 1 args
 const unsigned int TAKE2  = 0x00000004; // 2 args
-const unsigned int TAKE3  = 0x00000008; // 3 args
 const unsigned int BLOCK  = 0x00000100; // followed by block
 const unsigned int FLAG   = 0x00000200; // 'on' or 'off'
-const unsigned int ANY    = 0x00000400; // >=0 args
 const unsigned int MORE1  = 0x00000800; // >=1 args
 const unsigned int MORE2  = 0x00001000; // >=2 args
 
