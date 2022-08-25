@@ -105,6 +105,8 @@ public:
     static const CharFilter cookie_extension;
     // リクエストパスにおいて使ってはいけない文字
     static const CharFilter request_path_unacceptable;
+    // HTMLにおけるエスケープの対象となる文字
+    static const CharFilter escape_html;
     byte_string str() const;
 };
 } // namespace HTTP
