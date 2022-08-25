@@ -1,0 +1,1 @@
+find . -type f -name "*_test.go" | xargs -I{} dirname {} | uniq | xargs -I{} go test -v -count=1 {}

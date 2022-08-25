@@ -19,7 +19,7 @@ func TestErrorPage(t *testing.T) {
 		{
 
 			name:       "Bad_Request",
-			request:    "GET /index.html HTTP/1.1\r\n" + validHeader,
+			request:    "GET /index.html HTTP/1.1\r\n" + "\n" + validHeader,
 			clientType: "default",
 			statusCode: http.StatusBadRequest,
 			body:       badRequestHtml,
@@ -34,6 +34,7 @@ func TestErrorPage(t *testing.T) {
 		},
 		{
 			// todo:allow method でないmethod
+			// responseのformatがおかしい気がする(スキーマがない)
 			name:       "Method_Not_Allowed",
 			request:    "HEAD /index.html HTTP/1.1\r\n" + validHeader,
 			clientType: "default",
@@ -41,13 +42,15 @@ func TestErrorPage(t *testing.T) {
 			body:       methodNotAllowedhtml,
 		},
 		{
+			// responseのformatがおかしい気がする(スキーマがない)
 			name:       "Request_Timeout",
-			request:    "HEAD /index.html HTTP/1.1\r\n" + validHeader,
+			request:    "GET /index.html HTTP/1.1\r\n" + validHeader,
 			clientType: "slow",
 			statusCode: http.StatusRequestTimeout,
 			body:       requestTimeouthtml,
 		},
 		{
+			// status codeが200
 			name:       "Length_Required",
 			request:    "POST /index.html HTTP/1.1\r\n" + validHeader + strings.Repeat("a", 24),
 			clientType: "default",
@@ -56,12 +59,13 @@ func TestErrorPage(t *testing.T) {
 		},
 		{
 			name:       "Payload_Too_Large",
-			request:    "POST /index.html HTTP/1.1\r\n" + "Content-Length: 24\r\n" + validHeader + strings.Repeat("a", 24),
+			request:    "POST /index.html HTTP/1.1\r\n" + "Content-Length: 24\r\n" + validHeader + strings.Repeat("a", 42),
 			clientType: "default",
 			statusCode: http.StatusRequestEntityTooLarge,
 			body:       payloadTooLargehtml,
 		},
 		{
+			// responseのformatがおかしい気がする(スキーマがない)
 			name:       "Url_Too_Long",
 			request:    fmt.Sprintf("GET /%s HTTP/1.1\r\n", strings.Repeat("a", 10000)) + validHeader,
 			clientType: "default",
@@ -69,13 +73,15 @@ func TestErrorPage(t *testing.T) {
 			body:       urlTooLonghtml,
 		},
 		{
+			//todo:やり方を考える
 			name:       "Internal_Server_Error",
-			request:    "GET /index.html HTTP/1.1\r\n" + validHeader,
+			request:    "GET /permission_denied.html HTTP/1.1\r\n" + validHeader,
 			clientType: "default",
 			statusCode: http.StatusInternalServerError,
 			body:       internalServerErrorhtml,
 		},
 		{
+			// method not allowed になる
 			name:       "Not_Implemented",
 			request:    "get /index.html HTTP/1.1\r\n" + validHeader,
 			clientType: "default",
@@ -83,6 +89,7 @@ func TestErrorPage(t *testing.T) {
 			body:       notImplementedhtml,
 		},
 		{
+			// responseのformatがおかしい気がする(スキーマがない)
 			name:       "HTTP_Version_Not_Supported",
 			request:    "GET /index.html HTTP/2.0\r\n" + validHeader,
 			clientType: "default",

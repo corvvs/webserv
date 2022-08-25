@@ -34,7 +34,7 @@ func TestParallel(t *testing.T) {
 		},
 		{
 			name:       "a_dir",
-			request:    "GET /a/dir/dir.html HTTP/1.1\r\n" + validHeader,
+			request:    "GET /a/dir/ HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusOK,
 			body:       aDirHtml,
 		},
@@ -58,7 +58,7 @@ func TestParallel(t *testing.T) {
 		},
 		{
 			name:       "b_dir",
-			request:    "GET /b/dir/dir.html HTTP/1.1\r\n" + validHeader,
+			request:    "GET /b/dir/ HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusOK,
 			body:       bDirHtml,
 		},

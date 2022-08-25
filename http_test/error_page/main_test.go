@@ -35,4 +35,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	err = os.Chmod("./html/permission_denied.html", 777)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }

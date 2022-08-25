@@ -36,7 +36,7 @@ func (c *SlowClient) send() error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Second * 1)
 	}
 	return nil
 }
@@ -53,9 +53,9 @@ func (c *SlowClient) readResponse() (*http.Response, error) {
 func (c *SlowClient) Run() (*Response, error) {
 	defer c.Close()
 	err := c.send()
-	if err != nil {
-		return nil, err
-	}
+	//if err != nil {
+	//	return nil, err
+	//}
 	response, err := c.readResponse()
 	if err != nil {
 		return nil, err

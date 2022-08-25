@@ -25,7 +25,7 @@ const HTTP::byte_string HTTP::version_str(HTTP::t_version version) {
         case V_1_1:
             return strfy("HTTP/1.1");
         default:
-            return strfy("");
+            return strfy("HTTP/1.1");
     }
 }
 
