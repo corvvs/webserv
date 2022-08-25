@@ -282,9 +282,9 @@ IResponseDataProducer &CGI::response_data_producer() {
 void CGI::set_content(const byte_string &content) {
     to_script_content_        = content;
     to_script_content_length_ = content.size();
-    const byte_string val
-        = to_script_content_length_ > 0 ? ParserHelper::utos(to_script_content_length_, 10) : HTTP::strfy("");
-    metavar_[META_CONTENT_LENGTH] = val;
+    if (to_script_content_length_ > 0) {
+        metavar_[META_CONTENT_LENGTH] = ParserHelper::utos(to_script_content_length_, 10);
+    }
 }
 
 CGI::metavar_dict_type CGI::make_metavars_from_envp(char **envp) {
