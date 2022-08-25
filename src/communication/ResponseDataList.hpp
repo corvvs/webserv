@@ -114,6 +114,11 @@ public:
     void mark_sent(size_t n);
 
     t_sending_mode get_sending_mode() const;
+
+    // 現在バケットが空かどうか
+    bool empty() const;
+    // 先頭のバケットの中身の要素を返す
+    const HTTP::byte_string &top() const;
 };
 
 #endif

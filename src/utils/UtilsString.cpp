@@ -55,3 +55,21 @@ HTTP::light_string HTTP::Utils::lstrip_path(const light_string &path) {
     const light_string stripped = path.substr_after("/");
     return stripped;
 }
+
+bool HTTP::Utils::is_relative_path(const light_string &path) {
+    // 先頭が'/'なら絶対, そうでなければ相対
+    return !path.starts_with("/");
+}
+
+HTTP::light_string HTTP::Utils::basename(const light_string &path) {
+    // path末尾の /+ は取り除いて考える
+    light_string::size_type i_last_not_slash = path.find_last_not_of("/");
+    const bool should_rstrip                 = i_last_not_slash != light_string::npos;
+    const light_string p = should_rstrip ? path.substr(0, i_last_not_slash + 1) : path.substr(path.size());
+    light_string::size_type i_last_slash = p.find_last_of("/");
+    if (i_last_slash == light_string::npos) {
+        return p;
+    } else {
+        return p.substr(i_last_slash + 1);
+    }
+}

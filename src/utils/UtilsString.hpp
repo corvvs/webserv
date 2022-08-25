@@ -26,6 +26,11 @@ light_string lstrip_path(const light_string &path);
 // rstrip_path(directory_path) + "/" + lstrip_path(basename)
 byte_string join_path(const light_string &directory_path, const light_string &basename);
 
+// パスが相対パスかどうかを判定する
+bool is_relative_path(const light_string &path);
+
+// パスからbasename部分だけを取り出す
+light_string basename(const light_string &path);
 } // namespace Utils
 } // namespace HTTP
 

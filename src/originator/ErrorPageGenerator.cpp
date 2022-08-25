@@ -1,5 +1,6 @@
 #include "ErrorPageGenerator.hpp"
 #include "../utils/CSS.hpp"
+#include "../utils/HTML.hpp"
 #include <unistd.h>
 
 ErrorPageGenerator::ErrorPageGenerator(const minor_error &err,
@@ -36,7 +37,7 @@ void ErrorPageGenerator::generate_html() {
     if (error.message().empty()) {
         response_data.inject(HTTP::reason(error.status_code()), false);
     } else {
-        response_data.inject(HTTP::strfy(error.message()), false);
+        response_data.inject(HTTP::strfy(HTML::escape_html(error.message())), false);
     }
     response_data.inject(HTTP::strfy("</h3>\n"
                                      "<hr>\n"),
@@ -72,9 +73,9 @@ void ErrorPageGenerator::leave() {
     delete this;
 }
 
-ResponseHTTP *ErrorPageGenerator::respond(const RequestHTTP *request) {
+ResponseHTTP::header_list_type
+ErrorPageGenerator::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
         case ResponseDataList::SM_CHUNKED:
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -86,7 +87,20 @@ ResponseHTTP *ErrorPageGenerator::respond(const RequestHTTP *request) {
         default:
             break;
     }
-    const HTTP::t_version response_http_v = request ? request->get_http_version() : HTTP::DEFAULT_HTTP_VERSION;
+    // MIMEタイプ設定
+    {
+        HTTP::CH::ContentType ct;
+        ct.value   = HTTP::strfy("text/html");
+        ct.charset = HTTP::strfy("UTF-8");
+        headers.push_back(std::make_pair(HeaderHTTP::content_type, ct.serialize()));
+    }
+    return headers;
+}
+
+ResponseHTTP *ErrorPageGenerator::respond(const RequestHTTP *request) {
+    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
+    const HTTP::t_version response_http_v    = request ? request->get_http_version() : HTTP::DEFAULT_HTTP_VERSION;
     ResponseHTTP *res = new ResponseHTTP(response_http_v, error.status_code(), &headers, &response_data, should_close_);
     res->start();
     return res;

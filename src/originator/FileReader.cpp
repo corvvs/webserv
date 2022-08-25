@@ -1,4 +1,5 @@
 #include "FileReader.hpp"
+#include "../utils/MIME.hpp"
 #include <unistd.h>
 #define READ_SIZE 1048576
 
@@ -121,9 +122,44 @@ void FileReader::leave() {
     delete this;
 }
 
-ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
+HTTP::byte_string FileReader::infer_content_type() const {
+    HTTP::CH::ContentType ct;
+    HTTP::char_string::size_type dot = file_path_.find_last_of(".");
+    HTTP::byte_string mt;
+    if (dot != HTTP::char_string::npos) {
+        mt = HTTP::MIME::mime_type_for_extension(HTTP::strfy(file_path_.substr(dot + 1)));
+    }
+    if (!mt.empty()) {
+        ct.value = mt;
+    } else {
+        bool is_text = false;
+        if (!response_data.empty()) {
+            HTTP::light_string body = response_data.top();
+            body                    = body.substr(0, 10000);
+            is_text                 = body.find_first_of(HTTP::CharFilter::nul) == HTTP::light_string::npos;
+        }
+        if (is_text) {
+            ct.value = HTTP::strfy("text/plain");
+        } else {
+            ct.value = HTTP::CH::ContentType::default_value;
+        }
+    }
+    const bool type_is_text = HTTP::light_string(ct.value).starts_with("text/");
+    if (type_is_text) {
+        bool is_ascii_only = true;
+        if (!response_data.empty()) {
+            HTTP::light_string body = response_data.top();
+            body                    = body.substr(0, 10000);
+            is_ascii_only           = body.find_first_not_of(HTTP::CharFilter::ascii) == HTTP::light_string::npos;
+        }
+        ct.charset = HTTP::strfy(is_ascii_only ? "US-ASCII" : "UTF-8");
+    }
+    return ct.serialize();
+}
+
+ResponseHTTP::header_list_type
+FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
         case ResponseDataList::SM_CHUNKED:
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -135,6 +171,14 @@ ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
         default:
             break;
     }
+    // Content-Type: の推測
+    headers.push_back(std::make_pair(HeaderHTTP::content_type, infer_content_type()));
+    return headers;
+}
+
+ResponseHTTP *FileReader::respond(const RequestHTTP *request) {
+    const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
     res->start();
     return res;

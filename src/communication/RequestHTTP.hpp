@@ -129,7 +129,7 @@ public:
         RequestTarget reroute_request_target;
 
         HTTP::t_method http_method; // リクエストマッチングに必要
-        HTTP::t_version http_version;
+        HTTP::Nullable<HTTP::t_version> http_version;
 
         bool is_body_chunked;
 

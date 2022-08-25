@@ -81,6 +81,7 @@ public:
     static const CharFilter cgi_extra;
     static const CharFilter pchar_without_pct;
     static const CharFilter uri_scheme;
+    static const CharFilter nul;
     static const CharFilter ascii;
     static const CharFilter controls;
     // Content-Disposition: における separator
@@ -102,6 +103,10 @@ public:
     // Sei-Cookie: における Path=... の値として使ってよい文字
     static const CharFilter cookie_path;
     static const CharFilter cookie_extension;
+    // リクエストパスにおいて使ってはいけない文字
+    static const CharFilter request_path_unacceptable;
+    // HTMLにおけるエスケープの対象となる文字
+    static const CharFilter escape_html;
     byte_string str() const;
 };
 } // namespace HTTP

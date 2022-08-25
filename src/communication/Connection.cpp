@@ -8,7 +8,6 @@
 // [[Attribute]]
 
 Connection::Attribute::Attribute() {
-    http_version  = HTTP::DEFAULT_HTTP_VERSION;
     is_persistent = true;
     timeout       = 60 * 1000;
 }
