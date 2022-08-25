@@ -11,6 +11,6 @@ const (
 )
 
 var (
-	//go:embed cgi/sample.html
+	//go:embed script/sample.html
 	sampleHtml []byte
 )
