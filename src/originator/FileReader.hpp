@@ -18,6 +18,7 @@ protected:
     char_string file_path_;
     bool originated_;
     ResponseDataList response_data;
+    HTTP::Optional<SendFileAgent> file_sender;
     FileCacher &cacher_;
 
     // ファイルからデータを読み出しておく
@@ -26,7 +27,11 @@ protected:
     // キャッシュデータを読み込む
     bool read_from_cache();
     byte_string infer_content_type() const;
+    byte_string infer_charset() const;
     ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
+
+    IResponseDataConsumer &current_consumer();
+    const IResponseDataConsumer &current_consumer() const;
 
 public:
     FileReader(const RequestMatchingResult &match_result, FileCacher &cacher);

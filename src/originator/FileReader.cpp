@@ -1,5 +1,6 @@
 #include "FileReader.hpp"
 #include "../utils/MIME.hpp"
+#include <sys/stat.h>
 #include <unistd.h>
 #define READ_SIZE 1048576
 
@@ -39,7 +40,20 @@ bool FileReader::read_from_cache() {
 
 minor_error FileReader::read_from_file() {
     // TODO: C++ way に書き直す
-    errno = 0;
+    // {
+    //     errno = 0;
+    //     struct stat st;
+    //     if (stat(file_path_.c_str(), &st) != 0) {
+    //         return minor_error::make("failed to stat file", HTTP::STATUS_FORBIDDEN);
+    //     }
+    //     long file_size = st.st_size;
+    //     if (0 <= file_size && file_size < INT_MAX) {
+    //         // sendfile で取り扱い可能な範囲内
+    //         file_sender.set(SendFileAgent(file_path_, file_size));
+    //         return minor_error::ok();
+    //     }
+    // }
+
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
     int fd = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
@@ -133,8 +147,8 @@ HTTP::byte_string FileReader::infer_content_type() const {
         ct.value = mt;
     } else {
         bool is_text = false;
-        if (!response_data.empty()) {
-            const HTTP::light_string body = response_data.top();
+        if (!current_consumer().empty()) {
+            const HTTP::light_string body = current_consumer().top();
             is_text                       = body.find_first_of(HTTP::CharFilter::nul) == HTTP::light_string::npos;
         }
         if (is_text) {
@@ -145,14 +159,18 @@ HTTP::byte_string FileReader::infer_content_type() const {
     }
     const bool type_is_text = HTTP::light_string(ct.value).starts_with("text/");
     if (type_is_text) {
-        bool is_ascii_only = true;
-        if (!response_data.empty()) {
-            const HTTP::light_string body = response_data.top();
-            is_ascii_only                 = body.find_first_not_of(HTTP::CharFilter::ascii) == HTTP::light_string::npos;
-        }
-        ct.charset = HTTP::strfy(is_ascii_only ? "US-ASCII" : "UTF-8");
+        ct.charset = infer_charset();
     }
     return ct.serialize();
+}
+
+HTTP::byte_string FileReader::infer_charset() const {
+    bool is_ascii_only = true;
+    if (!current_consumer().empty()) {
+        const HTTP::light_string body = current_consumer().top();
+        is_ascii_only                 = body.find_first_not_of(HTTP::CharFilter::ascii) == HTTP::light_string::npos;
+    }
+    return HTTP::strfy(is_ascii_only ? "US-ASCII" : "UTF-8");
 }
 
 ResponseHTTP::header_list_type
@@ -163,8 +181,8 @@ FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mo
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
             break;
         case ResponseDataList::SM_NOT_CHUNKED:
-            headers.push_back(
-                std::make_pair(HeaderHTTP::content_length, ParserHelper::utos(response_data.current_total_size(), 10)));
+            headers.push_back(std::make_pair(HeaderHTTP::content_length,
+                                             ParserHelper::utos(current_consumer().current_total_size(), 10)));
             break;
         default:
             break;
@@ -175,9 +193,25 @@ FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mo
 }
 
 ResponseHTTP *FileReader::respond(const RequestHTTP *request, bool should_close) {
-    const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    const IResponseDataConsumer::t_sending_mode sm = current_consumer().determine_sending_mode();
     ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
     ResponseHTTP *res
-        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, should_close);
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, current_consumer(), should_close);
     return res;
+}
+
+IResponseDataConsumer &FileReader::current_consumer() {
+    if (file_sender.is_null()) {
+        return response_data;
+    } else {
+        return file_sender.value();
+    }
+}
+
+const IResponseDataConsumer &FileReader::current_consumer() const {
+    if (file_sender.is_null()) {
+        return response_data;
+    } else {
+        return file_sender.value();
+    }
 }

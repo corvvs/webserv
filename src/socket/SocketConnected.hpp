@@ -1,5 +1,6 @@
 #ifndef SOCKET_CONNECTED_HPP
 #define SOCKET_CONNECTED_HPP
+#include "../Interfaces.hpp"
 #include "ASocket.hpp"
 
 class SocketListening;
@@ -8,7 +9,7 @@ class SocketListening;
 // [責務]
 // - ソケット1つを保持し, オブジェクト破壊時もしくはその前にソケットを閉じること
 // - ソケットを通じてバイト列の送受信を行うこと
-class SocketConnected : public ASocket {
+class SocketConnected : public ASocket, public IDataSender {
 private:
     // クライアント用コンストラクタ
     SocketConnected(t_socket_domain sdomain, t_socket_type stype);
@@ -26,6 +27,7 @@ public:
     // サーバ用factory関数
     static SocketConnected *wrap(t_fd fd, SocketListening &listening);
 
+    t_fd get_fd() const throw();
     ssize_t send(const void *buffer, size_t len, int flags) throw();
     ssize_t receive(void *buffer, size_t len, int flags) throw();
 

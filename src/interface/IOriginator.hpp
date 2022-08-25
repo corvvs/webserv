@@ -1,11 +1,12 @@
 #ifndef IORIGINATOR_HPP
 #define IORIGINATOR_HPP
-#include "../communication/RequestHTTP.hpp"
 #include "../communication/RequestTarget.hpp"
-#include "../communication/ResponseHTTP.hpp"
 #include "../utils/http.hpp"
 #include "IObserver.hpp"
 #include "ISocketLike.hpp"
+
+class RequestHTTP;
+class ResponseHTTP;
 
 // [オリジネータインターフェース]
 // オリジンサーバとしてのタスク = レスポンスをoriginateするクラス

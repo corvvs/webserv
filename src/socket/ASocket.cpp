@@ -52,7 +52,7 @@ void ASocket::set_nonblock() {
     }
 }
 
-int ASocket::get_fd() const throw() {
+t_fd ASocket::get_fd() const throw() {
     return fd;
 }
 

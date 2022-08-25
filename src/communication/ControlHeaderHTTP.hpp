@@ -96,10 +96,10 @@ struct ContentType : public IControlHeader, public IDictHolder {
 
     HTTP::byte_string value;
     parameter_dict parameters;
-    Nullable<HTTP::byte_string> charset;
-    Nullable<HTTP::byte_string> default_charset;
+    Optional<HTTP::byte_string> charset;
+    Optional<HTTP::byte_string> default_charset;
     // light_string なのはリクエストからの入力のみを想定しているから
-    Nullable<HTTP::light_string> boundary;
+    Optional<HTTP::light_string> boundary;
 
     // "application/octet-stream"
     // 値がないときはこれに設定するのではなく, この値と**みなす**
@@ -174,10 +174,10 @@ struct CookieEntry {
     // https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Set-Cookie#%E5%B1%9E%E6%80%A7
 
     // > クッキーの有効期限を示す、 HTTP の日時タイムスタンプです。
-    HTTP::Nullable<t_time_epoch_ms> expires;
+    HTTP::Optional<t_time_epoch_ms> expires;
     // > クッキーの期限までの秒数を示します。ゼロまたは負の数値の場合は、クッキーは直ちに期限切れになります。
     // > Expires および Max-Age の両方が設定されていたら、 Max-Age が優先されます。
-    HTTP::Nullable<long> max_age;
+    HTTP::Optional<long> max_age;
     // > クッキーを送信する先のホストを定義します。
     // > 指定されなかった場合は、この属性は既定で現在の文書の URL
     // におけるホスト名の部分になり、サブドメインを含みません。
@@ -198,7 +198,7 @@ struct CookieEntry {
     };
     // > クロスサイトリクエストでクッキーを送信するかどうかを制御し、クロスサイトリクエストフォージェリ攻撃 (CSRF)
     // に対するある程度の防御を提供します。
-    HTTP::Nullable<t_same_site> same_site;
+    HTTP::Optional<t_same_site> same_site;
 
     // name=value の解析
     light_string parse_name_value(const light_string &str);

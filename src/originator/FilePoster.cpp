@@ -260,6 +260,6 @@ ResponseHTTP *FilePoster::respond(const RequestHTTP *request, bool should_close)
     const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
     ResponseHTTP *res
-        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_CREATED, &headers, &response_data, should_close);
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_CREATED, &headers, response_data, should_close);
     return res;
 }

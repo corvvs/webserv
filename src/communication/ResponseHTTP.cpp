@@ -1,15 +1,17 @@
 #include "ResponseHTTP.hpp"
+#include "../Interfaces.hpp"
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/uio.h>
 #include <unistd.h>
-
 ResponseHTTP::ResponseHTTP(HTTP::t_version version,
                            HTTP::t_status status,
                            const header_list_type *headers,
-                           IResponseDataConsumer *data_consumer,
+                           IResponseDataConsumer &data_consumer,
                            bool should_close)
     : version_(version)
     , status_(status)
     , lifetime(Lifetime::make_response())
-    , sent_size(0)
     , data_consumer_(data_consumer)
     , should_close_(should_close) {
     if (headers != NULL) {
@@ -18,8 +20,8 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
             feed_header(it->first, it->second);
         }
     }
-    lifetime.activate();
     start();
+    lifetime.activate();
 }
 
 ResponseHTTP::~ResponseHTTP() {}
@@ -34,8 +36,8 @@ void ResponseHTTP::feed_header(const HTTP::header_key_type &key, const HTTP::hea
 
 HTTP::byte_string ResponseHTTP::serialize_former_part() {
     // 状態行
-    message_text = HTTP::version_str(version_) + ParserHelper::SP + ParserHelper::utos(status_, 10) + ParserHelper::SP
-                   + HTTP::reason(status_) + ParserHelper::CRLF;
+    HTTP::byte_string message_text = HTTP::version_str(version_) + ParserHelper::SP + ParserHelper::utos(status_, 10)
+                                     + ParserHelper::SP + HTTP::reason(status_) + ParserHelper::CRLF;
     // ヘッダ
     for (std::vector<HTTP::header_kvpair_type>::iterator it = header_list.begin(); it != header_list.end(); ++it) {
         message_text
@@ -50,38 +52,20 @@ void ResponseHTTP::start() {
     if (should_close_) {
         feed_header(HeaderHTTP::connection, HTTP::strfy("close"));
     }
-    consumer()->start(serialize_former_part());
-}
-
-const ResponseHTTP::byte_string &ResponseHTTP::get_message_text() const throw() {
-    return message_text;
-}
-
-const ResponseHTTP::byte_string::value_type *ResponseHTTP::get_unsent_head() {
-    consumer()->serialize_if_needed();
-    return consumer()->serialized_head();
+    consumer().start(serialize_former_part());
 }
 
 void ResponseHTTP::mark_sent(ssize_t sent) throw() {
     if (sent < 0) {
         return;
     }
-    consumer()->mark_sent(sent);
     if (is_complete()) {
         lifetime.deactivate();
     }
 }
 
-size_t ResponseHTTP::get_unsent_size() const throw() {
-    return consumer()->rest_serialized();
-}
-
 bool ResponseHTTP::is_complete() const throw() {
-    // VOUT(status_);
-    // VOUT(getpid());
-    // VOUT(this);
-    // VOUT(consumer());
-    return consumer() != NULL && consumer()->is_sending_over();
+    return consumer().is_sending_over();
 }
 
 bool ResponseHTTP::is_error() const throw() {
@@ -96,10 +80,22 @@ bool ResponseHTTP::should_close() const throw() {
     return should_close_;
 }
 
-IResponseDataConsumer *ResponseHTTP::consumer() throw() {
-    return (data_consumer_ != NULL) ? data_consumer_ : &local_datalist;
+IResponseDataConsumer &ResponseHTTP::consumer() throw() {
+    return data_consumer_;
 }
 
-const IResponseDataConsumer *ResponseHTTP::consumer() const throw() {
-    return (data_consumer_ != NULL) ? data_consumer_ : &local_datalist;
+const IResponseDataConsumer &ResponseHTTP::consumer() const throw() {
+    return data_consumer_;
+}
+
+bool ResponseHTTP::send_data(IDataSender &sender) throw() {
+    const ssize_t sent = consumer().send(sender, 0);
+    // VOUT(sent);
+    const bool succeeded = sent >= 0;
+    // VOUT(succeeded);
+    // 送信ができなかったか, エラーが起きた場合
+    if (succeeded) {
+        mark_sent(sent);
+    }
+    return succeeded;
 }

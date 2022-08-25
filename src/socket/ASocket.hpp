@@ -31,7 +31,7 @@ public:
     ASocket &operator=(const ASocket &rhs);
 
     void set_nonblock();
-    int get_fd() const throw();
+    t_fd get_fd() const throw();
     t_socket_domain get_domain() const throw();
     t_socket_type get_type() const throw();
     t_port get_port() const throw();

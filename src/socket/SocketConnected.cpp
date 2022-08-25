@@ -45,6 +45,10 @@ SocketConnected *SocketConnected::wrap(t_fd fd, SocketListening &listening) {
     return new SocketConnected(fd, listening);
 }
 
+t_fd SocketConnected::get_fd() const throw() {
+    return fd;
+}
+
 ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) throw() {
     return ::send(fd, buffer, len, flags);
 }

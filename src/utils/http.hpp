@@ -98,7 +98,30 @@ char_string restrfy(const byte_string &str);
 size_type find(const byte_string &hay, const byte_string &needle);
 
 template <class T>
-class Nullable {
+class IMaybe {
+public:
+    ~IMaybe() {}
+
+    // 値を保持していない場合はtrueを返す
+    virtual bool is_null() const = 0;
+
+    // 値を保持しているならその値を返す
+    // 値を保持していない時に呼ばれた場合は未定義動作
+    virtual T &value() = 0;
+
+    // 値を保持しているならその値を返す
+    // 値を保持していない時に呼ばれた場合は未定義動作
+    virtual const T &value() const = 0;
+
+    // 保持している値を破棄する
+    virtual void unset() = 0;
+
+    // 与えられた値をコピーして保持する
+    virtual void set(const T &value) = 0;
+};
+
+template <class T>
+class Nullable : public IMaybe<T> {
 private:
     bool is_null_;
     T val_;
@@ -112,6 +135,13 @@ public:
     // Nullかどうか
     bool is_null() const {
         return is_null_;
+    }
+
+    // 値を取得
+    // (Null状態のときに呼ばないこと)
+    T &value() {
+        assert(!is_null());
+        return val_;
     }
 
     // 値を取得
@@ -133,6 +163,64 @@ public:
     }
 };
 
+template <class T>
+class Optional : public IMaybe<T> {
+private:
+    u8t mem[sizeof(T)];
+    std::allocator<T> alloc;
+    bool is_null_;
+
+public:
+    // Null状態でデフォルト構築
+    Optional() : is_null_(true) {}
+    // 値が入った状態で構築
+    Optional(const T &val) : is_null_(true) {
+        set(val);
+    }
+
+    // Nullかどうか
+    bool is_null() const {
+        return is_null_;
+    }
+
+    // 値を取得
+    // (Null状態のときに呼ばないこと)
+    T &value() {
+        assert(!is_null());
+        return *((T *)mem);
+    }
+
+    // 値を取得
+    // (Null状態のときに呼ばないこと)
+    const T &value() const {
+        assert(!is_null());
+        return *((T *)mem);
+    }
+
+    // Null状態に設定
+    void unset() {
+        if (is_null()) {
+            return;
+        }
+        alloc.destroy((T *)mem);
+        is_null_ = true;
+    }
+
+    // 値を設定
+    void set(const T &val) {
+        if (is_null()) {
+            alloc.construct((T *)mem, val);
+            is_null_ = false;
+        } else {
+            *((T *)mem) = val;
+        }
+    }
+
+    Optional<T> &operator=(const T &rhs) {
+        set(rhs);
+        return *this;
+    }
+};
 } // namespace HTTP
 
 std::ostream &operator<<(std::ostream &ost, const HTTP::byte_string &f);
@@ -150,5 +238,15 @@ bool operator==(const char *lhs, const HTTP::byte_string &rhs);
 HTTP::byte_string operator+(const HTTP::byte_string &lhs, const HTTP::byte_string &rhs);
 HTTP::byte_string &operator+=(HTTP::byte_string &lhs, const HTTP::byte_string &rhs);
 HTTP::byte_string operator+(const HTTP::byte_string &lhs, const char *rhs);
+
+template <class T>
+bool operator==(const HTTP::Optional<T> &lhs, const T &rhs) {
+    return !lhs.is_null() && lhs.value() == rhs;
+}
+
+template <class T>
+bool operator==(const T &lhs, const HTTP::Optional<T> &rhs) {
+    return rhs == lhs;
+}
 
 #endif

@@ -148,7 +148,6 @@ void RoundTrip::reroute(Connection &connection) {
         throw http_error("too many redirect", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
 
-    // TODO: 古いオリジネータの内容を考慮する
     assert(originator_ != NULL);
     request_->inject_reroute_path(originator_->reroute_path());
 

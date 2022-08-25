@@ -776,6 +776,6 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request, bool should_close) {
     IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
     ResponseHTTP *r
-        = new ResponseHTTP(request->get_http_version(), response_status, &headers, &status.response_data, should_close);
+        = new ResponseHTTP(request->get_http_version(), response_status, &headers, status.response_data, should_close);
     return r;
 }
