@@ -134,8 +134,9 @@ HTTP::byte_string FileReader::infer_content_type() const {
     } else {
         bool is_text = false;
         if (!response_data.empty()) {
-            const HTTP::light_string body = response_data.top();
-            is_text                       = body.find_first_of(HTTP::CharFilter::nul) == HTTP::light_string::npos;
+            HTTP::light_string body = response_data.top();
+            body                    = body.substr(0, 10000);
+            is_text                 = body.find_first_of(HTTP::CharFilter::nul) == HTTP::light_string::npos;
         }
         if (is_text) {
             ct.value = HTTP::strfy("text/plain");
@@ -147,8 +148,9 @@ HTTP::byte_string FileReader::infer_content_type() const {
     if (type_is_text) {
         bool is_ascii_only = true;
         if (!response_data.empty()) {
-            const HTTP::light_string body = response_data.top();
-            is_ascii_only                 = body.find_first_not_of(HTTP::CharFilter::ascii) == HTTP::light_string::npos;
+            HTTP::light_string body = response_data.top();
+            body                    = body.substr(0, 10000);
+            is_ascii_only           = body.find_first_not_of(HTTP::CharFilter::ascii) == HTTP::light_string::npos;
         }
         ct.charset = HTTP::strfy(is_ascii_only ? "US-ASCII" : "UTF-8");
     }

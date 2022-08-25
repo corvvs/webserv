@@ -19,6 +19,8 @@ private:
     HTTP::t_status status_code;
     ResponseDataList response_data;
 
+    void generate_html();
+
 public:
     Redirector(const RequestMatchingResult &match_result);
 
