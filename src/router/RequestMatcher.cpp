@@ -78,8 +78,9 @@ RequestMatcher::routing_cgi(RequestMatchingResult res, const RequestTarget &targ
 /**
  * 以下の形式でパスを分割する
  * リクエスト: `/cgi-bin/cgi.rb/pathinfo`
+ * fullpath   : /cgi-bin/cgi.rb (local path)
  * root       : /cgi-bin
- * cgi_script : /cgi.rb
+ * script_name: /cgi-bin/cgi.rb (request path)
  * path_info  : /pathinfo
  */
 RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const RequestTarget &target,
@@ -90,6 +91,7 @@ RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const Reque
     const HTTP::light_string path_stripped    = HTTP::Utils::lstrip_path(target.dpath_slash_reduced());
     const HTTP::byte_string full_request_path = HTTP::Utils::join_path(root_stripped, path_stripped);
     const light_string path                   = full_request_path;
+
     RequestMatchingResult::CGIResource resource;
     resource.root = root_stripped.str();
     for (size_t i = root_stripped.size();; i = path.find("/", i)) {
@@ -101,10 +103,6 @@ RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const Reque
             if (i != HTTP::npos) {
                 resource.path_info = path.substr(i).str();
             }
-            QVOUT(resource.fullpath);
-            QVOUT(resource.root);
-            QVOUT(resource.script_name);
-            QVOUT(resource.path_info);
             break;
         }
         if (i == HTTP::npos) {
@@ -115,11 +113,71 @@ RequestMatchingResult::CGIResource RequestMatcher::make_cgi_resource(const Reque
     return resource;
 }
 
+bool RequestMatcher::is_post(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf) {
+    if (method != HTTP::METHOD_POST) {
+        return false;
+    }
+    const std::string &upload_store = conf.get_upload_store(HTTP::restrfy(target.dpath_slash_reduced()));
+    return !upload_store.empty();
+}
+
+std::pair<HTTP::byte_string, bool> RequestMatcher::make_post_path(const RequestTarget &target,
+                                                                  const config::Config &conf) const {
+    const std::string upload_store = conf.get_upload_store(HTTP::restrfy(target.dpath_slash_reduced()));
+    if (file::is_dir(upload_store)) {
+        return std::make_pair(HTTP::strfy(upload_store), true);
+    }
+    return std::make_pair(HTTP::strfy(""), false);
+}
+
+RequestMatchingResult::ResultType RequestMatcher::get_result_type_from_dir(const RequestTarget &target,
+                                                                           const HTTP::t_method &method,
+                                                                           const config::Config &conf) const {
+    if (is_executable(target, method, conf) && method == HTTP::METHOD_POST) {
+        return RequestMatchingResult::RT_FILE_POST;
+    }
+    if (is_autoindex(target, conf)) {
+        return RequestMatchingResult::RT_AUTO_INDEX;
+    }
+    return RequestMatchingResult::RT_ERROR;
+}
+
+RequestMatchingResult::ResultType RequestMatcher::get_result_type_from_file(const RequestTarget &target,
+                                                                            const HTTP::t_method &method,
+                                                                            const config::Config &conf) const {
+    if (is_executable(target, method, conf)) {
+        switch (method) {
+            case HTTP::METHOD_DELETE:
+                return RequestMatchingResult::RT_FILE_DELETE;
+            case HTTP::METHOD_PUT:
+                return RequestMatchingResult::RT_FILE_PUT;
+            default:;
+        }
+    }
+    return RequestMatchingResult::RT_FILE;
+}
+
+RequestMatchingResult::ResultType RequestMatcher::get_result_type(const RequestTarget &target,
+                                                                  const HTTP::t_method &method,
+                                                                  const config::Config &conf,
+                                                                  const bool &isdir) const {
+    if (isdir) {
+        return get_result_type_from_dir(target, method, conf);
+    }
+    return get_result_type_from_file(target, method, conf);
+}
+
 RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
                                                       const RequestTarget &target,
                                                       const HTTP::t_method &method,
                                                       const config::Config &conf) {
-    std::pair<HTTP::byte_string, bool> path_isdir = make_resource_path(target, conf);
+    std::pair<HTTP::byte_string, bool> path_isdir;
+    if (is_post(target, method, conf)) {
+        path_isdir = make_post_path(target, conf);
+    } else {
+        path_isdir = make_resource_path(target, conf);
+    }
+
     if (!is_acceptable_form(target)) {
         res.error = minor_error::make("form of a target is not acceptable", HTTP::STATUS_BAD_REQUEST);
         return res;
@@ -128,36 +186,18 @@ RequestMatchingResult RequestMatcher::routing_default(RequestMatchingResult res,
         res.error = minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
         return res;
     }
-    res.path_local  = path_isdir.first;
-    res.result_type = RequestMatchingResult::RT_FILE;
-    if (path_isdir.second) {
-        if (get_is_executable(target, method, conf) && method == HTTP::METHOD_POST) {
-            res.result_type = RequestMatchingResult::RT_FILE_POST;
-        } else if (get_is_autoindex(target, conf)) {
-            res.result_type = RequestMatchingResult::RT_AUTO_INDEX;
-        } else {
-            DXOUT("PMDD");
-            res.error = minor_error::make("permission denied", HTTP::STATUS_FORBIDDEN);
-            return res;
-        }
-    } else if (get_is_executable(target, method, conf)) {
-        switch (method) {
-            case HTTP::METHOD_DELETE:
-                res.result_type = RequestMatchingResult::RT_FILE_DELETE;
-                break;
-            case HTTP::METHOD_PUT:
-                res.result_type = RequestMatchingResult::RT_FILE_PUT;
-                break;
-            default:
-                break;
-        }
+    res.path_local   = path_isdir.first;
+    const bool isdir = path_isdir.second;
+    res.result_type  = get_result_type(target, method, conf, isdir);
+    if (res.result_type == RequestMatchingResult::RT_ERROR) {
+        res.error = minor_error::make("permission denied", HTTP::STATUS_FORBIDDEN);
     }
     return res;
 }
 
-bool RequestMatcher::get_is_executable(const RequestTarget &target,
-                                       const HTTP::t_method &method,
-                                       const config::Config &conf) {
+bool RequestMatcher::is_executable(const RequestTarget &target,
+                                   const HTTP::t_method &method,
+                                   const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.dpath_slash_reduced());
 
     switch (method) {
@@ -172,7 +212,7 @@ bool RequestMatcher::get_is_executable(const RequestTarget &target,
     return false;
 }
 
-bool RequestMatcher::get_is_autoindex(const RequestTarget &target, const config::Config &conf) {
+bool RequestMatcher::is_autoindex(const RequestTarget &target, const config::Config &conf) const {
     const std::string &path = HTTP::restrfy(target.dpath_slash_reduced());
     return conf.get_autoindex(path);
 }
