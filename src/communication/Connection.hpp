@@ -35,7 +35,6 @@ public:
     // 準静的なコネクションの性質
     // "準静的" = リクエストの内容次第で変更されうるが, それ以外(=時間変化など)によっては変わらない
     struct Attribute {
-        HTTP::t_version http_version;
         bool is_persistent;
         t_time_epoch_ms timeout;
 

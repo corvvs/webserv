@@ -103,6 +103,8 @@ public:
     // Sei-Cookie: における Path=... の値として使ってよい文字
     static const CharFilter cookie_path;
     static const CharFilter cookie_extension;
+    // リクエストパスにおいて使ってはいけない文字
+    static const CharFilter request_path_unacceptable;
     byte_string str() const;
 };
 } // namespace HTTP
