@@ -18,7 +18,8 @@ struct RequestMatchingResult {
         RT_EXTERNAL_REDIRECTION,
         RT_CGI,
         RT_AUTO_INDEX,
-        RT_ECHO
+        RT_ECHO,
+        RT_ERROR
     };
 
     minor_error error;
