@@ -107,3 +107,30 @@ TEST(utils_string_join_path, extreme) {
     EXPECT_EQ(HTTP::strfy("/"), HTTP::Utils::join_path(HTTP::strfy("/////"), HTTP::strfy("")));
     EXPECT_EQ(HTTP::strfy("/"), HTTP::Utils::join_path(HTTP::strfy("/////"), HTTP::strfy("/")));
 }
+
+// [is_relative_path]
+TEST(utils_is_relative_path, is_true) {
+    EXPECT_TRUE(HTTP::Utils::is_relative_path(HTTP::strfy("./")));
+    EXPECT_TRUE(HTTP::Utils::is_relative_path(HTTP::strfy("hello")));
+    EXPECT_TRUE(HTTP::Utils::is_relative_path(HTTP::strfy("%")));
+    EXPECT_TRUE(HTTP::Utils::is_relative_path(HTTP::strfy("../extra.cgi")));
+}
+
+TEST(utils_is_relative_path, is_false) {
+    EXPECT_FALSE(HTTP::Utils::is_relative_path(HTTP::strfy("/")));
+    EXPECT_FALSE(HTTP::Utils::is_relative_path(HTTP::strfy("//")));
+    EXPECT_FALSE(HTTP::Utils::is_relative_path(HTTP::strfy("/usr/bin/cat")));
+    EXPECT_FALSE(HTTP::Utils::is_relative_path(HTTP::strfy("/usr/bin/cat/")));
+}
+
+// [basename]
+TEST(utils_basenane, basic) {
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy(".")), HTTP::Utils::basename(HTTP::strfy("./")));
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy("hello")), HTTP::Utils::basename(HTTP::strfy("hello")));
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy("")), HTTP::Utils::basename(HTTP::strfy("")));
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy("")), HTTP::Utils::basename(HTTP::strfy("/")));
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy("")), HTTP::Utils::basename(HTTP::strfy("///////")));
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy("warhead")), HTTP::Utils::basename(HTTP::strfy("/w/warhead/")));
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy("warhead")), HTTP::Utils::basename(HTTP::strfy("warhead/")));
+    EXPECT_EQ(HTTP::light_string(HTTP::strfy("..")), HTTP::Utils::basename(HTTP::strfy("/warhead/../////")));
+}
