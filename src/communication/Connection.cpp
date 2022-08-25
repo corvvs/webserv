@@ -264,15 +264,12 @@ void Connection::perform_sending(IObserver &observer) {
         return;
     }
 
-    const ssize_t sent = sock->send(rt.res()->get_unsent_head(), rt.res()->get_unsent_size(), 0);
+    const bool succeeded = rt.res()->send_data(*sock);
     // 送信ができなかったか, エラーが起きた場合
-    if (sent < 0) {
-        // TODO: とりあえず接続を閉じておくが, 本当はどうするべき？
+    if (!succeeded) {
         DXOUT("die?");
         die(observer);
-        return;
     }
-    rt.res()->mark_sent(sent);
 }
 
 void Connection::perform_shutting_down(IObserver &observer) {

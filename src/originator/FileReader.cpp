@@ -40,19 +40,19 @@ bool FileReader::read_from_cache() {
 
 minor_error FileReader::read_from_file() {
     // TODO: C++ way に書き直す
-    // {
-    //     errno = 0;
-    //     struct stat st;
-    //     if (stat(file_path_.c_str(), &st) != 0) {
-    //         return minor_error::make("failed to stat file", HTTP::STATUS_FORBIDDEN);
-    //     }
-    //     long file_size = st.st_size;
-    //     if (0 <= file_size && file_size < INT_MAX) {
-    //         // sendfile で取り扱い可能な範囲内
-    //         file_sender.set(SendFileAgent(file_path_, file_size));
-    //         return minor_error::ok();
-    //     }
-    // }
+    {
+        errno = 0;
+        struct stat st;
+        if (stat(file_path_.c_str(), &st) != 0) {
+            return minor_error::make("failed to stat file", HTTP::STATUS_FORBIDDEN);
+        }
+        long file_size = st.st_size;
+        if (0 <= file_size && file_size < INT_MAX) {
+            // sendfile で取り扱い可能な範囲内
+            file_sender.set(SendFileAgent(file_path_, file_size));
+            return minor_error::ok();
+        }
+    }
 
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
