@@ -16,6 +16,8 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 	}()
+	err := exec.Command("chmod", "-R", "777", "./script/execute").Run()
+
 	for {
 		c, _ := client.NewClient("default", "", "8080")
 		if c != nil {
@@ -25,7 +27,7 @@ func TestMain(m *testing.M) {
 	}
 
 	m.Run()
-	err := exec.Command("pkill", "webserv").Run()
+	err = exec.Command("pkill", "webserv").Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}

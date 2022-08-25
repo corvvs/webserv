@@ -13,4 +13,8 @@ const (
 var (
 	//go:embed script/sample.html
 	sampleHtml []byte
+	//go:embed script/not_execute/cgi.rb
+	cgiRb []byte
+	//go:embed script/not_execute/cgi.py
+	cgiPy []byte
 )
