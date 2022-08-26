@@ -220,7 +220,7 @@ minor_error HTTP::CH::ContentType::determine(const AHeaderHolder &holder) {
     light_string parameters_str(lct, subtype_end);
     ARoutingParameters::decompose_semicoron_separated_kvlist(parameters_str, *this);
     {
-        HTTP::IDictHolder::parameter_dict::const_iterator it = parameters.find(HTTP::strfy("charset"));
+        HTTP::IDictHolder::parameter_dict::iterator it = parameters.find(HTTP::strfy("charset"));
         if (it != parameters.end()) {
             charset = it->second.str();
             parameters.erase(it);

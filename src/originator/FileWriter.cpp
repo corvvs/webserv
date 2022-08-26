@@ -1,5 +1,6 @@
 #include "FileWriter.hpp"
 #include <unistd.h>
+#include <cerrno>
 #define WRITE_SIZE 1024
 
 FileWriter::FileWriter(const RequestMatchingResult &match_result, const byte_string &content_to_write)

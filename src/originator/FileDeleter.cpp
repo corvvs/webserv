@@ -1,5 +1,6 @@
 #include "FileDeleter.hpp"
 #include <unistd.h>
+#include <cerrno>
 #define WRITE_SIZE 1024
 #define NON_FD -1
 

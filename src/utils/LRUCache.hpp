@@ -15,7 +15,7 @@ public:
     typedef std::pair<key_type, data_type> value_type;
     typedef std::map<key_type, data_type> data_map_type;
     typedef typename data_map_type::const_iterator const_iterator;
-    typedef std::map<key_type, typename list_type::const_iterator> iterator_map_type;
+    typedef std::map<key_type, typename list_type::iterator> iterator_map_type;
 
 private:
     // キャッシュができる上限値
@@ -51,7 +51,7 @@ public:
         }
 
         // 存在する場合
-        typename list_type::const_iterator it = iter_map_[key];
+        typename list_type::iterator it = iter_map_[key];
         const key_type k                      = *it;
 
         // アクセスリストから削除

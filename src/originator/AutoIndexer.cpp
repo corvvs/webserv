@@ -4,6 +4,8 @@
 #include "../utils/HTML.hpp"
 #include <algorithm>
 #include <ctime>
+#include <sys/stat.h>
+#include <cerrno>
 #include <unistd.h>
 #define READ_SIZE 1024
 
@@ -153,7 +155,7 @@ void AutoIndexer::scan_from_directory() {
         entries.resize(entries.size() + 1);
         entries.back().name    = HTTP::strfy(ent->d_name);
         entries.back().size    = st.st_size;
-        entries.back().st_mtim = st.st_mtimespec;
+//        entries.back().st_mtim = st.st_mtimespec;
         entries.back().is_dir  = S_ISDIR(st.st_mode);
     }
     render_html();

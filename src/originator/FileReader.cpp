@@ -1,6 +1,7 @@
 #include "FileReader.hpp"
 #include "../utils/MIME.hpp"
 #include <unistd.h>
+#include <cerrno>
 #define READ_SIZE 1048576
 
 FileReader::FileReader(const RequestMatchingResult &match_result, FileCacher &cacher)

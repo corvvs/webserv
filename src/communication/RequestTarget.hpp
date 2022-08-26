@@ -46,7 +46,6 @@ struct RequestTarget {
     //     |           |            |            |        |
     // scheme     authority       path        query   fragment
     //     |   _____________________|__
-    //     / \ /                        \
     //     urn:example:animal:ferret:nose
 
     light_string scheme;
