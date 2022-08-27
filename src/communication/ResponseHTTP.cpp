@@ -9,7 +9,6 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
     : version_(version)
     , status_(status)
     , lifetime(Lifetime::make_response())
-    , sent_size(0)
     , data_consumer_(data_consumer)
     , should_close_(should_close) {
     if (headers != NULL) {

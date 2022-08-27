@@ -25,7 +25,6 @@ private:
     minor_error merror;
     Lifetime lifetime;
     // 送信済みマーカー
-    size_t sent_size;
     header_list_type header_list;
     header_dict_type header_dict;
     byte_string body;
