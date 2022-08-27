@@ -31,6 +31,7 @@ public:
 
 private:
     char_string directory_path_;
+    light_string request_path;
     ResponseDataList response_data;
     bool originated_;
     const IContentProvider &content_provider;
@@ -50,6 +51,7 @@ private:
     void analyze_subpart(const light_string &subpart);
     // FileEntryの内容をディスクに書き込む
     void write_file(const FileEntry &file) const;
+    ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:
     FilePoster(const RequestMatchingResult &match_result, const IContentProvider &request);
