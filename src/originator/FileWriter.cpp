@@ -21,8 +21,8 @@ void FileWriter::write_to_file() {
     }
     // ファイルを上書きモードで開く.
     // 開けなかったらエラー.
-    FDHolder fd_holder = open(file_path_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
-    t_fd fd            = fd_holder.value();
+    FDHolder fd_holder(open(file_path_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644));
+    t_fd fd = fd_holder.value();
     if (fd < 0) {
         switch (errno) {
             case EACCES:

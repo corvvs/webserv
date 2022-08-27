@@ -170,8 +170,8 @@ void FilePoster::analyze_subpart(const light_string &subpart) {
 }
 
 void FilePoster::write_file(const FileEntry &file) const {
-    FDHolder fd_holder = open(HTTP::restrfy(file.name).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0444);
-    t_fd fd            = fd_holder.value();
+    FDHolder fd_holder(open(HTTP::restrfy(file.name).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0444));
+    t_fd fd = fd_holder.value();
     // 0444 なのはアップロードされたファイルを即時実行させないため
     if (fd < 0) {
         switch (errno) {

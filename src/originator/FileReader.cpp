@@ -43,8 +43,8 @@ minor_error FileReader::read_from_file() {
     errno = 0;
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
-    FDHolder fd_holder = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
-    t_fd fd            = fd_holder.value();
+    FDHolder fd_holder(open(file_path_.c_str(), O_RDONLY | O_CLOEXEC));
+    t_fd fd = fd_holder.value();
     if (fd < 0) {
         switch (errno) {
             case ENOENT:

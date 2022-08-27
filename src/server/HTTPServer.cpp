@@ -53,7 +53,8 @@ void HTTPServer::listen(t_socket_domain sdomain,
     ObjectHolder<Channel> ch_holder(new Channel(this, sdomain, stype, port, configs, cacher));
     Channel *ch            = ch_holder.value();
     channels[ch->get_id()] = ch;
-    socket_observer_->reserve_hold(ch_holder.release());
+    socket_observer_->reserve_hold(ch);
+    ch_holder.release();
     socket_observer_->reserve_set(ch, IObserver::OT_READ);
 }
 

@@ -120,11 +120,11 @@ void CGI::start_origination(IObserver &observer) {
     check_executable();
     set_content(attr.configuration_provider_.get_body());
 
-    std::pair<SocketUNIX *, t_fd> socks    = SocketUNIX::socket_pair();
-    ObjectHolder<SocketUNIX> parent_holder = socks.first;
-    FDHolder child_holder                  = socks.second;
-    SocketUNIX *sock_parent                = parent_holder.value();
-    t_fd sock_child                        = child_holder.value();
+    std::pair<SocketUNIX *, t_fd> socks = SocketUNIX::socket_pair();
+    ObjectHolder<SocketUNIX> parent_holder(socks.first);
+    FDHolder child_holder(socks.second);
+    SocketUNIX *sock_parent = parent_holder.value();
+    t_fd sock_child         = child_holder.value();
     sock_parent->set_nonblock();
 
     pid_t pid = fork();
@@ -134,9 +134,9 @@ void CGI::start_origination(IObserver &observer) {
     }
     if (pid == 0) {
         // child: CGI process
-        parent_holder.release();
         // parent_holder の中身は使わないので破壊.
         // child_holder は中身を抱えたまま execve に突入する.
+        parent_holder.destroy();
 
         // 引数の準備
         const light_string script_path = HTTP::Utils::is_relative_path(attr.script_path_)
@@ -171,11 +171,11 @@ void CGI::start_origination(IObserver &observer) {
         exit(rv);
     }
     // parent: server process
-    attr.cgi_pid = pid;
-    attr.sock    = parent_holder.release();
-    child_holder.release();
     // parent_holder は中身を CGI(attr.sock) に移譲.
     // child_holder の中身は使わないので破壊.
+    attr.cgi_pid = pid;
+    attr.sock    = parent_holder.release();
+    child_holder.destroy();
 
     attr.observer = &observer;
     observer.reserve_hold(this);

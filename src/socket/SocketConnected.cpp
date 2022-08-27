@@ -41,8 +41,8 @@ SocketConnected *SocketConnected::connect(t_socket_domain sdomain, t_socket_type
 }
 
 SocketConnected *SocketConnected::wrap(t_fd fd, SocketListening &listening) {
-    ObjectHolder<SocketConnected> sock_holder = new SocketConnected(fd, listening);
-    SocketConnected *sock                     = sock_holder.value();
+    ObjectHolder<SocketConnected> sock_holder(new SocketConnected(fd, listening));
+    SocketConnected *sock = sock_holder.value();
     sock->set_nonblock();
     return sock_holder.release();
 }
