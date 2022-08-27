@@ -412,12 +412,15 @@ void CGI::perform_receiving(IObserver &observer) {
     } else {
         response_data_producer().inject(buf, received_size, is_disconnected);
     }
+    after_injection(is_disconnected);
     if (is_disconnected) {
         // Read側の切断を検知
-        observer.reserve_unset(this, IObserver::OT_WRITE);
+        if (this->ps.parse_progress != PP_OVER) {
+            // CGIレスポンスが完結する前に切断された -> 500
+            throw http_error("CGI response is incomplete", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        }
         observer.reserve_unset(this, IObserver::OT_READ);
     }
-    after_injection(is_disconnected);
 }
 
 bool CGI::is_originatable() const {
