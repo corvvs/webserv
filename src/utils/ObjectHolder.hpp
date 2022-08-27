@@ -2,6 +2,7 @@
 #define OBJECT_HOLDER_HPP
 #include "../socket/SocketType.hpp"
 
+// ファイルディスクリプタRAII用クラス
 class FDHolder {
 public:
     typedef t_fd value_type;
@@ -9,11 +10,21 @@ public:
 private:
     value_type v_;
 
+    void destroy() throw() {
+        if (v_ >= 0) {
+            close(v_);
+        }
+        waive();
+    }
+
+    void waive() throw() {
+        v_ = -1;
+    }
+
 public:
     FDHolder(value_type v) throw() : v_(v) {}
     ~FDHolder() {
         destroy();
-        waive();
     }
 
     // 保持している値を返す.
@@ -27,19 +38,9 @@ public:
         waive();
         return rv;
     }
-
-    void destroy() throw() {
-        if (v_ >= 0) {
-            close(v_);
-        }
-    }
-
-    void waive() throw() {
-        v_ = -1;
-    }
 };
 
-// new されたオブジェクトの所有権を一時的に保持するためのオブジェクト
+// オブジェクトRAII用クラス
 template <class U>
 class ObjectHolder {
 public:
@@ -48,11 +49,19 @@ public:
 private:
     value_type v_;
 
+    void destroy() throw() {
+        delete v_;
+        waive();
+    }
+
+    void waive() throw() {
+        v_ = NULL;
+    }
+
 public:
     ObjectHolder(value_type v) throw() : v_(v) {}
     ~ObjectHolder() {
         destroy();
-        waive();
     }
 
     // 保持している値を返す.
@@ -65,14 +74,6 @@ public:
         value_type rv = v_;
         waive();
         return rv;
-    }
-
-    void destroy() throw() {
-        delete v_;
-    }
-
-    void waive() throw() {
-        v_ = NULL;
     }
 };
 
