@@ -250,6 +250,5 @@ ResponseHTTP *FilePoster::respond(const RequestHTTP *request) {
             break;
     }
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
-    res->start();
     return res;
 }

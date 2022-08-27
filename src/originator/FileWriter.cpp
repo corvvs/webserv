@@ -92,6 +92,5 @@ void FileWriter::leave() {
 ResponseHTTP *FileWriter::respond(const RequestHTTP *request) {
     response_data.determine_sending_mode();
     ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, false);
-    res->start();
     return res;
 }

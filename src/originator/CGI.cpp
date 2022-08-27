@@ -780,11 +780,7 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     from_script_header_holder.erase_vals(HeaderHTTP::content_type);
     IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
-    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
-
-    // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, NULL, false);
-    ResponseHTTP::swap(res, *r);
-    r->start();
-    return r;
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), response_status, &headers, &status.response_data, false);
+    return res;
 }

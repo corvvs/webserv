@@ -102,6 +102,5 @@ ResponseHTTP *ErrorPageGenerator::respond(const RequestHTTP *request) {
     ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
     const HTTP::t_version response_http_v    = request ? request->get_http_version() : HTTP::DEFAULT_HTTP_VERSION;
     ResponseHTTP *res = new ResponseHTTP(response_http_v, error.status_code(), &headers, &response_data, should_close_);
-    res->start();
     return res;
 }
