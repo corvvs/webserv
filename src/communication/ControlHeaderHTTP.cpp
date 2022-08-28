@@ -575,6 +575,13 @@ HTTP::byte_string HTTP::CH::Date::serialize() const {
     return ParserHelper::time_to_http_date(value);
 }
 
+// [LastModified]
+HTTP::CH::LastModified::LastModified(t_time_epoch_ms t) : value(t) {}
+
+HTTP::byte_string HTTP::CH::LastModified::serialize() const {
+    return ParserHelper::time_to_http_date(value);
+}
+
 // [Location]
 
 minor_error HTTP::CH::Location::determine(const AHeaderHolder &holder) {

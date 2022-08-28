@@ -1,10 +1,11 @@
 #include "FileReader.hpp"
+#include "../utils/File.hpp"
 #include "../utils/MIME.hpp"
 #include <unistd.h>
 #define READ_SIZE 1048576
 
 FileReader::FileReader(const RequestMatchingResult &match_result, FileCacher &cacher)
-    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
+    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher), last_modified(0) {}
 
 FileReader::FileReader(const char_string &path, FileCacher &cacher)
     : file_path_(path), originated_(false), cacher_(cacher) {}
@@ -39,6 +40,16 @@ bool FileReader::read_from_cache() {
 
 minor_error FileReader::read_from_file() {
     // TODO: C++ way に書き直す
+    {
+        // 最終更新時刻のチェック
+        time_t lut = file::get_last_update_time(file_path_);
+        if (lut > 0) {
+            last_modified = lut * 1000;
+        } else {
+            last_modified = 0;
+        }
+    }
+
     errno = 0;
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
@@ -173,6 +184,10 @@ FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mo
     }
     // Content-Type: の推測
     headers.push_back(std::make_pair(HeaderHTTP::content_type, infer_content_type()));
+    // Last-Modifiedがもしあれば
+    if (last_modified > 0) {
+        headers.push_back(std::make_pair(HeaderHTTP::last_modified, HTTP::CH::LastModified(last_modified).serialize()));
+    }
     return headers;
 }
 

@@ -19,8 +19,9 @@ protected:
     bool originated_;
     ResponseDataList response_data;
     FileCacher &cacher_;
+    t_time_epoch_ms last_modified;
 
-    // ファイルからデータを読み出しておく
+    // ファイルからデータを読み出し, response_data に入れる.
     minor_error read_from_file();
 
     // キャッシュデータを読み込む

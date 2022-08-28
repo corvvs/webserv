@@ -160,6 +160,15 @@ struct Date : public IControlHeader {
     HTTP::byte_string serialize() const;
 };
 
+struct LastModified {
+    t_time_epoch_ms value;
+    minor_error merror;
+
+    LastModified(t_time_epoch_ms t);
+    // 現在保持しているデータを, HTTPヘッダの値として文字列化して返す
+    HTTP::byte_string serialize() const;
+};
+
 struct Location : public IControlHeader {
     HTTP::byte_string value;
     HTTP::light_string abs_path;
