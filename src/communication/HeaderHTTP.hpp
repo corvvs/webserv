@@ -31,8 +31,8 @@ const HTTP::byte_string date                = ParserHelper::normalize_header_key
 const HTTP::byte_string if_modified_since   = ParserHelper::normalize_header_key(HTTP::strfy("If-Modified-Since"));
 const HTTP::byte_string last_modified       = ParserHelper::normalize_header_key(HTTP::strfy("Last-Modified"));
 // for CGI
-const HTTP::byte_string status   = HTTP::strfy("status");
-const HTTP::byte_string location = HTTP::strfy("location");
+const HTTP::byte_string status   = ParserHelper::normalize_header_key(HTTP::strfy("status"));
+const HTTP::byte_string location = ParserHelper::normalize_header_key(HTTP::strfy("location"));
 
 } // namespace HeaderHTTP
 
