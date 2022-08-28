@@ -153,6 +153,11 @@ struct Date : public IControlHeader {
     minor_error merror;
 
     minor_error determine(const AHeaderHolder &holder);
+
+    // 現在時刻をあらわす Date オブジェクトを生成
+    static Date now();
+    // 現在保持しているデータを, HTTPヘッダの値として文字列化して返す
+    HTTP::byte_string serialize() const;
 };
 
 struct Location : public IControlHeader {

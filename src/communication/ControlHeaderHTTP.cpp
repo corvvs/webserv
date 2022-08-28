@@ -1,4 +1,5 @@
 #include "ControlHeaderHTTP.hpp"
+#include "../event/time.hpp"
 #include "RoutingParameters.hpp"
 
 typedef HTTP::byte_string byte_string;
@@ -548,7 +549,7 @@ minor_error HTTP::CH::Date::determine(const AHeaderHolder &holder) {
     }
     std::set<t_time_epoch_ms> ts;
     for (AHeaderHolder::value_list_type::const_iterator it = vals->begin(); it != vals->end(); ++it) {
-        std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(*it);
+        std::pair<bool, t_time_epoch_ms> res = ParserHelper::http_date_to_time(*it);
         if (res.first) {
             ts.insert(res.second);
         }
@@ -562,6 +563,16 @@ minor_error HTTP::CH::Date::determine(const AHeaderHolder &holder) {
     VOUT(merror);
     VOUT(value);
     return minor_error::ok();
+}
+
+HTTP::CH::Date HTTP::CH::Date::now() {
+    Date dt;
+    dt.value = WSTime::get_epoch_ms();
+    return dt;
+}
+
+HTTP::byte_string HTTP::CH::Date::serialize() const {
+    return ParserHelper::time_to_http_date(value);
 }
 
 // [Location]
@@ -807,7 +818,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_expire(const light_string &str) 
     work                                 = work.substr(1);
     const light_string maybe_date        = work.substr_before(";");
     work                                 = work.substr(maybe_date.size());
-    std::pair<bool, t_time_epoch_ms> res = ParserHelper::str_to_http_date(maybe_date);
+    std::pair<bool, t_time_epoch_ms> res = ParserHelper::http_date_to_time(maybe_date);
     if (res.first) {
         expires.set(res.second);
     } else {

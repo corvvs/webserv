@@ -78,7 +78,10 @@ unsigned int quality_to_u(HTTP::light_string &quality);
 light_string extract_quoted_or_token(const light_string &str);
 
 // 与えられた文字列が HTTP-dateとして解釈可能なら, epoch に変換して返す.
-std::pair<bool, t_time_epoch_ms> str_to_http_date(const light_string &str);
+std::pair<bool, t_time_epoch_ms> http_date_to_time(const light_string &str);
+
+// 与えられた時刻を HTTP-date 形式(IMF-fixdate)の文字列として出力する
+byte_string time_to_http_date(t_time_epoch_ms t);
 
 // パーセントエンコードされた文字列をデコードする
 // ただしエンコード後の文字が`exclude`に含まれる場合はデコードしない

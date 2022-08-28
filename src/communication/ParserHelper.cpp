@@ -388,7 +388,7 @@ int find_index(const HTTP::light_string &str, const char **list) {
     return -1;
 }
 
-std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_string &str) {
+std::pair<bool, t_time_epoch_ms> ParserHelper::http_date_to_time(const light_string &str) {
     //   HTTP-date    = IMF-fixdate / obs-date
     //   obs-date     = rfc850-date / asctime-date
     //
@@ -575,6 +575,15 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
         }
     } while (0);
     return std::make_pair(false, 0);
+}
+
+HTTP::byte_string ParserHelper::time_to_http_date(t_time_epoch_ms t) {
+    time_t now   = t / 1000;
+    struct tm tm = *gmtime(&now);
+    // strftime の結果はロケール依存だが, デフォルトロケールは C 固定のはずなので, 大丈夫なんじゃないの.
+    char buf[1000];
+    size_t n = strftime(buf, sizeof buf, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+    return byte_string(buf, buf + n);
 }
 
 HTTP::byte_string ParserHelper::decode_pct_encoded(const byte_string &str, const HTTP::CharFilter &exclude) {
