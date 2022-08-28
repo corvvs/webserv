@@ -532,8 +532,8 @@ minor_error HTTP::CH::Via::determine(const AHeaderHolder &holder) {
     return minor_error::ok();
 }
 
-// [Date]
-minor_error HTTP::CH::Date::determine(const AHeaderHolder &holder) {
+// [ADate]
+minor_error HTTP::CH::ADate::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-date
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-date-time-formats
     //
@@ -542,7 +542,7 @@ minor_error HTTP::CH::Date::determine(const AHeaderHolder &holder) {
 
     merror                                     = minor_error::ok();
     value                                      = 0;
-    const AHeaderHolder::value_list_type *vals = holder.get_vals(HeaderHTTP::date);
+    const AHeaderHolder::value_list_type *vals = holder.get_vals(get_header_key());
     VOUT(vals);
     if (!vals) {
         return minor_error::ok();
@@ -565,6 +565,11 @@ minor_error HTTP::CH::Date::determine(const AHeaderHolder &holder) {
     return minor_error::ok();
 }
 
+// [Date]
+const HTTP::byte_string &HTTP::CH::Date::get_header_key() const {
+    return HeaderHTTP::date;
+}
+
 HTTP::CH::Date HTTP::CH::Date::now() {
     Date dt;
     dt.value = WSTime::get_epoch_ms();
@@ -573,6 +578,11 @@ HTTP::CH::Date HTTP::CH::Date::now() {
 
 HTTP::byte_string HTTP::CH::Date::serialize() const {
     return ParserHelper::time_to_http_date(value);
+}
+
+// [IfModifiedSince]
+const HTTP::byte_string &HTTP::CH::IfModifiedSince::get_header_key() const {
+    return HeaderHTTP::if_modified_since;
 }
 
 // [LastModified]

@@ -582,8 +582,8 @@ HTTP::byte_string ParserHelper::time_to_http_date(t_time_epoch_ms t) {
     struct tm tm = *gmtime(&now);
     // strftime の結果はロケール依存だが, デフォルトロケールは C 固定のはずなので, 大丈夫なんじゃないの.
     char buf[1000];
-    size_t n = strftime(buf, sizeof buf, "%a, %d %b %Y %H:%M:%S %Z", &tm);
-    return byte_string(buf, buf + n);
+    size_t n = strftime(buf, sizeof buf, "%a, %d %b %Y %H:%M:%S ", &tm);
+    return byte_string(buf, buf + n) + "GMT";
 }
 
 HTTP::byte_string ParserHelper::decode_pct_encoded(const byte_string &str, const HTTP::CharFilter &exclude) {
