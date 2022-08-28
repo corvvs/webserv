@@ -282,9 +282,9 @@ IResponseDataProducer &CGI::response_data_producer() {
 void CGI::set_content(const byte_string &content) {
     to_script_content_        = content;
     to_script_content_length_ = content.size();
-    const byte_string val
-        = to_script_content_length_ > 0 ? ParserHelper::utos(to_script_content_length_, 10) : HTTP::strfy("");
-    metavar_[META_CONTENT_LENGTH] = val;
+    if (to_script_content_length_ > 0) {
+        metavar_[META_CONTENT_LENGTH] = ParserHelper::utos(to_script_content_length_, 10);
+    }
 }
 
 CGI::metavar_dict_type CGI::make_metavars_from_envp(char **envp) {
@@ -412,12 +412,15 @@ void CGI::perform_receiving(IObserver &observer) {
     } else {
         response_data_producer().inject(buf, received_size, is_disconnected);
     }
+    after_injection(is_disconnected);
     if (is_disconnected) {
         // Read側の切断を検知
-        observer.reserve_unset(this, IObserver::OT_WRITE);
+        if (this->ps.parse_progress != PP_OVER) {
+            // CGIレスポンスが完結する前に切断された -> 500
+            throw http_error("CGI response is incomplete", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        }
         observer.reserve_unset(this, IObserver::OT_READ);
     }
-    after_injection(is_disconnected);
 }
 
 bool CGI::is_originatable() const {
