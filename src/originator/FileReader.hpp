@@ -42,7 +42,7 @@ public:
     virtual bool is_origination_started() const;
     virtual void start_origination(IObserver &observer);
     virtual void leave();
-    virtual ResponseHTTP *respond(const RequestHTTP *request);
+    virtual ResponseHTTP *respond(const RequestHTTP *request, bool should_close);
 };
 
 #endif

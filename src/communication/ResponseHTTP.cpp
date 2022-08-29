@@ -80,6 +80,7 @@ HTTP::byte_string ResponseHTTP::serialize_former_part() {
 }
 
 void ResponseHTTP::start() {
+    VOUT(should_close_);
     if (should_close_) {
         feed_header(HeaderHTTP::connection, HTTP::strfy("close"));
     }
@@ -128,6 +129,7 @@ void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) {
     std::swap(lhs.message_text, rhs.message_text);
     std::swap(lhs.local_datalist, rhs.local_datalist);
     std::swap(lhs.data_consumer_, rhs.data_consumer_);
+    std::swap(lhs.should_close_, rhs.should_close_);
 }
 
 bool ResponseHTTP::is_error() const {

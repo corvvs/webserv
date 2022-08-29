@@ -190,11 +190,12 @@ bool RoundTrip::is_timeout(t_time_epoch_ms now) const {
 
 void RoundTrip::respond() {
     DXOUT("[respond]");
-    response_ = originator_->respond(request_);
+    const bool should_close = request_ == NULL || !request_->should_keep_in_touch();
+    response_               = originator_->respond(request_, should_close);
 }
 
-void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
-    DXOUT("[respond_error]");
+void RoundTrip::respond_unrecoverable_error(IObserver &observer, const http_error &err) {
+    DXOUT("[respond_unrecoverable_error]");
     DXOUT(err.get_status() << ":" << err.what());
     VOUT(response_);
     destroy_response();
@@ -203,7 +204,7 @@ void RoundTrip::respond_error(IObserver &observer, const http_error &err) {
     destroy_originator();
     originator_ = new ErrorPageGenerator(err, status_page_dict_, cacher_, true);
     originator_->start_origination(observer);
-    response_ = originator_->respond(request_);
+    response_ = originator_->respond(request_, true);
 }
 
 bool RoundTrip::is_terminatable() const {

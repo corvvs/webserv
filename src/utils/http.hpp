@@ -17,7 +17,8 @@ enum t_status {
     // 1**
     STATUS_UNSPECIFIED = 1,
     // 2**
-    STATUS_OK = 200,
+    STATUS_OK      = 200,
+    STATUS_CREATED = 201,
     // 3**
     STATUS_MOVED_PERMANENTLY  = 301,
     STATUS_FOUND              = 302,
