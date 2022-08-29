@@ -150,9 +150,9 @@ void AutoIndexer::scan_from_directory() {
             continue;
         }
         entries.resize(entries.size() + 1);
-        entries.back().name = HTTP::strfy(ent->d_name);
-        entries.back().size = st.st_size;
-        entries.back().time = st.st_mtime;
+        entries.back().name   = HTTP::strfy(ent->d_name);
+        entries.back().size   = st.st_size;
+        entries.back().time   = st.st_mtime;
         entries.back().is_dir = S_ISDIR(st.st_mode);
     }
     render_html();
