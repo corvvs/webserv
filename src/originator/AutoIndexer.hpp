@@ -19,7 +19,7 @@ public:
     struct Entry {
         HTTP::byte_string name;
         off_t size;
-        struct timespec st_mtim;
+        time_t time;
         bool is_dir;
 
         // 1つのテーブル行としてHTMLに起こす
