@@ -1,4 +1,5 @@
 #include "SocketListening.hpp"
+#include "../utils//ObjectHolder.hpp"
 #include "../utils//test_common.hpp"
 #include "SocketConnected.hpp"
 #include "strings.h"
@@ -11,7 +12,8 @@ SocketListening &SocketListening::operator=(const SocketListening &rhs) {
 }
 
 SocketListening *SocketListening::bind(t_socket_domain sdomain, t_socket_type stype, t_port port) {
-    SocketListening *sock = new SocketListening(sdomain, stype);
+    ObjectHolder<SocketListening> sock_holder(new SocketListening(sdomain, stype));
+    SocketListening *sock = sock_holder.value();
     sock->set_nonblock();
     t_fd fd = sock->fd;
 
@@ -28,7 +30,7 @@ SocketListening *SocketListening::bind(t_socket_domain sdomain, t_socket_type st
     }
     DXOUT("bound asocket.");
     sock->port = port;
-    return sock;
+    return sock_holder.release();
 }
 
 void SocketListening::listen(int backlog) {

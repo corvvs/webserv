@@ -122,7 +122,5 @@ ResponseHTTP *Redirector::respond(const RequestHTTP *request, bool should_close)
 
     ResponseHTTP *res
         = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, should_close);
-
-    res->start();
     return res;
 }

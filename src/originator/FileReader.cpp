@@ -1,6 +1,7 @@
 #include "FileReader.hpp"
 #include "../utils/File.hpp"
 #include "../utils/MIME.hpp"
+#include "../utils/ObjectHolder.hpp"
 #include <unistd.h>
 #define READ_SIZE 1048576
 
@@ -75,7 +76,8 @@ minor_error FileReader::read_from_file() {
     errno = 0;
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
-    int fd = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
+    FDHolder fd_holder(open(file_path_.c_str(), O_RDONLY | O_CLOEXEC));
+    t_fd fd = fd_holder.value();
     if (fd < 0) {
         switch (errno) {
             case ENOENT:
@@ -95,7 +97,6 @@ minor_error FileReader::read_from_file() {
     for (;;) {
         read_size = read(fd, &read_buf.front(), read_buf.size());
         if (read_size < 0) {
-            close(fd);
             return minor_error::make("read error", HTTP::STATUS_FORBIDDEN);
         }
         read_buf.resize(read_size);
@@ -104,7 +105,6 @@ minor_error FileReader::read_from_file() {
             break;
         }
     }
-    close(fd);
     return minor_error::ok();
 }
 
@@ -221,6 +221,5 @@ ResponseHTTP *FileReader::respond(const RequestHTTP *request, bool should_close)
     const HTTP::t_status status_code               = is_not_modified ? HTTP::STATUS_NOT_MODIFIED : HTTP::STATUS_OK;
     ResponseHTTP *res
         = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, should_close);
-    res->start();
     return res;
 }

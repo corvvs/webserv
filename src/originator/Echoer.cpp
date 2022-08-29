@@ -63,6 +63,5 @@ ResponseHTTP *Echoer::respond(const RequestHTTP *request, bool should_close) {
     }
     ResponseHTTP *res
         = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, should_close);
-    res->start();
     return res;
 }
