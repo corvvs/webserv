@@ -357,7 +357,6 @@ void RequestHTTP::parse_reqline(const light_string &raw_req_line) {
         case 3: {
             // HTTP/0.9?
             // HTTP/1.*?
-
             this->rp.http_method = discriminate_request_method(splitted[0]);
             DXOUT(splitted[0] << " -> http_method: " << this->rp.http_method);
             this->rp.given_request_target = RequestTarget(splitted[1]);
@@ -385,8 +384,7 @@ void RequestHTTP::check_reqline_consistensy() {
         case RequestTarget::FORM_ORIGIN:
             break;
         case RequestTarget::FORM_ABSOLUTE:
-            // Proxyの場合 -> Proxy実装してないので即エラー
-            throw http_error("absolute-form is available for Proxy Request", HTTP::STATUS_BAD_REQUEST);
+            break;
         case RequestTarget::FORM_ASTERISK:
             // server-wide OPTIONSでないとエラー -> OPTIONS実装してないので即エラー
             throw http_error("asterisk-form is available for only server-wide OPTIONS", HTTP::STATUS_BAD_REQUEST);
@@ -475,6 +473,7 @@ minor_error RequestHTTP::extract_control_headers() {
     me = erroneous(me, this->rp.upgrade.determine(header_holder));
     me = erroneous(me, this->rp.via.determine(header_holder));
     me = erroneous(me, this->rp.date.determine(header_holder));
+    me = erroneous(me, this->rp.if_modified_since.determine(header_holder));
     me = erroneous(me, this->rp.cookie.determine(header_holder));
     VOUT(me);
     return me;
@@ -688,6 +687,10 @@ const HTTP::CH::ContentType &RequestHTTP::get_content_type_item() const {
 
 const HTTP::CH::ContentDisposition &RequestHTTP::get_content_disposition_item() const {
     return this->rp.content_disposition;
+}
+
+const HTTP::CH::IfModifiedSince &RequestHTTP::get_if_modified_since() const {
+    return this->rp.if_modified_since;
 }
 
 RequestHTTP::byte_string RequestHTTP::get_body() const {

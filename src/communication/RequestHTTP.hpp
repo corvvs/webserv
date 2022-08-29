@@ -58,10 +58,18 @@ public:
     virtual byte_string get_body() const                                             = 0;
 };
 
+class ICacheInfoProvider {
+public:
+    typedef HTTP::byte_string byte_string;
+    virtual ~ICacheInfoProvider() {}
+
+    virtual const HTTP::CH::IfModifiedSince &get_if_modified_since() const = 0;
+};
+
 // [HTTPリクエストクラス]
 // [責務]
 // - 順次供給されるバイト列をHTTPリクエストとして解釈すること
-class RequestHTTP : public ICGIConfigurationProvider, public IContentProvider {
+class RequestHTTP : public ICGIConfigurationProvider, public IContentProvider, public ICacheInfoProvider {
 public:
     enum t_parse_progress {
         PP_UNREACHED,
@@ -143,6 +151,7 @@ public:
         HTTP::CH::Upgrade upgrade;
         HTTP::CH::Via via;
         HTTP::CH::Date date;
+        HTTP::CH::IfModifiedSince if_modified_since;
         HTTP::CH::Cookie cookie;
 
         // いろいろ抽出関数群
@@ -240,6 +249,7 @@ public:
     HTTP::byte_string get_content_type() const;
     const HTTP::CH::ContentType &get_content_type_item() const;
     const HTTP::CH::ContentDisposition &get_content_disposition_item() const;
+    const HTTP::CH::IfModifiedSince &get_if_modified_since() const;
 
     // 受信したデータから本文を抽出して返す
     byte_string get_body() const;

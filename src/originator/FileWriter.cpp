@@ -1,4 +1,5 @@
 #include "FileWriter.hpp"
+#include "../utils/ObjectHolder.hpp"
 #include <unistd.h>
 #define WRITE_SIZE 1024
 
@@ -20,11 +21,15 @@ void FileWriter::write_to_file() {
     }
     // ファイルを上書きモードで開く.
     // 開けなかったらエラー.
-    int fd = open(file_path_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+    FDHolder fd_holder(open(file_path_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644));
+    t_fd fd = fd_holder.value();
     if (fd < 0) {
         switch (errno) {
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+            case EMFILE:
+            case ENFILE:
+                throw http_error("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
             default:
                 VOUT(errno);
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
@@ -39,7 +44,6 @@ void FileWriter::write_to_file() {
 
         written_size = write(fd, &content_to_write_[write_head], write_max);
         if (written_size < 0) {
-            close(fd);
             throw http_error("write error", HTTP::STATUS_FORBIDDEN);
         }
         write_head += written_size;
@@ -52,7 +56,6 @@ void FileWriter::write_to_file() {
     HTTP::byte_string written_size_str = ParserHelper::utos(write_head, 10);
     response_data.inject(written_size_str, true);
     originated_ = true;
-    close(fd);
 }
 
 void FileWriter::inject_socketlike(ISocketLike *socket_like) {
@@ -89,9 +92,9 @@ void FileWriter::leave() {
     delete this;
 }
 
-ResponseHTTP *FileWriter::respond(const RequestHTTP *request) {
+ResponseHTTP *FileWriter::respond(const RequestHTTP *request, bool should_close) {
     response_data.determine_sending_mode();
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, false);
-    res->start();
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, &response_data, should_close);
     return res;
 }

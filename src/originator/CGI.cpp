@@ -1,6 +1,7 @@
 #include "CGI.hpp"
 #include "../communication/RoundTrip.hpp"
 #include "../utils/File.hpp"
+#include "../utils/ObjectHolder.hpp"
 #include <cstring>
 #include <signal.h>
 #include <sys/stat.h>
@@ -120,20 +121,23 @@ void CGI::start_origination(IObserver &observer) {
     set_content(attr.configuration_provider_.get_body());
 
     std::pair<SocketUNIX *, t_fd> socks = SocketUNIX::socket_pair();
-    socks.first->set_nonblock();
+    ObjectHolder<SocketUNIX> parent_holder(socks.first);
+    FDHolder child_holder(socks.second);
+    SocketUNIX *sock_parent = parent_holder.value();
+    t_fd sock_child         = child_holder.value();
+    sock_parent->set_nonblock();
 
     pid_t pid = fork();
-    VOUT(pid);
     if (pid < 0) {
         // 500出しとく
-        // この時点ではUNIXソケットはholdされていないので, ここで消して良い
-        delete socks.first;
-        close(socks.second);
         throw http_error("failed to fork", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
     if (pid == 0) {
         // child: CGI process
-        delete socks.first;
+        // parent_holder の中身は使わないので破壊.
+        // child_holder は中身を抱えたまま execve に突入する.
+        parent_holder.destroy();
+
         // 引数の準備
         const light_string script_path = HTTP::Utils::is_relative_path(attr.script_path_)
                                              ? HTTP::Utils::basename(attr.script_path_)
@@ -147,10 +151,10 @@ void CGI::start_origination(IObserver &observer) {
             exit(1);
         }
         // 子プロセス側ソケットに標準入出力をマップ
-        if (redirect_fd(socks.second, STDIN_FILENO) < 0) {
+        if (redirect_fd(sock_child, STDIN_FILENO) < 0) {
             exit(1);
         }
-        if (redirect_fd(socks.second, STDOUT_FILENO) < 0) {
+        if (redirect_fd(sock_child, STDOUT_FILENO) < 0) {
             exit(1);
         }
         // TODO: CGIのstderrをどこに向けるか
@@ -164,18 +168,17 @@ void CGI::start_origination(IObserver &observer) {
         // 起動
         errno  = 0;
         int rv = execve(HTTP::restrfy(attr.executor_path_).c_str(), argv, mvs);
-        VOUT(rv);
-        VOUT(errno);
         exit(rv);
     }
     // parent: server process
+    // parent_holder は中身を CGI(attr.sock) に移譲.
+    // child_holder の中身は使わないので破壊.
     attr.cgi_pid = pid;
-    attr.sock    = socks.first;
-    close(socks.second);
+    attr.sock    = parent_holder.release();
+    child_holder.destroy();
+
     attr.observer = &observer;
-    DXOUT("START OBSERVATION");
     observer.reserve_hold(this);
-    DXOUT("< START OBSERVATION");
     observer.reserve_set(this, IObserver::OT_READ);
     observer.reserve_set(this, IObserver::OT_WRITE);
     status.is_started = true;
@@ -282,9 +285,9 @@ IResponseDataProducer &CGI::response_data_producer() {
 void CGI::set_content(const byte_string &content) {
     to_script_content_        = content;
     to_script_content_length_ = content.size();
-    const byte_string val
-        = to_script_content_length_ > 0 ? ParserHelper::utos(to_script_content_length_, 10) : HTTP::strfy("");
-    metavar_[META_CONTENT_LENGTH] = val;
+    if (to_script_content_length_ > 0) {
+        metavar_[META_CONTENT_LENGTH] = ParserHelper::utos(to_script_content_length_, 10);
+    }
 }
 
 CGI::metavar_dict_type CGI::make_metavars_from_envp(char **envp) {
@@ -412,12 +415,15 @@ void CGI::perform_receiving(IObserver &observer) {
     } else {
         response_data_producer().inject(buf, received_size, is_disconnected);
     }
+    after_injection(is_disconnected);
     if (is_disconnected) {
         // Read側の切断を検知
-        observer.reserve_unset(this, IObserver::OT_WRITE);
+        if (this->ps.parse_progress != PP_OVER) {
+            // CGIレスポンスが完結する前に切断された -> 500
+            throw http_error("CGI response is incomplete", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        }
         observer.reserve_unset(this, IObserver::OT_READ);
     }
-    after_injection(is_disconnected);
 }
 
 bool CGI::is_originatable() const {
@@ -765,7 +771,7 @@ ResponseHTTP::header_list_type CGI::determine_response_headers(const IResponseDa
     return headers;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP *request) {
+ResponseHTTP *CGI::respond(const RequestHTTP *request, bool should_close) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
@@ -780,11 +786,7 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     from_script_header_holder.erase_vals(HeaderHTTP::content_type);
     IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
-    ResponseHTTP res(request->get_http_version(), response_status, &headers, &status.response_data, false);
-
-    // 例外安全のための copy and swap
-    ResponseHTTP *r = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, NULL, NULL, false);
-    ResponseHTTP::swap(res, *r);
-    r->start();
+    ResponseHTTP *r
+        = new ResponseHTTP(request->get_http_version(), response_status, &headers, &status.response_data, should_close);
     return r;
 }

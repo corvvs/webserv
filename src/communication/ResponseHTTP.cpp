@@ -1,4 +1,5 @@
 #include "ResponseHTTP.hpp"
+#include "ControlHeaderHTTP.hpp"
 #include <unistd.h>
 
 ResponseHTTP::ResponseHTTP(HTTP::t_version version,
@@ -9,42 +10,18 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
     : version_(version)
     , status_(status)
     , lifetime(Lifetime::make_response())
-    , sent_size(0)
     , data_consumer_(data_consumer)
     , should_close_(should_close) {
     if (headers != NULL) {
         for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
-            DXOUT(it->first << " - " << it->second);
             feed_header(it->first, it->second);
         }
     }
+    if (header_dict.find(HeaderHTTP::date) == header_dict.end()) {
+        feed_header(HeaderHTTP::date, HTTP::CH::Date::now().serialize());
+    }
     lifetime.activate();
-}
-
-ResponseHTTP::ResponseHTTP(HTTP::t_version version, const http_error &error, bool should_close)
-    : version_(version)
-    , status_(error.get_status())
-    , merror(minor_error(error.what(), error.get_status()))
-    , lifetime(Lifetime::make_response())
-    , sent_size(0)
-    , data_consumer_(NULL)
-    , should_close_(should_close) {
-    lifetime.activate();
-    local_datalist.inject("", 0, true);
-    local_datalist.determine_sending_mode();
-}
-
-ResponseHTTP::ResponseHTTP(HTTP::t_version version, const minor_error &error, bool should_close)
-    : version_(version)
-    , status_(error.status_code())
-    , merror(error)
-    , lifetime(Lifetime::make_response())
-    , sent_size(0)
-    , data_consumer_(NULL)
-    , should_close_(should_close) {
-    lifetime.activate();
-    local_datalist.inject("", 0, true);
-    local_datalist.determine_sending_mode();
+    start();
 }
 
 ResponseHTTP::~ResponseHTTP() {}
@@ -115,19 +92,6 @@ bool ResponseHTTP::is_complete() const {
     // VOUT(this);
     // VOUT(consumer());
     return consumer() != NULL && consumer()->is_sending_over();
-}
-
-void ResponseHTTP::swap(ResponseHTTP &lhs, ResponseHTTP &rhs) {
-    std::swap(lhs.version_, rhs.version_);
-    std::swap(lhs.status_, rhs.status_);
-    std::swap(lhs.merror, rhs.merror);
-    std::swap(lhs.sent_size, rhs.sent_size);
-    std::swap(lhs.header_list, rhs.header_list);
-    std::swap(lhs.header_dict, rhs.header_dict);
-    std::swap(lhs.body, rhs.body);
-    std::swap(lhs.message_text, rhs.message_text);
-    std::swap(lhs.local_datalist, rhs.local_datalist);
-    std::swap(lhs.data_consumer_, rhs.data_consumer_);
 }
 
 bool ResponseHTTP::is_error() const {

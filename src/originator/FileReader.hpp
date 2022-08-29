@@ -19,8 +19,11 @@ protected:
     bool originated_;
     ResponseDataList response_data;
     FileCacher &cacher_;
+    t_time_epoch_ms last_modified;
+    const ICacheInfoProvider *cache_info_provider;
+    bool is_not_modified;
 
-    // ファイルからデータを読み出しておく
+    // ファイルからデータを読み出し, response_data に入れる.
     minor_error read_from_file();
 
     // キャッシュデータを読み込む
@@ -29,7 +32,7 @@ protected:
     ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:
-    FileReader(const RequestMatchingResult &match_result, FileCacher &cacher);
+    FileReader(const RequestMatchingResult &match_result, FileCacher &cacher, const ICacheInfoProvider *info_provider);
     FileReader(const char_string &path, FileCacher &cacher);
     ~FileReader();
 
@@ -42,7 +45,7 @@ public:
     virtual bool is_origination_started() const;
     virtual void start_origination(IObserver &observer);
     virtual void leave();
-    virtual ResponseHTTP *respond(const RequestHTTP *request);
+    virtual ResponseHTTP *respond(const RequestHTTP *request, bool should_close);
 };
 
 #endif

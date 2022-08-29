@@ -45,7 +45,7 @@ void Echoer::leave() {
     delete this;
 }
 
-ResponseHTTP *Echoer::respond(const RequestHTTP *request) {
+ResponseHTTP *Echoer::respond(const RequestHTTP *request, bool should_close) {
     HTTP::byte_string message = request->get_plain_message();
     response_data.inject(message, true);
     ResponseHTTP::header_list_type headers;
@@ -61,7 +61,7 @@ ResponseHTTP *Echoer::respond(const RequestHTTP *request) {
         default:
             break;
     }
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
-    res->start();
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, should_close);
     return res;
 }

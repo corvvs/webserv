@@ -1,4 +1,5 @@
 #include "Channel.hpp"
+#include "../utils/ObjectHolder.hpp"
 #include "Connection.hpp"
 
 Channel::Channel(IRouter *router,
@@ -38,8 +39,10 @@ void Channel::notify(IObserver &observer, IObserver::observation_category cat, t
                 // acceptするものが残っていない場合 NULL が返ってくる
                 break;
             }
-            Connection *con = new Connection(router_, connected, configs_, cacher_);
+            ObjectHolder<Connection> con_holder(new Connection(router_, connected, configs_, cacher_));
+            Connection *con = con_holder.value();
             observer.reserve_hold(con);
+            con_holder.release();
             observer.reserve_set(con, IObserver::OT_READ);
         }
     } catch (...) { DXOUT("[!!!!] failed to accept socket: fd: " << sock->get_fd()); }

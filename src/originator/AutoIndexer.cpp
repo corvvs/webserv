@@ -128,6 +128,9 @@ void AutoIndexer::scan_from_directory() {
                 throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+            case EMFILE:
+            case ENFILE:
+                throw http_error("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
             default:
                 VOUT(errno);
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
@@ -273,10 +276,10 @@ AutoIndexer::determine_response_headers(const IResponseDataConsumer::t_sending_m
     return headers;
 }
 
-ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request) {
+ResponseHTTP *AutoIndexer::respond(const RequestHTTP *request, bool should_close) {
     const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
-    res->start();
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, should_close);
     return res;
 }

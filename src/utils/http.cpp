@@ -34,6 +34,8 @@ const HTTP::byte_string HTTP::reason(HTTP::t_status status) {
         // 2**
         case HTTP::STATUS_OK:
             return strfy("OK");
+        case STATUS_CREATED:
+            return strfy("Created");
         // 3**
         case HTTP::STATUS_MOVED_PERMANENTLY:
             return strfy("Moved Permanently");

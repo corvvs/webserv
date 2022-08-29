@@ -196,7 +196,24 @@ std::vector<HTTP::light_string> ParserHelper::split(const HTTP::light_string &ls
 }
 
 ParserHelper::byte_string ParserHelper::normalize_header_key(const byte_string &key) {
-    return HTTP::Utils::downcase(key);
+    byte_string normalized = key;
+    light_string lstr(normalized);
+    for (light_string::size_type i = 0; i < normalized.size();) {
+        light_string::size_type r = lstr.find_first_of(HTTP::CharFilter::alpha);
+        if (r == light_string::npos) {
+            break;
+        }
+        i += r;
+        lstr          = lstr.substr(r);
+        normalized[i] = toupper(normalized[i]);
+        i += 1;
+        while (i < normalized.size() && HTTP::CharFilter::alpha.includes(normalized[i])) {
+            normalized[i] = tolower(normalized[i]);
+            i += 1;
+        }
+        lstr = light_string(normalized, i);
+    }
+    return normalized;
 }
 
 ParserHelper::byte_string ParserHelper::normalize_header_key(const HTTP::light_string &key) {
@@ -388,7 +405,7 @@ int find_index(const HTTP::light_string &str, const char **list) {
     return -1;
 }
 
-std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_string &str) {
+std::pair<bool, t_time_epoch_ms> ParserHelper::http_date_to_time(const light_string &str) {
     //   HTTP-date    = IMF-fixdate / obs-date
     //   obs-date     = rfc850-date / asctime-date
     //
@@ -575,6 +592,15 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::str_to_http_date(const light_stri
         }
     } while (0);
     return std::make_pair(false, 0);
+}
+
+HTTP::byte_string ParserHelper::time_to_http_date(t_time_epoch_ms t) {
+    time_t now   = t / 1000;
+    struct tm tm = *gmtime(&now);
+    // strftime の結果はロケール依存だが, デフォルトロケールは C 固定のはずなので, 大丈夫なんじゃないの.
+    char buf[1000];
+    size_t n = strftime(buf, sizeof buf, "%a, %d %b %Y %H:%M:%S ", &tm);
+    return byte_string(buf, buf + n) + "GMT";
 }
 
 HTTP::byte_string ParserHelper::decode_pct_encoded(const byte_string &str, const HTTP::CharFilter &exclude) {
