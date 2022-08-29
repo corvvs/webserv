@@ -39,15 +39,17 @@ struct RequestTarget {
     // 何formか
     t_form form;
 
-    // cf. https://datatracker.ietf.org/doc/html/rfc3986#section-3
-    //
-    //     foo://example.com:8042/over/there?name=ferret#nose
-    //     \_/   \______________/\_________/ \_________/ \__/
-    //     |           |            |            |        |
-    // scheme     authority       path        query   fragment
-    //     |   _____________________|__
-    //     / \ /                        \
-    //     urn:example:animal:ferret:nose
+    /**
+     * cf. https://datatracker.ietf.org/doc/html/rfc3986#section-3
+     *
+     *     foo://example.com:8042/over/there?name=ferret#nose
+     *     \_/   \______________/\_________/ \_________/ \__/
+     *     |           |            |            |        |
+     * scheme     authority       path        query   fragment
+     *     |   _____________________|__
+     *     / \ /                        \
+     *     urn:example:animal:ferret:nose
+     */
 
     light_string scheme;
     light_string authority;

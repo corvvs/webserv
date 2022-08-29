@@ -2,6 +2,7 @@
 #include "../event/time.hpp"
 #include "../utils/File.hpp"
 #include "../utils/ObjectHolder.hpp"
+#include <cerrno>
 #include <sys/stat.h>
 #include <unistd.h>
 #define WRITE_SIZE 1024

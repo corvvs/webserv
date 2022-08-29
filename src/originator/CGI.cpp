@@ -2,9 +2,11 @@
 #include "../communication/RoundTrip.hpp"
 #include "../utils/File.hpp"
 #include "../utils/ObjectHolder.hpp"
+#include <cerrno>
 #include <cstring>
 #include <signal.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #define MAX_SEND_SIZE 1024
 #define MAX_RECEIVE_SIZE 1024

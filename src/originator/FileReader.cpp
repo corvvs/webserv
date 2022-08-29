@@ -2,6 +2,7 @@
 #include "../utils/File.hpp"
 #include "../utils/MIME.hpp"
 #include "../utils/ObjectHolder.hpp"
+#include <cerrno>
 #include <unistd.h>
 #define READ_SIZE 1048576
 

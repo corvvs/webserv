@@ -1,5 +1,6 @@
 #include "FileWriter.hpp"
 #include "../utils/ObjectHolder.hpp"
+#include <cerrno>
 #include <unistd.h>
 #define WRITE_SIZE 1024
 

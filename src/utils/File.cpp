@@ -54,7 +54,7 @@ std::string get_directory_name(const std::string &file_path) {
 }
 
 std::string read(const std::string &path) {
-    std::ifstream input_file(path);
+    std::ifstream input_file(path.c_str());
     std::string data((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
     return data;
 }
