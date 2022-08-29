@@ -584,8 +584,10 @@ void Parser::print_directives(const std::vector<Directive> &d, const bool &is_bl
         if (d[i].block.size() == 0) {
             std::cout << before << dir << "[" << i << "].block  : {}" << std::endl;
         } else {
-            //    std::string b = before + dir + "[" + std::to_string(i) + "]" + ".";
-            //            print_directives(d[i].block, true, b);
+            std::stringstream ss;
+            ss << i;
+            std::string b = before + dir + "[" + ss.str() + "]" + ".";
+            print_directives(d[i].block, true, b);
         }
     }
 }
