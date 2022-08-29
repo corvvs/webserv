@@ -52,7 +52,7 @@ public:
 
         // 存在する場合
         typename list_type::iterator it = iter_map_[key];
-        const key_type k                      = *it;
+        const key_type k                = *it;
 
         // アクセスリストから削除
         access_list_.erase(it);

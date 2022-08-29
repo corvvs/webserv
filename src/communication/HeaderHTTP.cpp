@@ -3,7 +3,8 @@
     {                                                                                                                  \
         HeaderAttribute attr = {                                                                                       \
             list,                                                                                                      \
-            aggr,                                                                                                      \            uniq,                                                                                                      \
+            aggr,                                                                                                      \
+            uniq,                                                                                                      \
         };                                                                                                             \
         predefined_attrs[key] = attr;                                                                                  \
     }
@@ -20,20 +21,20 @@ void HeaderAttribute::set_predefined_attrs() {
     // https://triple-underscore.github.io/RFC7230-ja.html#_xref-6-10
     // "TE"ヘッダとは別物(TEは同じメッセージへの応答に対する指定; Transfer-Encodingは同じメッセージに対する指定)
     // - list, multiple
-//    DEFINE_ATTR(HeaderHTTP::transfer_encoding, 1, 1, 0);
+    DEFINE_ATTR(HeaderHTTP::transfer_encoding, 1, 1, 0);
     // [te]
     // https://triple-underscore.github.io/RFC7230-ja.html#section-4.3
- //   DEFINE_ATTR(HeaderHTTP::te, 1, 1, 0);
+    DEFINE_ATTR(HeaderHTTP::te, 1, 1, 0);
     // [set-cookie]
     // https://wiki.suikawiki.org/n/Set-Cookie%3A
     // 複数存在可能 & 集約禁止
-//    DEFINE_ATTR(HeaderHTTP::set_cookie, 0, 0, 0);
+    DEFINE_ATTR(HeaderHTTP::set_cookie, 0, 0, 0);
     // [content-length]
     // https://wiki.suikawiki.org/n/Content-Length%3A#anchor-88
-//    DEFINE_ATTR(HeaderHTTP::content_length, 0, 0, 1);
+    DEFINE_ATTR(HeaderHTTP::content_length, 0, 0, 1);
     // [host]
     // https://triple-underscore.github.io/RFC7230-ja.html#header.host
-//    DEFINE_ATTR(HeaderHTTP::host, 0, 0, 1);
+    DEFINE_ATTR(HeaderHTTP::host, 0, 0, 1);
 }
 
 // [HeaderItem]

@@ -3,7 +3,6 @@
 #include "CharFilter.hpp"
 #include "IndexRange.hpp"
 #include <algorithm>
-#include <string>
 #include <cstring>
 #include <vector>
 

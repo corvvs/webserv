@@ -3,12 +3,12 @@
 #include "ConfigUtility.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
+#include <cerrno>
 #include <iostream>
 #include <locale>
 #include <map>
 #include <string>
 #include <vector>
-#include <cerrno>
 
 namespace config {
 namespace Validator {

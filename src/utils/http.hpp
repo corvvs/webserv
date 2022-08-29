@@ -2,9 +2,9 @@
 #define HTTP_HPP
 #include "test_common.hpp"
 #include "types.hpp"
+#include <cassert>
 #include <iostream>
 #include <map>
-#include <cassert>
 #include <string>
 #include <vector>
 #define MAX_REQLINE_END 8192

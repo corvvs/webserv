@@ -1,8 +1,8 @@
 #include "FilePoster.hpp"
 #include "../event/time.hpp"
 #include "../utils/File.hpp"
-#include <sys/stat.h>
 #include <cerrno>
+#include <sys/stat.h>
 #include <unistd.h>
 #define WRITE_SIZE 1024
 #define NON_FD -1
