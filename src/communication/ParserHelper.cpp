@@ -196,7 +196,24 @@ std::vector<HTTP::light_string> ParserHelper::split(const HTTP::light_string &ls
 }
 
 ParserHelper::byte_string ParserHelper::normalize_header_key(const byte_string &key) {
-    return HTTP::Utils::downcase(key);
+    byte_string normalized = key;
+    light_string lstr(normalized);
+    for (light_string::size_type i = 0; i < normalized.size();) {
+        light_string::size_type r = lstr.find_first_of(HTTP::CharFilter::alpha);
+        if (r == light_string::npos) {
+            break;
+        }
+        i += r;
+        lstr          = lstr.substr(r);
+        normalized[i] = toupper(normalized[i]);
+        i += 1;
+        while (i < normalized.size() && HTTP::CharFilter::alpha.includes(normalized[i])) {
+            normalized[i] = tolower(normalized[i]);
+            i += 1;
+        }
+        lstr = light_string(normalized, i);
+    }
+    return normalized;
 }
 
 ParserHelper::byte_string ParserHelper::normalize_header_key(const HTTP::light_string &key) {
