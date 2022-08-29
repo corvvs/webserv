@@ -659,7 +659,7 @@ size_t RequestHTTP::parsed_body_size() const {
 }
 
 size_t RequestHTTP::effective_parsed_body_size() const {
-    if (ps.parse_progress >= PP_OVER) {
+    if (!rp.is_body_chunked && ps.parse_progress >= PP_OVER) {
         return ps.end_of_body - ps.start_of_body;
     }
     return parsed_body_size();
