@@ -473,6 +473,7 @@ minor_error RequestHTTP::extract_control_headers() {
     me = erroneous(me, this->rp.upgrade.determine(header_holder));
     me = erroneous(me, this->rp.via.determine(header_holder));
     me = erroneous(me, this->rp.date.determine(header_holder));
+    me = erroneous(me, this->rp.if_modified_since.determine(header_holder));
     me = erroneous(me, this->rp.cookie.determine(header_holder));
     VOUT(me);
     return me;
@@ -686,6 +687,10 @@ const HTTP::CH::ContentType &RequestHTTP::get_content_type_item() const {
 
 const HTTP::CH::ContentDisposition &RequestHTTP::get_content_disposition_item() const {
     return this->rp.content_disposition;
+}
+
+const HTTP::CH::IfModifiedSince &RequestHTTP::get_if_modified_since() const {
+    return this->rp.if_modified_since;
 }
 
 RequestHTTP::byte_string RequestHTTP::get_body() const {

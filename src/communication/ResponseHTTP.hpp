@@ -25,7 +25,6 @@ private:
     minor_error merror;
     Lifetime lifetime;
     // 送信済みマーカー
-    size_t sent_size;
     header_list_type header_list;
     header_dict_type header_dict;
     byte_string body;
@@ -44,10 +43,6 @@ public:
                  const header_list_type *headers,
                  IResponseDataConsumer *data_consumer,
                  bool should_close);
-    // unrecovarable エラー応答を構築する
-    ResponseHTTP(HTTP::t_version version, const http_error &error, bool should_close);
-    // recovarable エラー応答を構築する
-    ResponseHTTP(HTTP::t_version version, const minor_error &error, bool should_close);
 
     ~ResponseHTTP();
 
@@ -80,8 +75,6 @@ public:
     bool is_timeout(t_time_epoch_ms now) const;
     // predicate: このレスポンスを送り終わった後, HTTP接続を閉じるべきかどうか
     bool should_close() const;
-
-    static void swap(ResponseHTTP &lhs, ResponseHTTP &rhs);
 };
 
 #endif

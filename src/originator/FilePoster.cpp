@@ -1,6 +1,7 @@
 #include "FilePoster.hpp"
 #include "../event/time.hpp"
 #include "../utils/File.hpp"
+#include "../utils/ObjectHolder.hpp"
 #include <cerrno>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -173,7 +174,8 @@ void FilePoster::analyze_subpart(const light_string &subpart) {
 }
 
 void FilePoster::write_file(const FileEntry &file) const {
-    int fd = open(HTTP::restrfy(file.name).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0444);
+    FDHolder fd_holder(open(HTTP::restrfy(file.name).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0444));
+    t_fd fd = fd_holder.value();
     // 0444 なのはアップロードされたファイルを即時実行させないため
     if (fd < 0) {
         switch (errno) {
@@ -193,7 +195,6 @@ void FilePoster::write_file(const FileEntry &file) const {
         }
         ssize_t written_size = write(fd, &file.content[0] + written, write_max);
         if (written_size < 0) {
-            close(fd);
             throw http_error("write error", HTTP::STATUS_FORBIDDEN);
         }
         if (written_size == 0) {
@@ -202,7 +203,6 @@ void FilePoster::write_file(const FileEntry &file) const {
         }
         written += written_size;
     }
-    close(fd);
 }
 
 void FilePoster::inject_socketlike(ISocketLike *socket_like) {
@@ -262,6 +262,5 @@ ResponseHTTP *FilePoster::respond(const RequestHTTP *request, bool should_close)
     ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
     ResponseHTTP *res
         = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_CREATED, &headers, &response_data, should_close);
-    res->start();
     return res;
 }

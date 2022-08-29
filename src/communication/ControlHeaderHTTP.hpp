@@ -148,11 +148,34 @@ struct Via : public IControlHeader {
     minor_error determine(const AHeaderHolder &holder);
 };
 
-struct Date : public IControlHeader {
+struct ADate : public IControlHeader {
     t_time_epoch_ms value;
     minor_error merror;
 
     minor_error determine(const AHeaderHolder &holder);
+
+    virtual const HTTP::byte_string &get_header_key() const = 0;
+};
+
+struct Date : public ADate {
+    // 現在時刻をあらわす Date オブジェクトを生成
+    static Date now();
+    // 現在保持しているデータを, HTTPヘッダの値として文字列化して返す
+    HTTP::byte_string serialize() const;
+    const HTTP::byte_string &get_header_key() const;
+};
+
+struct IfModifiedSince : public ADate {
+    const HTTP::byte_string &get_header_key() const;
+};
+
+struct LastModified {
+    t_time_epoch_ms value;
+    minor_error merror;
+
+    LastModified(t_time_epoch_ms t);
+    // 現在保持しているデータを, HTTPヘッダの値として文字列化して返す
+    HTTP::byte_string serialize() const;
 };
 
 struct Location : public IControlHeader {
