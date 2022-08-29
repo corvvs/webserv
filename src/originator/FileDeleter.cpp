@@ -76,7 +76,7 @@ void FileDeleter::leave() {
     delete this;
 }
 
-ResponseHTTP *FileDeleter::respond(const RequestHTTP *request) {
+ResponseHTTP *FileDeleter::respond(const RequestHTTP *request, bool should_close) {
     ResponseHTTP::header_list_type headers;
     IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
@@ -90,6 +90,7 @@ ResponseHTTP *FileDeleter::respond(const RequestHTTP *request) {
         default:
             break;
     }
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, should_close);
     return res;
 }

@@ -415,12 +415,15 @@ void CGI::perform_receiving(IObserver &observer) {
     } else {
         response_data_producer().inject(buf, received_size, is_disconnected);
     }
+    after_injection(is_disconnected);
     if (is_disconnected) {
         // Read側の切断を検知
-        observer.reserve_unset(this, IObserver::OT_WRITE);
+        if (this->ps.parse_progress != PP_OVER) {
+            // CGIレスポンスが完結する前に切断された -> 500
+            throw http_error("CGI response is incomplete", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        }
         observer.reserve_unset(this, IObserver::OT_READ);
     }
-    after_injection(is_disconnected);
 }
 
 bool CGI::is_originatable() const {
@@ -768,7 +771,7 @@ ResponseHTTP::header_list_type CGI::determine_response_headers(const IResponseDa
     return headers;
 }
 
-ResponseHTTP *CGI::respond(const RequestHTTP *request) {
+ResponseHTTP *CGI::respond(const RequestHTTP *request, bool should_close) {
     // ローカルリダイレクトの場合ここに来てはいけない
     assert(rp.get_response_type() != CGIRES_REDIRECT_LOCAL);
 
@@ -783,7 +786,7 @@ ResponseHTTP *CGI::respond(const RequestHTTP *request) {
     from_script_header_holder.erase_vals(HeaderHTTP::content_type);
     IResponseDataConsumer::t_sending_mode sm = status.response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers   = determine_response_headers(sm);
-    ResponseHTTP *res
-        = new ResponseHTTP(request->get_http_version(), response_status, &headers, &status.response_data, false);
-    return res;
+    ResponseHTTP *r
+        = new ResponseHTTP(request->get_http_version(), response_status, &headers, &status.response_data, should_close);
+    return r;
 }

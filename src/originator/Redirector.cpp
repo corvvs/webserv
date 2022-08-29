@@ -90,7 +90,7 @@ void Redirector::generate_html() {
     response_data.inject("", 0, true);
 }
 
-ResponseHTTP *Redirector::respond(const RequestHTTP *request) {
+ResponseHTTP *Redirector::respond(const RequestHTTP *request, bool should_close) {
     ResponseHTTP::header_list_type headers;
 
     // redirect_to を Location: に設定
@@ -120,6 +120,7 @@ ResponseHTTP *Redirector::respond(const RequestHTTP *request) {
             break;
     }
 
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, false);
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, should_close);
     return res;
 }

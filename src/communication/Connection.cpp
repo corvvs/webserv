@@ -159,7 +159,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
         if (phase != CONNECTION_SHUTTING_DOWN && !rt.is_responding()) {
             try {
                 // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
-                rt.respond_error(observer, err);
+                rt.respond_unrecoverable_error(observer, err);
                 observer.reserve_set(this, IObserver::OT_WRITE);
                 return;
             } catch (const http_error &err) {
