@@ -84,6 +84,9 @@ minor_error FileReader::read_from_file() {
                 return minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
             case EACCES:
                 return minor_error::make("permission denied", HTTP::STATUS_FORBIDDEN);
+            case EMFILE:
+            case ENFILE:
+                return minor_error::make("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
             default:
                 VOUT(errno);
                 return minor_error::make("can't open", HTTP::STATUS_FORBIDDEN);

@@ -128,6 +128,9 @@ void AutoIndexer::scan_from_directory() {
                 throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+            case EMFILE:
+            case ENFILE:
+                throw http_error("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
             default:
                 VOUT(errno);
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);

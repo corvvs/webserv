@@ -180,6 +180,9 @@ void FilePoster::write_file(const FileEntry &file) const {
         switch (errno) {
             case EACCES:
                 throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+            case EMFILE:
+            case ENFILE:
+                throw http_error("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
             default:
                 QVOUT(strerror(errno));
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
