@@ -34,7 +34,10 @@ FilePoster::FileEntry::FileEntry(const byte_string &name_,
     : name(name_), content(content_), content_type(content_type_), content_disposition(content_disposition_) {}
 
 FilePoster::FilePoster(const RequestMatchingResult &match_result, const IContentProvider &request)
-    : directory_path_(HTTP::restrfy(match_result.path_local)), originated_(false), content_provider(request) {
+    : directory_path_(HTTP::restrfy(match_result.path_local))
+    , request_path(match_result.target->path)
+    , originated_(false)
+    , content_provider(request) {
     // リクエストの Content-Type: が "multipart/form-data" でかつ正しい boundary パラメータがあれば,
     // マルチパートとみなして処理する.
     const HTTP::CH::ContentType &ct = content_provider.get_content_type_item();
@@ -235,9 +238,9 @@ void FilePoster::leave() {
     delete this;
 }
 
-ResponseHTTP *FilePoster::respond(const RequestHTTP *request) {
+ResponseHTTP::header_list_type
+FilePoster::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     switch (sm) {
         case ResponseDataList::SM_CHUNKED:
             headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -249,7 +252,15 @@ ResponseHTTP *FilePoster::respond(const RequestHTTP *request) {
         default:
             break;
     }
-    ResponseHTTP *res = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, false);
+    headers.push_back(std::make_pair(HeaderHTTP::location, request_path.str()));
+    return headers;
+}
+
+ResponseHTTP *FilePoster::respond(const RequestHTTP *request, bool should_close) {
+    const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
+    ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
+    ResponseHTTP *res
+        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_CREATED, &headers, &response_data, should_close);
     res->start();
     return res;
 }
