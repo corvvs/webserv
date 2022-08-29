@@ -3,6 +3,7 @@
 #include "event/Eventselectloop.hpp"
 #include "server/HTTPServer.hpp"
 #include "utils/MIME.hpp"
+#include <csignal>
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2 * !!(condition)]))
 
 static void assert_sizeoftype() {
@@ -14,6 +15,7 @@ static void assert_sizeoftype() {
 
 int main(int argc, char **argv) {
     assert_sizeoftype();
+    signal(SIGPIPE, SIG_IGN);
 
     if (argc == 3 && strcmp(argv[1], "-t") == 0) {
         return HTTPServer::test_configuration(argv[2]);
