@@ -1009,11 +1009,9 @@ minor_error HTTP::CH::Cookie::determine(const AHeaderHolder &holder) {
                 break;
             }
             work = work.substr(1);
-            if (!work.starts_with(" ")) {
-                merror = minor_error::make("away; no a leading sp for an element", HTTP::STATUS_BAD_REQUEST);
-                break;
+            if (work.starts_with(" ")) {
+                work = work.substr(1);
             }
-            work = work.substr(1);
         }
     }
     return merror;
