@@ -12,11 +12,41 @@ func TestAutoIndex(t *testing.T) {
 		name       string
 		request    string
 		statusCode int
+	}{
+		{
+			// autoindex on 出なかったら403
+			name:       "example",
+			request:    "GET /html/dir HTTP/1.1\r\n" + validHeader,
+			statusCode: http.StatusOK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := client.NewClient("default", tt.request, webservPort)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res, err := c.Run()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.StatusCode != tt.statusCode {
+				t.Errorf("unexpected status code got = %d, want = %d", res.StatusCode, tt.statusCode)
+			}
+		})
+	}
+}
+
+func TestIndex(t *testing.T) {
+	tests := []struct {
+		name       string
+		request    string
+		statusCode int
 		body       []byte
 	}{
 		{
-			name:       "root",
-			request:    "GET /html HTTP/1.1\r\n" + validHeader,
+			name:       "example",
+			request:    "GET /html/ HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusOK,
 			body:       indexHtml,
 		},
@@ -35,7 +65,7 @@ func TestAutoIndex(t *testing.T) {
 				t.Errorf("unexpected status code got = %d, want = %d", res.StatusCode, tt.statusCode)
 			}
 			if !reflect.DeepEqual(res.Body, tt.body) {
-				t.Errorf("unexpected body got = %s, want = %s", string(res.Body), string(tt.body))
+				t.Errorf("unexpected body got = %s, want %s", string(res.Body), string(tt.body))
 			}
 		})
 	}

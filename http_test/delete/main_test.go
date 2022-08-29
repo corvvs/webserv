@@ -1,4 +1,4 @@
-package review
+package delete
 
 import (
 	"fmt"

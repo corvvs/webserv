@@ -18,7 +18,7 @@ func TestNest(t *testing.T) {
 			name:       "longest_match",
 			request:    "GET /html/index.html HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusOK,
-			body:       indexHtml,
+			body:       []byte("return"),
 		},
 	}
 	for _, tt := range tests {

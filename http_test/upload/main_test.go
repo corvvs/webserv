@@ -10,7 +10,7 @@ import (
 
 func TestMain(m *testing.M) {
 	go func() {
-		_, err := exec.Command("../../../../webserv", "./webserv.conf").Output()
+		_, err := exec.Command("../../webserv", "./webserv.conf").Output()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

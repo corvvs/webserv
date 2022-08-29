@@ -14,8 +14,4 @@ const (
 var (
 	//go:embed html/index.html
 	indexHtml []byte
-	//go:embed html/sample.html
-	sampleHtml []byte
-	//go:embed html/dir/dir.html
-	dirHtml []byte
 )

@@ -25,17 +25,8 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	err := os.Chmod("./html/permission_denied.html", 000)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	m.Run()
-	err = exec.Command("pkill", "webserv").Run()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	err = os.Chmod("./html/permission_denied.html", 777)
+	err := exec.Command("pkill", "webserv").Run()
 	if err != nil {
 		log.Fatalln(err)
 	}

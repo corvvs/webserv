@@ -3,28 +3,51 @@ package upload
 import (
 	"fmt"
 	"http_test/client"
+	"io"
+	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestUpload(t *testing.T) {
 	tests := []struct {
-		name       string
-		request    string
-		statusCode int
-		body       []byte
+		name        string
+		request     string
+		statusCode  int
+		fileContent []byte
 	}{
 		{
 
-			name:       "example",
-			request:    "POST /upload HTTP/1.1\r\n" + fmt.Sprintf("content-length: %d", len(sampleHtml)) + validHeader,
-			statusCode: http.StatusOK,
-			body:       sampleHtml,
+			name:        "index",
+			request:     "POST /upload HTTP/1.1\r\n" + fmt.Sprintf("Content-Length: %d\r\n", len(indexHtml)) + validHeader + string(indexHtml),
+			statusCode:  http.StatusCreated,
+			fileContent: indexHtml,
+		},
+		{
+
+			name:        "sample",
+			request:     "POST /upload HTTP/1.1\r\n" + fmt.Sprintf("Content-Length: %d\r\n", len(sampleHtml)) + validHeader + string(sampleHtml),
+			statusCode:  http.StatusCreated,
+			fileContent: sampleHtml,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			err := filepath.WalkDir("./uploaded", func(path string, d fs.DirEntry, err error) error {
+				if d.IsDir() {
+					return nil
+				}
+				return os.Remove(path)
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
 			c, err := client.NewClient("default", tt.request, webservPort)
 			if err != nil {
 				t.Fatal(err)
@@ -36,8 +59,26 @@ func TestUpload(t *testing.T) {
 			if res.StatusCode != tt.statusCode {
 				t.Errorf("unexpected status code got = %d, want %d", res.StatusCode, tt.statusCode)
 			}
-			if !reflect.DeepEqual(res.Body, tt.body) {
-				t.Errorf("unexpected body got = %s, want %s", string(res.Body), string(tt.body))
+			err = filepath.WalkDir("./uploaded", func(path string, d fs.DirEntry, err error) error {
+				if d.IsDir() {
+					return nil
+				}
+				file, err := os.Open(path)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+				fileContent, err := io.ReadAll(file)
+				if err != nil {
+					return err
+				}
+				if reflect.DeepEqual(tt.fileContent[:len(tt.fileContent)-1], fileContent) {
+					t.Errorf("unexpected deleted file content got = %s, want %s", string(fileContent), string(fileContent))
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}
