@@ -1,4 +1,5 @@
 #include "ResponseHTTP.hpp"
+#include "ControlHeaderHTTP.hpp"
 #include <unistd.h>
 
 ResponseHTTP::ResponseHTTP(HTTP::t_version version,
@@ -13,9 +14,11 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
     , should_close_(should_close) {
     if (headers != NULL) {
         for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
-            DXOUT(it->first << " - " << it->second);
             feed_header(it->first, it->second);
         }
+    }
+    if (header_dict.find(HeaderHTTP::date) == header_dict.end()) {
+        feed_header(HeaderHTTP::date, HTTP::CH::Date::now().serialize());
     }
     lifetime.activate();
     start();

@@ -1,14 +1,27 @@
 #include "FileReader.hpp"
+#include "../utils/File.hpp"
 #include "../utils/MIME.hpp"
 #include "../utils/ObjectHolder.hpp"
 #include <unistd.h>
 #define READ_SIZE 1048576
 
-FileReader::FileReader(const RequestMatchingResult &match_result, FileCacher &cacher)
-    : file_path_(HTTP::restrfy(match_result.path_local)), originated_(false), cacher_(cacher) {}
+FileReader::FileReader(const RequestMatchingResult &match_result,
+                       FileCacher &cacher,
+                       const ICacheInfoProvider *info_provider)
+    : file_path_(HTTP::restrfy(match_result.path_local))
+    , originated_(false)
+    , cacher_(cacher)
+    , last_modified(0)
+    , cache_info_provider(info_provider)
+    , is_not_modified(false) {}
 
 FileReader::FileReader(const char_string &path, FileCacher &cacher)
-    : file_path_(path), originated_(false), cacher_(cacher) {}
+    : file_path_(path)
+    , originated_(false)
+    , cacher_(cacher)
+    , last_modified(0)
+    , cache_info_provider(NULL)
+    , is_not_modified(false) {}
 
 FileReader::~FileReader() {}
 
@@ -40,6 +53,26 @@ bool FileReader::read_from_cache() {
 
 minor_error FileReader::read_from_file() {
     // TODO: C++ way に書き直す
+    {
+        // 最終更新時刻のチェック
+        time_t lut = file::get_last_update_time(file_path_);
+        if (lut > 0) {
+            last_modified = lut * 1000;
+
+            if (cache_info_provider != NULL) {
+                t_time_epoch_ms if_modified_since = cache_info_provider->get_if_modified_since().value;
+                if (if_modified_since > 0 && if_modified_since >= last_modified) {
+                    // 更新なし!!
+                    response_data.inject(NULL, 0, true);
+                    is_not_modified = true;
+                    return minor_error::ok();
+                }
+            }
+        } else {
+            last_modified = 0;
+        }
+    }
+
     errno = 0;
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
@@ -160,26 +193,33 @@ HTTP::byte_string FileReader::infer_content_type() const {
 ResponseHTTP::header_list_type
 FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    switch (sm) {
-        case ResponseDataList::SM_CHUNKED:
-            headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
-            break;
-        case ResponseDataList::SM_NOT_CHUNKED:
-            headers.push_back(
-                std::make_pair(HeaderHTTP::content_length, ParserHelper::utos(response_data.current_total_size(), 10)));
-            break;
-        default:
-            break;
+    if (!is_not_modified) {
+        switch (sm) {
+            case ResponseDataList::SM_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
+                break;
+            case ResponseDataList::SM_NOT_CHUNKED:
+                headers.push_back(std::make_pair(HeaderHTTP::content_length,
+                                                 ParserHelper::utos(response_data.current_total_size(), 10)));
+                break;
+            default:
+                break;
+        }
     }
     // Content-Type: の推測
     headers.push_back(std::make_pair(HeaderHTTP::content_type, infer_content_type()));
+    // Last-Modifiedがもしあれば
+    if (last_modified > 0) {
+        headers.push_back(std::make_pair(HeaderHTTP::last_modified, HTTP::CH::LastModified(last_modified).serialize()));
+    }
     return headers;
 }
 
 ResponseHTTP *FileReader::respond(const RequestHTTP *request, bool should_close) {
     const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
+    const HTTP::t_status status_code               = is_not_modified ? HTTP::STATUS_NOT_MODIFIED : HTTP::STATUS_OK;
     ResponseHTTP *res
-        = new ResponseHTTP(request->get_http_version(), HTTP::STATUS_OK, &headers, &response_data, should_close);
+        = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, should_close);
     return res;
 }

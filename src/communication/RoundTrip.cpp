@@ -80,7 +80,7 @@ IOriginator *RoundTrip::make_originator(const RequestMatchingResult &result, con
         default:
             break;
     }
-    return new FileReader(result, cacher_);
+    return new FileReader(result, cacher_, &request);
 }
 
 void RoundTrip::route(Connection &connection) {
