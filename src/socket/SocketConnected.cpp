@@ -1,4 +1,5 @@
 #include "SocketConnected.hpp"
+#include "../utils/ObjectHolder.hpp"
 #include "SocketListening.hpp"
 #include <cstring>
 
@@ -15,7 +16,8 @@ SocketConnected &SocketConnected::operator=(const SocketConnected &rhs) {
 }
 
 SocketConnected *SocketConnected::connect(t_socket_domain sdomain, t_socket_type stype, t_port port) {
-    SocketConnected *sock = new SocketConnected(sdomain, stype);
+    ObjectHolder<SocketConnected> sock_holder(new SocketConnected(sdomain, stype));
+    SocketConnected *sock = sock_holder.value();
     t_fd fd               = sock->fd;
 
     sockaddr_in sa;
@@ -35,13 +37,14 @@ SocketConnected *SocketConnected::connect(t_socket_domain sdomain, t_socket_type
         throw std::runtime_error("failed to connect");
     }
     sock->port = port;
-    return sock;
+    return sock_holder.release();
 }
 
 SocketConnected *SocketConnected::wrap(t_fd fd, SocketListening &listening) {
-    SocketConnected *sock = new SocketConnected(fd, listening);
+    ObjectHolder<SocketConnected> sock_holder(new SocketConnected(fd, listening));
+    SocketConnected *sock = sock_holder.value();
     sock->set_nonblock();
-    return sock;
+    return sock_holder.release();
 }
 
 ssize_t SocketConnected::send(const void *buffer, size_t len, int flags) {

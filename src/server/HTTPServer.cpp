@@ -2,6 +2,7 @@
 #include "../config/Parser.hpp"
 #include "../router/RequestMatcher.hpp"
 #include "../utils/File.hpp"
+#include "../utils/ObjectHolder.hpp"
 
 HTTPServer::HTTPServer(IObserver *observer) : socket_observer_(observer) {}
 
@@ -49,9 +50,11 @@ void HTTPServer::listen(t_socket_domain sdomain,
                         t_port port,
                         const config::config_vector &configs,
                         FileCacher &cacher) {
-    Channel *ch            = new Channel(this, sdomain, stype, port, configs, cacher);
+    ObjectHolder<Channel> ch_holder(new Channel(this, sdomain, stype, port, configs, cacher));
+    Channel *ch            = ch_holder.value();
     channels[ch->get_id()] = ch;
     socket_observer_->reserve_hold(ch);
+    ch_holder.release();
     socket_observer_->reserve_set(ch, IObserver::OT_READ);
 }
 
