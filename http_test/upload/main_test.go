@@ -29,4 +29,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
+	err = removeFile(uploadedDirPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }
