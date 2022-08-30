@@ -149,7 +149,7 @@ const AHeaderHolder::value_list_type *AHeaderHolder::get_vals(const header_key_t
 
 void AHeaderHolder::erase_vals(const header_key_type &normalized_key) {
     dict.erase(normalized_key);
-    for (list_type::const_iterator it = list.begin(); it != list.end();) {
+    for (list_type::iterator it = list.begin(); it != list.end();) {
         if (it->get_key() == normalized_key) {
             DXOUT("erasing: " << it->get_val());
             list.erase(it++);

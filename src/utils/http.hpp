@@ -2,6 +2,7 @@
 #define HTTP_HPP
 #include "test_common.hpp"
 #include "types.hpp"
+#include <cassert>
 #include <iostream>
 #include <map>
 #include <string>

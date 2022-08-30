@@ -17,9 +17,7 @@ minor_error::minor_error() : std::pair<first_type, second_type>("", HTTP::STATUS
 minor_error::minor_error(first_type message, second_type status_code)
     : std::pair<first_type, second_type>(message, status_code) {}
 
-minor_error::minor_error(const minor_error &other) {
-    *this = other;
-}
+minor_error::minor_error(const minor_error &other) : std::pair<first_type, second_type>(other.first, other.second) {}
 
 minor_error::minor_error(const http_error &other) {
     first  = other.what();

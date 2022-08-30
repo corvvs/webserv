@@ -3,7 +3,9 @@
 #include "../utils/File.hpp"
 #include "../utils/HTML.hpp"
 #include <algorithm>
+#include <cerrno>
 #include <ctime>
+#include <sys/stat.h>
 #include <unistd.h>
 #define READ_SIZE 1024
 
@@ -18,10 +20,7 @@ bool compare_entry_by_name(const AutoIndexer::Entry &s1, const AutoIndexer::Entr
 
 // 最終変更時刻 降順
 bool compare_entry_by_mod_time(const AutoIndexer::Entry &s1, const AutoIndexer::Entry &s2) {
-    if (s1.st_mtim.tv_sec == s2.st_mtim.tv_sec) {
-        return s1.st_mtim.tv_nsec > s2.st_mtim.tv_nsec;
-    }
-    return s1.st_mtim.tv_sec > s2.st_mtim.tv_sec;
+    return s1.time > s2.time;
 }
 
 // ディレクトリが先, それ以外が後
@@ -58,12 +57,12 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
     // 最終更新時刻
     {
         str += HTTP::strfy("    <td class=\"last-modified\">\n");
-        ss << st_mtim.tv_sec;
+        ss << time;
         ss >> s;
         str += HTTP::strfy("      ");
 
         size_t mlen = 52;
-        tm *tms     = localtime(&st_mtim.tv_sec);
+        tm *tms     = localtime(&time);
         char *tstr  = (char *)malloc(sizeof(char) * (mlen + 1));
         if (tstr != NULL) {
             std::strftime(tstr, mlen, "%d-%m-%Y %H:%M:%S", tms);
@@ -154,10 +153,10 @@ void AutoIndexer::scan_from_directory() {
             continue;
         }
         entries.resize(entries.size() + 1);
-        entries.back().name    = HTTP::strfy(ent->d_name);
-        entries.back().size    = st.st_size;
-        entries.back().st_mtim = st.st_mtimespec;
-        entries.back().is_dir  = S_ISDIR(st.st_mode);
+        entries.back().name   = HTTP::strfy(ent->d_name);
+        entries.back().size   = st.st_size;
+        entries.back().time   = st.st_mtime;
+        entries.back().is_dir = S_ISDIR(st.st_mode);
     }
     render_html();
     originated_ = true;

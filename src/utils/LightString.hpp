@@ -3,7 +3,7 @@
 #include "CharFilter.hpp"
 #include "IndexRange.hpp"
 #include <algorithm>
-#include <string>
+#include <cstring>
 #include <vector>
 
 // 別のstringの一部分をiteratorペアとして参照する軽量string

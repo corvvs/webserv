@@ -1,6 +1,7 @@
 #ifndef OBJECT_HOLDER_HPP
 #define OBJECT_HOLDER_HPP
 #include "../socket/SocketType.hpp"
+#include <cassert>
 
 // [RAIIクラス(*Holder)について]
 // なんらかのリソースを「所有」した状態で構築される.

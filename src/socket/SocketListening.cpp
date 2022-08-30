@@ -3,6 +3,7 @@
 #include "../utils//test_common.hpp"
 #include "SocketConnected.hpp"
 #include "strings.h"
+#include <cerrno>
 
 SocketListening::SocketListening(t_socket_domain sdomain, t_socket_type stype) : ASocket(sdomain, stype) {}
 
