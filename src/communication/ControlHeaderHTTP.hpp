@@ -125,12 +125,13 @@ struct ContentDisposition : public IControlHeader, public IDictHolder {
 
 struct Connection : public IControlHeader {
     std::vector<byte_string> connection_options;
-    bool keep_alive_; // keep-alive が true == 持続的接続を行う とは限らないことに注意.
     bool close_;
 
     minor_error determine(const AHeaderHolder &holder);
     bool will_keep_alive() const;
     bool will_close() const;
+
+    Connection();
 };
 
 struct TE : public IControlHeader {
