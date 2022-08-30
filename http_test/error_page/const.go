@@ -22,7 +22,7 @@ var (
 	//go:embed html/length_required.html
 	lengthRequiredhtml []byte
 	//go:embed html/method_not_allowed.html
-	methodNotAllowedhtml []byte
+	methodNotAllowedHtml []byte
 	//go:embed html/not_found.html
 	notFoundhtml []byte
 	//go:embed html/not_implemented.html

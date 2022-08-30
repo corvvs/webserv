@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"http_test/client"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -37,7 +38,7 @@ func TestErrorPage(t *testing.T) {
 			request:    "HEAD /index.html HTTP/1.1\r\n" + validHeader,
 			clientType: "default",
 			statusCode: http.StatusMethodNotAllowed,
-			body:       methodNotAllowedhtml,
+			body:       methodNotAllowedHtml,
 		},
 		{
 			name:       "Request_Timeout",
@@ -88,9 +89,9 @@ func TestErrorPage(t *testing.T) {
 			if res.StatusCode != tt.statusCode {
 				t.Errorf("unexpected status code got = %d, want %d", res.StatusCode, tt.statusCode)
 			}
-			//if !reflect.DeepEqual(res.Body, tt.body) {
-			//	t.Errorf("unexpected body got = %s, want %s", string(res.Body), string(tt.body))
-			//}
+			if !reflect.DeepEqual(res.Body, tt.body) {
+				t.Errorf("unexpected body got = %s, want %s", string(res.Body), string(tt.body))
+			}
 		})
 	}
 }

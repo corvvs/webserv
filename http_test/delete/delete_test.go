@@ -46,21 +46,31 @@ func TestUpload(t *testing.T) {
 			if res.StatusCode != tt.statusCode {
 				t.Errorf("unexpected status code got = %d, want %d", res.StatusCode, tt.statusCode)
 			}
-			err = filepath.WalkDir("./deleted", func(path string, d fs.DirEntry, err error) error {
-				if d.IsDir() {
-					return nil
-				}
-				filename := filepath.Base(path)
-				if filename == tt.fileName {
-					t.Errorf("file did not delete")
-				}
-				return nil
-			})
+			find, err := findFile("./deleted", tt.fileName)
 			if err != nil {
 				t.Fatal(err)
 			}
+			if find {
+				t.Errorf("did not deleted")
+			}
 		})
 	}
+}
+
+func findFile(dirPath string, targetFileName string) (bool, error) {
+	var find bool
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+		filename := filepath.Base(path)
+		find = filename == targetFileName
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return find, err
 }
 
 func TestUploadNotFound(t *testing.T) {
