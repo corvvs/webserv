@@ -80,7 +80,7 @@ unit_test:$(TESTER)
 
 .PHONY: joint_test
 joint_test: $(NAME)
-	cd ./http_test && go test -v ./...
+	cd ./http_test && bash run.sh
 
 .PHONY: run_test
 run_test: unit_test

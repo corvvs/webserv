@@ -68,7 +68,7 @@ func TestStatusBadRequestRequestLine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := client.NewClient(tt.request, webservPort)
+			c, err := client.NewClient("default", tt.request, webservPort)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -108,7 +108,7 @@ func TestStatusBadRequestHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := client.NewClient(tt.request, webservPort)
+			c, err := client.NewClient("default", tt.request, webservPort)
 			if err != nil {
 				t.Fatal(err)
 			}
