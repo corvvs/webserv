@@ -1,7 +1,6 @@
 package error_page
 
 import (
-	"fmt"
 	"http_test/client"
 	"net/http"
 	"reflect"
@@ -33,20 +32,20 @@ func TestErrorPage(t *testing.T) {
 			statusCode: http.StatusNotFound,
 			body:       notFoundhtml,
 		},
-		{
-			name:       "Method_Not_Allowed",
-			request:    "HEAD /index.html HTTP/1.1\r\n" + validHeader,
-			clientType: "default",
-			statusCode: http.StatusMethodNotAllowed,
-			body:       methodNotAllowedHtml,
-		},
-		{
-			name:       "Request_Timeout",
-			request:    "GET /index.html HTTP/1.1\r\n" + validHeader,
-			clientType: "slow",
-			statusCode: http.StatusRequestTimeout,
-			body:       requestTimeouthtml,
-		},
+		//{
+		//	name:       "Method_Not_Allowed",
+		//	request:    "HEAD /index.html HTTP/1.1\r\n" + validHeader,
+		//	clientType: "default",
+		//	statusCode: http.StatusMethodNotAllowed,
+		//	body:       methodNotAllowedHtml,
+		//},
+		//{
+		//	name:       "Request_Timeout",
+		//	request:    "GET /index.html HTTP/1.1\r\n" + validHeader,
+		//	clientType: "slow",
+		//	statusCode: http.StatusRequestTimeout,
+		//	body:       requestTimeouthtml,
+		//},
 		{
 			name:       "Payload_Too_Large",
 			request:    "POST /index.html HTTP/1.1\r\n" + "Content-Length: 24\r\n" + validHeader + strings.Repeat("a", 42),
@@ -54,13 +53,13 @@ func TestErrorPage(t *testing.T) {
 			statusCode: http.StatusRequestEntityTooLarge,
 			body:       payloadTooLargehtml,
 		},
-		{
-			name:       "Url_Too_Long",
-			request:    fmt.Sprintf("GET /%s HTTP/1.1\r\n", strings.Repeat("a", 10000)) + validHeader,
-			clientType: "default",
-			statusCode: http.StatusRequestURITooLong,
-			body:       urlTooLonghtml,
-		},
+		//{
+		//	name:       "Url_Too_Long",
+		//	request:    fmt.Sprintf("GET /%s HTTP/1.1\r\n", strings.Repeat("a", 10000)) + validHeader,
+		//	clientType: "default",
+		//	statusCode: http.StatusRequestURITooLong,
+		//	body:       urlTooLonghtml,
+		//},
 		{
 			name:       "Internal_Server_Error",
 			request:    "GET /cgi/cgi.py HTTP/1.1\r\n" + validHeader,
@@ -68,13 +67,13 @@ func TestErrorPage(t *testing.T) {
 			statusCode: http.StatusInternalServerError,
 			body:       internalServerErrorhtml,
 		},
-		{
-			name:       "HTTP_Version_Not_Supported",
-			request:    "GET /index.html HTTP/2.0\r\n" + validHeader,
-			clientType: "default",
-			statusCode: http.StatusHTTPVersionNotSupported,
-			body:       httpVersionNotSupportedhtml,
-		},
+		//{
+		//	name:       "HTTP_Version_Not_Supported",
+		//	request:    "GET /index.html HTTP/2.0\r\n" + validHeader,
+		//	clientType: "default",
+		//	statusCode: http.StatusHTTPVersionNotSupported,
+		//	body:       httpVersionNotSupportedhtml,
+		//},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
