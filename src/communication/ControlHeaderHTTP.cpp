@@ -533,6 +533,8 @@ minor_error HTTP::CH::Via::determine(const AHeaderHolder &holder) {
 }
 
 // [ADate]
+HTTP::CH::ADate::ADate() : value(0) {}
+
 minor_error HTTP::CH::ADate::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-date
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-date-time-formats
@@ -1163,6 +1165,8 @@ minor_error HTTP::CH::SetCookie::determine(const AHeaderHolder &holder) {
 
 // [Connection]
 
+HTTP::CH::Connection::Connection() : close_(false) {}
+
 minor_error HTTP::CH::Connection::determine(const AHeaderHolder &holder) {
     // Connection        = 1#connection-option
     // connection-option = token
@@ -1193,10 +1197,11 @@ minor_error HTTP::CH::Connection::determine(const AHeaderHolder &holder) {
             byte_string target_str = HTTP::Utils::downcase(target_lstr.str());
             // DXOUT("target_str: \"" << target_str << "\"");
             this->connection_options.push_back(target_str);
+            this->close_ = false;
             if (target_str == "close") {
                 this->close_ = true;
             } else if (target_str == "keep-alive") {
-                this->keep_alive_ = true;
+                this->close_ = false;
             }
 
             // 後続
@@ -1226,7 +1231,7 @@ bool HTTP::CH::Connection::will_close() const {
 }
 
 bool HTTP::CH::Connection::will_keep_alive() const {
-    return !close_ && keep_alive_;
+    return !close_;
 }
 
 // [Status]

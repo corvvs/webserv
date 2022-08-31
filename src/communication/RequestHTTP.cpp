@@ -377,6 +377,12 @@ void RequestHTTP::parse_reqline(const light_string &raw_req_line) {
             throw http_error("invalid request-line?", HTTP::STATUS_BAD_REQUEST);
     }
     DXOUT("* parsed reqline *");
+    if (this->rp.http_version.is_null()) {
+        throw http_error("unspecified http-version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
+    }
+    if (this->rp.http_version.value() != HTTP::V_1_1) {
+        throw http_error("unsupported http-version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
+    }
 }
 
 void RequestHTTP::check_reqline_consistensy() {
@@ -659,7 +665,7 @@ size_t RequestHTTP::parsed_body_size() const {
 }
 
 size_t RequestHTTP::effective_parsed_body_size() const {
-    if (ps.parse_progress >= PP_OVER) {
+    if (!rp.is_body_chunked && ps.parse_progress >= PP_OVER) {
         return ps.end_of_body - ps.start_of_body;
     }
     return parsed_body_size();
