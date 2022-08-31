@@ -11,7 +11,7 @@ const ParserHelper::byte_string ParserHelper::LF                 = HTTP::strfy("
 const ParserHelper::byte_string ParserHelper::LWS                = HTTP::strfy(" \t");
 
 // strptime は LinuxだとUTC, macOS だとローカル時間に変換するので, その後の変換関数も違うものを使う
-time_t tm_to_time_t(struct tm* t) {
+time_t tm_to_time_t(struct tm *t) {
 #ifdef __APPLE__
     return mktime(t);
 #else
