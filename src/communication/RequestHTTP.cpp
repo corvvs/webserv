@@ -377,6 +377,12 @@ void RequestHTTP::parse_reqline(const light_string &raw_req_line) {
             throw http_error("invalid request-line?", HTTP::STATUS_BAD_REQUEST);
     }
     DXOUT("* parsed reqline *");
+    if (this->rp.http_version.is_null()) {
+        throw http_error("unspecified http-version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
+    }
+    if (this->rp.http_version.value() != HTTP::V_1_1) {
+        throw http_error("unsupported http-version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
+    }
 }
 
 void RequestHTTP::check_reqline_consistensy() {
