@@ -1,5 +1,6 @@
 #include "../../src/communication/ParserHelper.hpp"
 #include "gtest/gtest.h"
+#include <climits>
 #include <vector>
 
 // [find_crlf]
