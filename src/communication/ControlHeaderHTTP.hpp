@@ -156,6 +156,7 @@ struct ADate : public IControlHeader {
     minor_error determine(const AHeaderHolder &holder);
 
     virtual const HTTP::byte_string &get_header_key() const = 0;
+    ADate();
 };
 
 struct Date : public ADate {

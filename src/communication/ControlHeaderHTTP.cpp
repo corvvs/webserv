@@ -533,6 +533,8 @@ minor_error HTTP::CH::Via::determine(const AHeaderHolder &holder) {
 }
 
 // [ADate]
+HTTP::CH::ADate::ADate() : value(0) {}
+
 minor_error HTTP::CH::ADate::determine(const AHeaderHolder &holder) {
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-date
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-date-time-formats
