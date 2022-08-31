@@ -1,6 +1,6 @@
 NAME		=	webserv
 CXX			=	c++
-CXXFLAGS	=	-Wall -Wextra -Werror -std=c++98 -D NDEBUG
+CXXFLAGS	=	-Wall -Wextra -Werror -std=c++98 -D NDEBUG -O2
 # CXXFLAGS	=	-Wall -Wextra -Werror -std=c++98 --pedantic -g3 -fsanitize=address
 
 SRC_DIR		=	./src
