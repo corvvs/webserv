@@ -10,6 +10,15 @@ const ParserHelper::byte_string ParserHelper::CRLF               = HTTP::strfy("
 const ParserHelper::byte_string ParserHelper::LF                 = HTTP::strfy("\n");
 const ParserHelper::byte_string ParserHelper::LWS                = HTTP::strfy(" \t");
 
+// strptime は LinuxだとUTC, macOS だとローカル時間に変換するので, その後の変換関数も違うものを使う
+time_t tm_to_time_t(struct tm *t) {
+#ifdef __APPLE__
+    return mktime(t);
+#else
+    return timegm(t);
+#endif
+}
+
 IndexRange ParserHelper::find_crlf(const byte_string &str, ssize_t from, ssize_t len) {
     if ((size_t)(from + len) > str.size()) {
         len = str.size() - from;
@@ -548,7 +557,7 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::http_date_to_time(const light_str
                 if (failed) {
                     break;
                 }
-                t_time_epoch_ms ms = mktime(&tmv) * 1000;
+                t_time_epoch_ms ms = tm_to_time_t(&tmv) * 1000;
                 VOUT(ms);
                 return std::make_pair(true, ms);
             } else if (base.starts_with(" ")) {
@@ -567,7 +576,7 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::http_date_to_time(const light_str
                 if (failed) {
                     break;
                 }
-                t_time_epoch_ms ms = mktime(&tmv) * 1000;
+                t_time_epoch_ms ms = tm_to_time_t(&tmv) * 1000;
                 return std::make_pair(true, ms);
             }
         } else if (0 <= find_index(cand_day_name, day_names_l)) {
@@ -587,7 +596,7 @@ std::pair<bool, t_time_epoch_ms> ParserHelper::http_date_to_time(const light_str
             if (failed) {
                 break;
             }
-            t_time_epoch_ms ms = mktime(&tmv) * 1000;
+            t_time_epoch_ms ms = tm_to_time_t(&tmv) * 1000;
             return std::make_pair(true, ms);
         }
     } while (0);
