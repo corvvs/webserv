@@ -15,13 +15,13 @@ func TestStatusCode(t *testing.T) {
 		{
 
 			name:       "Not_Implemented",
-			request:    "hoge /all HTTP/1.1\r\n" + validHeader,
+			request:    "Not_Implemented /all HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusNotImplemented,
 		},
 		{
 
-			name:       "Not_Implemented",
-			request:    "POST /get HTTP/1.1\r\n" + validHeader,
+			name:       "MethodNotAllowed",
+			request:    "POST /only_get/ HTTP/1.1\r\n" + validHeader,
 			statusCode: http.StatusMethodNotAllowed,
 		},
 	}
