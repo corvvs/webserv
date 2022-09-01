@@ -1,4 +1,4 @@
-package multipe_server
+package multiple_server
 
 import _ "embed"
 

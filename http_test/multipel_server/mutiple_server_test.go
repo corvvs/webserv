@@ -1,4 +1,4 @@
-package multipe_server
+package multiple_server
 
 import (
 	"http_test/client"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestSimple(t *testing.T) {
+func TestMultipleServer(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
