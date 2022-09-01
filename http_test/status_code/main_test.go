@@ -9,7 +9,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	//ch := make(chan struct{})
 	go func() {
 		err := exec.Command("../../webserv", "./webserv.conf").Run()
 		if err != nil {
