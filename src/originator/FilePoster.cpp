@@ -16,8 +16,9 @@ HTTP::byte_string new_file_name(const HTTP::CH::ContentDisposition &content_disp
     file_name += HTTP::strfy("0");
     file_name += ParserHelper::utos(serial, 10);
     // Content-Disposition: がパラメータ filename を持っていれば、その値を _ で繋いで追記する
-    const HTTP::IDictHolder::parameter_dict &params       = content_disposition.parameters;
-    HTTP::IDictHolder::parameter_dict::const_iterator res = params.find(HTTP::strfy("filename"));
+    const HTTP::IDictHolder::parameter_dict &params = content_disposition.parameters;
+    HTTP::IDictHolder::parameter_dict::const_iterator res
+        = params.find(ParserHelper::normalize_header_key(HTTP::strfy("filename")));
     if (res != params.end()) {
         const HTTP::byte_string decoded = ParserHelper::decode_pct_encoded(res->second.unquote());
         file_name += HTTP::strfy("_");

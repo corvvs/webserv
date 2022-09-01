@@ -1,6 +1,7 @@
 #ifndef MIME_HPP
 #define MIME_HPP
 
+#include "UtilsString.hpp"
 #include "http.hpp"
 #include <map>
 
