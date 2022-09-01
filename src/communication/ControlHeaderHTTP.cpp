@@ -799,11 +799,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_name_value(const light_string &s
     QVOUT(work);
     // cookie-value の捕捉
     // cookie-value  = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-    if (work.size() == 0) {
-        error = minor_error::make("away; no rest", HTTP::STATUS_BAD_REQUEST);
-        return work;
-    }
-    const bool maybe_quoted = work[0] == '"';
+    const bool maybe_quoted = work.size() > 0 && work[0] == '"';
     if (maybe_quoted) {
         // ( DQUOTE *cookie-octet DQUOTE )
         // かもしれない
