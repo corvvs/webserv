@@ -10,7 +10,7 @@ HTTP::t_method discriminate_request_method(const HTTP::light_string &str) {
     if (str == "DELETE") {
         return HTTP::METHOD_DELETE;
     }
-    throw http_error("unsupported method", HTTP::STATUS_METHOD_NOT_ALLOWED);
+    throw http_error("unsupported method", HTTP::STATUS_NOT_IMPLEMENTED);
 }
 
 HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
