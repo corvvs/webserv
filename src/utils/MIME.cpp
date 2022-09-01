@@ -3,11 +3,11 @@
 HTTP::MIME::mime_map_type mime_map;
 
 void set_mime_map_item(const std::string &key, const std::string &value) {
-    mime_map.insert(std::make_pair(HTTP::strfy(key), HTTP::strfy(value)));
+    mime_map.insert(std::make_pair(HTTP::Utils::downcase(HTTP::strfy(key)), HTTP::strfy(value)));
 }
 
 HTTP::byte_string HTTP::MIME::mime_type_for_extension(const byte_string &ext) {
-    return mime_map[ext];
+    return mime_map[Utils::downcase(ext)];
 }
 
 void HTTP::MIME::setup_mime_map() {
