@@ -446,4 +446,54 @@ http { \
         EXPECT_EQ(HTTP::strfy("srv12"), res.redirect_location);
     }
 }
+
+TEST_F(request_matcher_test, default_server) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        server_name 'not_default'; \
+        return 200 'not_default'; \
+    } \
+    server { \
+        listen 80 default_server; \
+        server_name 'default'; \
+        return 200 'default'; \
+    } \
+}";
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+
+    {
+        // hostの指定がない
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("default"), res.redirect_location);
+    }
+
+    {
+        // hostの指定があり、一致するserver_nameがある
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "default", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("default"), res.redirect_location);
+    }
+
+    {
+        // hostの指定があり、一致するserver_nameがある
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "not_default", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("not_default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("not_default"), res.redirect_location);
+    }
+
+    {
+        // hostの指定があり、一致するserver_nameがない
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "not_found", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("default"), res.redirect_location);
+    }
+}
 } // namespace
