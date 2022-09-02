@@ -387,7 +387,7 @@ http { \
     {
         TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "localhost", "80");
         const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-        EXPECT_EQ(HTTP::strfy("0.0.0.0:80"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.server_name);
         EXPECT_EQ(HTTP::strfy("srv1"), res.redirect_location);
     }
 }
@@ -442,7 +442,7 @@ http { \
     {
         TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "localhost", "80");
         const RequestMatchingResult res = rm.request_match(configs[hp], tp);
-        EXPECT_EQ(HTTP::strfy("0.0.0.0:80"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.server_name);
         EXPECT_EQ(HTTP::strfy("srv12"), res.redirect_location);
     }
 }

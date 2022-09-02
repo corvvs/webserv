@@ -68,12 +68,13 @@ HTTP::byte_string RequestMatcher::get_server_name(const config::Config &conf, co
     const std::string host                       = HTTP::restrfy(host_data.host);
 
     std::vector<std::string>::const_iterator srv_name_it = std::find(server_names.begin(), server_names.end(), host);
+
+    // hostが指定されていない場合は, 先頭のserver_nameを使う
     if (srv_name_it == server_names.end()) {
-        std::stringstream ss;
-        ss << conf.get_port();
-        // hostが指定されていない場合は, hostnameは `host:port` の形式となる
-        const std::string res = conf.get_host() + ":" + ss.str();
-        return HTTP::strfy(res);
+        if (server_names.empty()) {
+            return HTTP::strfy("");
+        }
+        return HTTP::strfy(server_names.front());
     }
     return HTTP::strfy(*srv_name_it);
 }
@@ -246,7 +247,14 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
             return *conf_it;
         }
     }
-    // 1つも該当しない場合は先頭のconfを使う
+
+    // Hostと一致するserver_nameが存在しない場合はdefault_serverの設定があるかを調べる
+    for (std::vector<config::Config>::const_iterator conf_it = configs.begin(); conf_it != configs.end(); ++conf_it) {
+        if (conf_it->get_default_server()) {
+            return *conf_it;
+        }
+    }
+    // default_serverの設定もない場合は一番上のコンテキストを使用する
     return configs.front();
 }
 
