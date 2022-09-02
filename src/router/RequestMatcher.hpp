@@ -49,6 +49,7 @@ private:
     bool is_executable(const RequestTarget &target, const HTTP::t_method &method, const config::Config &conf) const;
     bool is_autoindex(const RequestTarget &target, const config::Config &conf) const;
     long get_client_max_body_size(const RequestTarget &target, const config::Config &conf) const;
+    HTTP::byte_string get_server_name(const config::Config &conf, const IRequestMatchingParam &rp) const;
     redirect_pair get_redirect(const RequestTarget &target, const config::Config &conf) const;
     RequestMatchingResult::status_dict_type get_status_page_dict(const RequestTarget &target,
                                                                  const config::Config &conf) const;
