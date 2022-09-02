@@ -799,7 +799,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_name_value(const light_string &s
     QVOUT(work);
     // cookie-value の捕捉
     // cookie-value  = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-    const bool maybe_quoted = work.size() > 0 && work[0] == '"';
+    const bool maybe_quoted = work.starts_with("\"");
     if (maybe_quoted) {
         // ( DQUOTE *cookie-octet DQUOTE )
         // かもしれない
@@ -809,7 +809,7 @@ HTTP::light_string HTTP::CH::CookieEntry::parse_name_value(const light_string &s
     work                            = work.substr(cookie_value.size());
     QVOUT(work);
     if (maybe_quoted) {
-        if (work.size() == 0 || work[0] != '"') {
+        if (!work.starts_with("\"")) {
             error = minor_error::make("away; no closing dquote", HTTP::STATUS_BAD_REQUEST);
             return work;
         }
