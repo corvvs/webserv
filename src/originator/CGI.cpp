@@ -320,7 +320,6 @@ t_port CGI::get_port() const {
 }
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    // DXOUT("CGI received: " << cat);
     if (leaving) {
         return;
     }

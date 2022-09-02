@@ -12,7 +12,7 @@
 
 class RoundTrip;
 
-class CGI : public ISocketLike, public IOriginator {
+class CGI : public IOriginator, public ISocketLike {
 public:
     enum t_parse_progress {
         PP_UNREACHED,
