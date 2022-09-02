@@ -64,16 +64,16 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
 
 HTTP::byte_string RequestMatcher::get_server_name(const config::Config &conf, const IRequestMatchingParam &rp) const {
     const std::vector<std::string> &server_names = conf.get_server_name();
-    const HTTP::CH::Host host_data               = rp.get_host();
-    const std::string host                       = HTTP::restrfy(host_data.host);
+    if (server_names.empty()) {
+        return HTTP::strfy("");
+    }
+
+    const HTTP::CH::Host host_data = rp.get_host();
+    const std::string host         = HTTP::restrfy(host_data.host);
 
     std::vector<std::string>::const_iterator srv_name_it = std::find(server_names.begin(), server_names.end(), host);
-
     // hostが指定されていない場合は, 先頭のserver_nameを使う
     if (srv_name_it == server_names.end()) {
-        if (server_names.empty()) {
-            return HTTP::strfy("");
-        }
         return HTTP::strfy(server_names.front());
     }
     return HTTP::strfy(*srv_name_it);
