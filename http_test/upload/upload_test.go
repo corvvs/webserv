@@ -58,11 +58,11 @@ func TestUpload(t *testing.T) {
 			if reflect.DeepEqual(tt.fileContent[:len(tt.fileContent)-1], fileContent) {
 				t.Errorf("unexpected deleted file content got = %s, want %s", string(fileContent), string(fileContent))
 			}
-			err = removeFile(uploadedDirPath)
-			if err != nil {
-				t.Fatal(err)
-			}
 		})
+	}
+	err := removeFile(uploadedDirPath)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
