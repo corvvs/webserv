@@ -458,8 +458,9 @@ void CGI::leave() {
         return;
     }
     DXOUT("leaving.");
-    leaving = true;
-    if (attr.observer != NULL) {
+    leaving                         = true;
+    const bool is_under_observation = (attr.observer != NULL);
+    if (is_under_observation) {
         attr.observer->reserve_unhold(this);
     } else {
         // Observerに渡される前に leave されることがある

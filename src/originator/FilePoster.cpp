@@ -27,19 +27,204 @@ HTTP::byte_string new_file_name(const HTTP::CH::ContentDisposition &content_disp
     return file_name;
 }
 
-FilePoster::FileEntry::FileEntry(const byte_string &name_, const light_string &content_)
-    : name(name_), content(content_) {}
+// [FileEntry InnerClasses]
+
+FilePoster::FileEntry::Attribute::Attribute() : observer(NULL), master(NULL), fd_(-1) {}
+
+void FilePoster::FileEntry::Attribute::close_fd() throw() {
+    if (fd_ >= 0) {
+        close(fd_);
+        DXOUT("closed: " << fd_);
+        fd_ = -1;
+    } else {
+        DXOUT("no close");
+    }
+}
+
+t_fd FilePoster::FileEntry::get_fd() const {
+    return attr.fd_;
+}
+
+t_port FilePoster::FileEntry::get_port() const {
+    return 0;
+}
+
+FilePoster::FileEntry::Status::Status() : leaving(false), written_size(0), originated(false), is_over(false) {}
+
+// [FileEntry]
+
+FilePoster::FileEntry::FileEntry(const byte_string &name_,
+                                 const light_string &content_,
+                                 IObserver *observer,
+                                 ISocketLike *master)
+    : name(name_), content(content_) {
+    attr.master   = master;
+    attr.observer = observer;
+}
 
 FilePoster::FileEntry::FileEntry(const byte_string &name_,
                                  const light_string &content_,
                                  const MultiPart::CH::ContentType &content_type_,
-                                 const MultiPart::CH::ContentDisposition &content_disposition_)
-    : name(name_), content(content_), content_type(content_type_), content_disposition(content_disposition_) {}
+                                 const MultiPart::CH::ContentDisposition &content_disposition_,
+                                 IObserver *observer,
+                                 ISocketLike *master)
+    : name(name_), content(content_), content_type(content_type_), content_disposition(content_disposition_) {
+    attr.master   = master;
+    attr.observer = observer;
+}
+
+FilePoster::FileEntry::~FileEntry() {
+    attr.close_fd();
+    DXOUT("left.");
+}
+
+void FilePoster::FileEntry::leave() {
+    DXOUT("now leaving...");
+    if (status.leaving) {
+        DXOUT("now already leaving.");
+        return;
+    }
+    DXOUT("leaving.");
+    status.leaving = true;
+    VOUT(attr.observer);
+    const bool is_under_observation = (attr.observer != NULL && status.originated);
+    if (is_under_observation) {
+        DXOUT("leaving indirectly.");
+        attr.observer->reserve_unhold(this);
+    } else {
+        // Observerに渡される前に leave されることがある
+        DXOUT("leaving immediately.");
+        delete this;
+    }
+}
+
+void FilePoster::FileEntry::start_origination(IObserver &observer) {
+    if (status.originated) {
+        DXOUT("already orginated!!");
+        return;
+    }
+    prepare_writing();
+    attr.observer = &observer;
+    observer.reserve_hold(this);
+    observer.reserve_set(this, IObserver::OT_WRITE);
+    status.originated = true;
+}
+
+void FilePoster::FileEntry::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
+    if (status.leaving) {
+        return;
+    }
+    if (attr.master) {
+        switch (cat) {
+            case IObserver::OT_WRITE:
+            case IObserver::OT_EXCEPTION:
+            case IObserver::OT_TIMEOUT:
+                retransmit(observer, cat, epoch);
+                return;
+            default:
+                break;
+        }
+    }
+    switch (cat) {
+        case IObserver::OT_WRITE:
+        case IObserver::OT_ORIGINATOR_WRITE:
+            perform_sending(observer);
+            return;
+        case IObserver::OT_TIMEOUT:
+        case IObserver::OT_ORIGINATOR_TIMEOUT:
+            // if (lifetime.is_timeout(epoch)) {
+            //     DXOUT("TIMEOUT!!");
+            //     throw http_error("cgi-script timed out", HTTP::STATUS_TIMEOUT);
+            // }
+            return;
+        default:
+            DXOUT("unexpected cat: " << cat);
+            assert(false);
+    }
+}
+
+void FilePoster::FileEntry::retransmit(IObserver &observer,
+                                       IObserver::observation_category cat,
+                                       t_time_epoch_ms epoch) {
+    assert(attr.master != NULL);
+    switch (cat) {
+        case IObserver::OT_WRITE:
+            cat = IObserver::OT_ORIGINATOR_WRITE;
+            break;
+        case IObserver::OT_EXCEPTION:
+            cat = IObserver::OT_ORIGINATOR_EXCEPTION;
+            break;
+        case IObserver::OT_TIMEOUT:
+            cat = IObserver::OT_ORIGINATOR_TIMEOUT;
+            break;
+        default:
+            assert(false);
+    }
+    attr.master->notify(observer, cat, epoch);
+}
+
+void FilePoster::FileEntry::prepare_writing() {
+    attr.fd_      = open(HTTP::restrfy(name).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0444);
+    const t_fd fd = attr.fd_;
+    // 0444 なのはアップロードされたファイルを即時実行させないため
+    if (fd >= 0) {
+        return;
+    }
+    switch (errno) {
+        case EACCES:
+            throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
+        case EMFILE:
+        case ENFILE:
+            throw http_error("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
+        default:
+            QVOUT(strerror(errno));
+            throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
+    }
+}
+
+void FilePoster::FileEntry::perform_sending(IObserver &observer) {
+    // DXOUT("FP on Write");
+    const light_string::size_type file_size = content.size();
+
+    light_string::size_type write_max = 8192;
+    if (write_max > file_size - status.written_size) {
+        write_max = file_size - status.written_size;
+    }
+    const HTTP::byte_string &base = content.get_base();
+    void *b                       = (void *)(&(base.front()) + content.get_first());
+    const ssize_t written_size    = write(attr.fd_, (char *)b + status.written_size, write_max);
+    if (written_size < 0) {
+        throw http_error("write error", HTTP::STATUS_FORBIDDEN);
+    }
+    const bool is_zero_sent = (written_size == 0);
+    if (is_zero_sent) {
+        DXOUT("Imcomplete?");
+    }
+    status.written_size += written_size;
+    const bool is_over = (status.written_size >= content.size());
+    if (!is_over && !is_zero_sent) {
+        return;
+    }
+    DXOUT("is over!!");
+    status.is_over = true;
+    observer.reserve_unset(this, IObserver::OT_WRITE);
+}
+
+bool FilePoster::FileEntry::is_over() const throw() {
+    return status.is_over;
+}
+
+// [FilePoster InnerClasses]
+
+FilePoster::Attribute::Attribute() : observer(NULL), master(NULL), fd_(-1) {}
+
+FilePoster::Status::Status() : originated(false), leaving(false), is_responsive(false), running_entry(NULL) {}
+
+// [FilePoster]
 
 FilePoster::FilePoster(const RequestMatchingResult &match_result, const IContentProvider &request)
     : directory_path_(HTTP::restrfy(match_result.path_local))
     , request_path(match_result.target->path)
-    , originated_(false)
     , content_provider(request) {
     // リクエストの Content-Type: が "multipart/form-data" でかつ正しい boundary パラメータがあれば,
     // マルチパートとみなして処理する.
@@ -49,26 +234,81 @@ FilePoster::FilePoster(const RequestMatchingResult &match_result, const IContent
     }
 }
 
-FilePoster::~FilePoster() {}
+FilePoster::~FilePoster() {
+    while (entries.size() > 0) {
+        entries.front()->leave();
+        entries.pop_front();
+    }
+    if (status.running_entry != NULL) {
+        status.running_entry->leave();
+    }
+}
 
 void FilePoster::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    (void)observer;
-    (void)cat;
-    (void)epoch;
+    if (status.leaving) {
+        return;
+    }
+    if (!status.running_entry) {
+        return;
+    }
+    switch (cat) {
+        case IObserver::OT_WRITE:
+        case IObserver::OT_ORIGINATOR_WRITE:
+            status.running_entry->notify(observer, cat, epoch);
+            shift_entry();
+            return;
+        case IObserver::OT_TIMEOUT:
+        case IObserver::OT_ORIGINATOR_TIMEOUT:
+            status.running_entry->notify(observer, cat, epoch);
+            return;
+        default:
+            break;
+    }
+    DXOUT("unexpected notification: " << cat);
     assert(false);
 }
 
-void FilePoster::post_files() {
+void FilePoster::prepare_posting() {
     // ターゲットがディレクトリであることを確認
     check_target_directory();
     // ボディからFileEntryのリストを生成
     extract_file_entries();
-    // FileEntryを1つずつアップロード
-    for (size_t i = 0; i < entries.size(); ++i) {
-        write_file(entries[i]);
+    VOUT(entries.size());
+    if (entries.size() == 0) {
+        throw http_error("no file data", HTTP::STATUS_BAD_REQUEST);
     }
-    response_data.inject("", 0, true);
-    originated_ = true;
+    shift_entry();
+}
+
+void FilePoster::shift_entry() {
+    if (status.is_responsive) {
+        return;
+    }
+    FileEntry *f = status.running_entry;
+    if (f != NULL) {
+        // VOUT(f->is_over());
+        if (!f->is_over()) {
+            return;
+        }
+        attr.observer->reserve_unhold(f);
+    }
+    status.running_entry = NULL;
+    VOUT(entries.size());
+    if (f != NULL) {
+        QVOUT(f->name);
+    }
+    if (entries.size() > 0) {
+        FileEntry *nextf = entries.front();
+        QVOUT(nextf->name);
+        nextf->start_origination(*attr.observer);
+        attr.observer->reserve_hold(nextf);
+        status.running_entry = nextf;
+        entries.pop_front();
+        attr.observer->reserve_set(nextf, IObserver::OT_WRITE);
+    } else {
+        status.is_responsive = true;
+        response_data.inject("", 0, true);
+    }
 }
 
 void FilePoster::check_target_directory() {
@@ -93,11 +333,11 @@ void FilePoster::extract_file_entries() {
         decompose_multipart(body, boundary);
     } else {
         byte_string file_name = new_file_name(content_provider.get_content_disposition_item(), 1);
-        entries.push_back(FileEntry(file_name, body));
+        entries.push_back(new FileEntry(file_name, body, attr.observer, attr.master));
     }
     // ファイル名にディレクトリパスを結合
     for (size_t i = 0; i < entries.size(); ++i) {
-        entries[i].name = HTTP::Utils::join_path(HTTP::strfy(directory_path_), entries[i].name);
+        entries[i]->name = HTTP::Utils::join_path(HTTP::strfy(directory_path_), entries[i]->name);
     }
 }
 
@@ -171,54 +411,20 @@ void FilePoster::analyze_subpart(const light_string &subpart) {
     byte_string file_name = new_file_name(content_disposition, entries.size() + 1);
     // FileEntryを生成
     const light_string body_part = subpart.substr(i + crlfcrlf.size());
-    entries.push_back(FileEntry(file_name, body_part, content_type, content_disposition));
-}
-
-void FilePoster::write_file(const FileEntry &file) const {
-    FDHolder fd_holder(open(HTTP::restrfy(file.name).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0444));
-    t_fd fd = fd_holder.value();
-    // 0444 なのはアップロードされたファイルを即時実行させないため
-    if (fd < 0) {
-        switch (errno) {
-            case EACCES:
-                throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
-            case EMFILE:
-            case ENFILE:
-                throw http_error("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
-            default:
-                QVOUT(strerror(errno));
-                throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
-        }
-    }
-    const light_string::size_type file_size = file.content.size();
-    light_string::size_type written         = 0;
-    for (; written < file_size;) {
-        light_string::size_type write_max = 8192;
-        if (write_max > file_size - written) {
-            write_max = file_size - written;
-        }
-        ssize_t written_size = write(fd, &file.content[0] + written, write_max);
-        if (written_size < 0) {
-            throw http_error("write error", HTTP::STATUS_FORBIDDEN);
-        }
-        if (written_size == 0) {
-            DXOUT("Imcomplete?");
-            break;
-        }
-        written += written_size;
-    }
+    entries.push_back(
+        new FileEntry(file_name, body_part, content_type, content_disposition, attr.observer, attr.master));
 }
 
 void FilePoster::inject_socketlike(ISocketLike *socket_like) {
-    (void)socket_like;
+    attr.master = socket_like;
 }
 
 bool FilePoster::is_originatable() const {
-    return !originated_ && content_provider.is_complete();
+    return !status.originated && content_provider.is_complete();
 }
 
 bool FilePoster::is_origination_started() const {
-    return originated_;
+    return status.originated;
 }
 
 bool FilePoster::is_reroutable() const {
@@ -231,12 +437,16 @@ HTTP::byte_string FilePoster::reroute_path() const {
 }
 
 bool FilePoster::is_responsive() const {
-    return originated_;
+    return status.is_responsive;
 }
 
 void FilePoster::start_origination(IObserver &observer) {
-    (void)observer;
-    post_files();
+    if (status.originated) {
+        return;
+    }
+    attr.observer = &observer;
+    prepare_posting();
+    status.originated = true;
 }
 
 void FilePoster::leave() {

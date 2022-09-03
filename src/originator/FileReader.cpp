@@ -8,6 +8,13 @@
 
 FileReader::Attribute::Attribute() : observer(NULL), master(NULL), fd_(-1) {}
 
+void FileReader::Attribute::close_fd() throw() {
+    if (fd_ >= 0) {
+        close(fd_);
+        fd_ = -1;
+    }
+}
+
 FileReader::Status::Status() : originated(false), is_not_modified(false), leaving(false), is_responsive(false) {}
 
 FileReader::FileReader(const RequestMatchingResult &match_result,
@@ -23,13 +30,6 @@ FileReader::FileReader(const char_string &path, FileCacher &cacher)
 
 FileReader::~FileReader() {
     attr.close_fd();
-}
-
-void FileReader::Attribute::close_fd() throw() {
-    if (fd_ >= 0) {
-        close(fd_);
-        fd_ = -1;
-    }
 }
 
 t_fd FileReader::get_fd() const {
@@ -212,7 +212,6 @@ bool FileReader::is_responsive() const {
 // キャッシュデータが存在するならデータリストにinjectするだけ
 // なかったらファイルを読みこんでキャッシュを更新する
 void FileReader::start_origination(IObserver &observer) {
-    (void)observer;
     if (status.originated) {
         return;
     }
@@ -235,7 +234,8 @@ void FileReader::leave() {
     DXOUT("leaving.");
     status.leaving = true;
     VOUT(attr.observer);
-    if (attr.observer != NULL) {
+    const bool is_under_observation = (attr.observer != NULL);
+    if (is_under_observation) {
         attr.observer->reserve_unhold(this);
     } else {
         // Observerに渡される前に leave されることがある
