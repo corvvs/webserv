@@ -16,6 +16,20 @@ func TestMultipleServer(t *testing.T) {
 	}{
 		{
 
+			name:       "default_index",
+			request:    "GET / HTTP/1.1\r\n" + "Host: localhost:8080\r\n" + validHeader,
+			statusCode: http.StatusOK,
+			body:       defaultIndexHtml,
+		},
+		{
+
+			name:       "default_sample",
+			request:    "GET /sample.html HTTP/1.1\r\n" + "Host: localhost:8080\r\n" + validHeader,
+			statusCode: http.StatusOK,
+			body:       defaultSampleHtml,
+		},
+		{
+
 			name:       "a_index",
 			request:    "GET / HTTP/1.1\r\n" + "Host: a\r\n" + validHeader,
 			statusCode: http.StatusOK,

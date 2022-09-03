@@ -10,6 +10,10 @@ const (
 )
 
 var (
+	//go:embed default/index.html
+	defaultIndexHtml []byte
+	//go:embed default/sample.html
+	defaultSampleHtml []byte
 	//go:embed a/index.html
 	aIndexHtml []byte
 	//go:embed a/sample.html
