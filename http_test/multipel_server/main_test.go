@@ -1,4 +1,4 @@
-package upload
+package multiple_server
 
 import (
 	"fmt"

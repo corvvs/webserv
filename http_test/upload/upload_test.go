@@ -60,6 +60,10 @@ func TestUpload(t *testing.T) {
 			}
 		})
 	}
+	err := removeFile(uploadedDirPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func removeFile(dirPath string) error {

@@ -32,14 +32,12 @@ RequestMatcher::~RequestMatcher() {}
  */
 RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Config> &configs,
                                                     const IRequestMatchingParam &rp) {
-
-    const config::Config &conf = get_config(configs, rp);
+    const config::Config conf = get_config(configs, rp);
 
     const RequestTarget &target = rp.get_request_target();
     RequestMatchingResult res(&target);
-    if (!conf.get_server_name().empty()) {
-        res.server_name = HTTP::strfy(conf.get_server_name().front());
-    }
+
+    res.server_name          = get_server_name(conf, rp);
     res.client_max_body_size = get_client_max_body_size(target, conf);
     res.status_page_dict     = get_status_page_dict(target, conf);
 
@@ -60,7 +58,25 @@ RequestMatchingResult RequestMatcher::request_match(const std::vector<config::Co
     if (is_cgi(target, conf)) {
         return routing_cgi(res, target, conf);
     }
+
     return routing_default(res, target, rp.get_http_method(), conf);
+}
+
+HTTP::byte_string RequestMatcher::get_server_name(const config::Config &conf, const IRequestMatchingParam &rp) const {
+    const std::vector<std::string> &server_names = conf.get_server_name();
+    if (server_names.empty()) {
+        return HTTP::strfy("");
+    }
+
+    const HTTP::CH::Host host_data = rp.get_host();
+    const std::string host         = HTTP::restrfy(host_data.host);
+
+    std::vector<std::string>::const_iterator srv_name_it = std::find(server_names.begin(), server_names.end(), host);
+    // hostが指定されていない場合は, 先頭のserver_nameを使う
+    if (srv_name_it == server_names.end()) {
+        return HTTP::strfy(server_names.front());
+    }
+    return HTTP::strfy(*srv_name_it);
 }
 
 RequestMatchingResult
@@ -221,19 +237,24 @@ config::Config RequestMatcher::get_config(const std::vector<config::Config> &con
     const HTTP::CH::Host host_data = rp.get_host();
     const std::string host         = HTTP::restrfy(host_data.host);
 
-    // host_nameが一致した場合
-    for (std::vector<config::Config>::const_iterator it = configs.begin(); it != configs.end(); ++it) {
-        if (it->get_host() == host) {
-            return *it;
+    // サーバーコンテキストの中から、server_nameがマッチしているものを返す
+    for (std::vector<config::Config>::const_iterator conf_it = configs.begin(); conf_it != configs.end(); ++conf_it) {
+        const std::vector<std::string> &servers = conf_it->get_server_name();
+
+        // server_nameが一致するか判定する
+        std::vector<std::string>::const_iterator srv_it = std::find(servers.begin(), servers.end(), host);
+        if (srv_it != servers.end()) {
+            return *conf_it;
         }
     }
-    // default_serverの指定があった場合
-    for (std::vector<config::Config>::const_iterator it = configs.begin(); it != configs.end(); ++it) {
-        if (it->get_default_server()) {
-            return *it;
+
+    // Hostと一致するserver_nameが存在しない場合はdefault_serverの設定があるかを調べる
+    for (std::vector<config::Config>::const_iterator conf_it = configs.begin(); conf_it != configs.end(); ++conf_it) {
+        if (conf_it->get_default_server()) {
+            return *conf_it;
         }
     }
-    // 該当しない場合は先頭のconfigを使う
+    // default_serverの設定もない場合は一番上のコンテキストを使用する
     return configs.front();
 }
 

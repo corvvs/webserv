@@ -350,4 +350,150 @@ http { \
         EXPECT_EQ(minor_error::make("file not found", HTTP::STATUS_NOT_FOUND), res.error);
     }
 }
+
+TEST_F(request_matcher_test, server_name) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        server_name srv1; \
+        return 200 srv1; \
+    } \
+    server { \
+        listen 80; \
+        server_name srv2; \
+        return 200 srv2; \
+    } \
+} \
+";
+
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "srv1", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.redirect_location);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "srv2", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv2"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv2"), res.redirect_location);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.redirect_location);
+    }
+}
+
+TEST_F(request_matcher_test, multi_server_name) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        server_name srv1 srv2; \
+        return 200 srv12; \
+    } \
+    server { \
+        listen 80; \
+        server_name srv3 srv4; \
+        return 200 srv34; \
+    } \
+} \
+";
+
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "srv1", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv12"), res.redirect_location);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "srv2", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv2"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv12"), res.redirect_location);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "srv3", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv3"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv34"), res.redirect_location);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "srv4", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv4"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv34"), res.redirect_location);
+    }
+
+    {
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "localhost", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("srv1"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("srv12"), res.redirect_location);
+    }
+}
+
+TEST_F(request_matcher_test, default_server) {
+    const std::string config_data = "\
+http { \
+    server { \
+        listen 80; \
+        server_name 'not_default'; \
+        return 200 'not_default'; \
+    } \
+    server { \
+        listen 80 default_server; \
+        server_name 'default'; \
+        return 200 'default'; \
+    } \
+}";
+    setup_based_on_str(config_data);
+    const config::host_port_pair &hp = std::make_pair("0.0.0.0", 80);
+
+    {
+        // hostの指定がない
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("default"), res.redirect_location);
+    }
+
+    {
+        // hostの指定があり、一致するserver_nameがある
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "default", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("default"), res.redirect_location);
+    }
+
+    {
+        // hostの指定があり、一致するserver_nameがある
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "not_default", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("not_default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("not_default"), res.redirect_location);
+    }
+
+    {
+        // hostの指定があり、一致するserver_nameがない
+        TestParam tp(HTTP::METHOD_GET, "/", HTTP::V_1_1, "not_found", "80");
+        const RequestMatchingResult res = rm.request_match(configs[hp], tp);
+        EXPECT_EQ(HTTP::strfy("default"), res.server_name);
+        EXPECT_EQ(HTTP::strfy("default"), res.redirect_location);
+    }
+}
 } // namespace

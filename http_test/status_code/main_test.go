@@ -1,4 +1,4 @@
-package upload
+package status_code
 
 import (
 	"fmt"
@@ -10,16 +10,21 @@ import (
 
 func TestMain(m *testing.M) {
 	go func() {
-		_, err := exec.Command("../../webserv", "./webserv.conf").Output()
+		err := exec.Command("../../webserv", "./webserv.conf").Run()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	}()
+
 	for {
 		c, _ := client.NewClient("default", "", "8080")
 		if c != nil {
-			c.Close()
+			res, err := c.Run()
+			if err != nil {
+				return
+			}
+			fmt.Println(res.Header.Get("Host"))
 			break
 		}
 	}
