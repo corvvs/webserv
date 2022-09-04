@@ -53,24 +53,34 @@ void ErrorPageGenerator::generate_html() {
 
 void ErrorPageGenerator::start_origination(IObserver &observer) {
     (void)observer;
-    if (originated_) {
+    if (status.originated) {
         return;
     }
 
     if (file_path_.size() > 0) {
-        const minor_error me = read_from_file();
-        if (me.is_ok()) {
-            originated_ = true;
+        DXOUT("READ");
+        QVOUT(file_path_);
+        try {
+            const bool do_read = prepare_reading();
+            if (do_read) {
+                status.originated = true;
+                attr.observer     = &observer;
+                observer.reserve_hold(this);
+                observer.reserve_set(this, IObserver::OT_READ);
+            }
+            status.is_responsive = !do_read;
+            status.originated    = true;
             return;
+        } catch (const http_error &err) {
+            (void)err;
+            VOUT(err.get_status());
+            QVOUT(err.what());
         }
     }
     // 簡易ページ生成
+    DXOUT("GENERATE");
     generate_html();
-    originated_ = true;
-}
-
-void ErrorPageGenerator::leave() {
-    delete this;
+    status.originated = true;
 }
 
 ResponseHTTP::header_list_type

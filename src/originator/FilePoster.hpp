@@ -3,6 +3,7 @@
 #include "../Interfaces.hpp"
 #include "../communication/RequestHTTP.hpp"
 #include "../utils/http.hpp"
+#include <deque>
 #include <map>
 
 class FilePoster : public IOriginator {
@@ -13,44 +14,104 @@ public:
     typedef byte_string::size_type size_type;
     typedef HeaderHolderSubpart header_holder_type;
 
-    struct FileEntry {
+    class FileEntry : public ISocketLike {
+    public:
+        struct Attribute {
+            IObserver *observer;
+            ISocketLike *master;
+            t_fd fd_;
+
+            void close_fd() throw();
+
+            Attribute();
+        };
+
+        struct Status {
+            bool leaving;
+            light_string::size_type written_size;
+            bool originated;
+            bool is_over;
+
+            Status();
+        };
+
+    private:
+        Attribute attr;
+        Status status;
+
+        void perform_sending(IObserver &observer);
+        void retransmit(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
+        void prepare_writing();
+
+    public:
         byte_string name;
         light_string content;
 
         MultiPart::CH::ContentType content_type;
         MultiPart::CH::ContentDisposition content_disposition;
 
-        FileEntry(const byte_string &name_, const light_string &content_);
+        FileEntry(const byte_string &name_, const light_string &content_, IObserver *observer, ISocketLike *master);
         FileEntry(const byte_string &name_,
                   const light_string &content_,
                   const MultiPart::CH::ContentType &content_type_,
-                  const MultiPart::CH::ContentDisposition &content_disposition_);
+                  const MultiPart::CH::ContentDisposition &content_disposition_,
+                  IObserver *observer,
+                  ISocketLike *master);
+        ~FileEntry();
+
+        virtual t_fd get_fd() const;
+        virtual t_port get_port() const;
+        virtual void notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
+        void leave();
+        void start_origination(IObserver &observer);
+        bool is_over() const throw();
     };
 
-    typedef std::vector<FileEntry> entry_list_type;
+    typedef std::deque<FileEntry *> entry_list_type;
+
+    struct Attribute {
+        IObserver *observer;
+        ISocketLike *master;
+
+        Attribute();
+    };
+
+    struct Status {
+        bool originated;
+        bool leaving;
+        bool is_responsive;
+        // 今アップロードが走っている FileEntry
+        FileEntry *running_entry;
+
+        Status();
+    };
 
 private:
     char_string directory_path_;
     light_string request_path;
     ResponseDataList response_data;
-    bool originated_;
     const IContentProvider &content_provider;
     light_string boundary;
     byte_string body;
     entry_list_type entries;
+    Attribute attr;
+    Status status;
+
+    void clear_entries();
 
     // ファイルアップロード処理
-    void post_files();
+    void prepare_posting();
     // リクエストターゲットがディレクトリであることを確認
     void check_target_directory();
     // リクエストを解析してFileEntryを取り出す
     void extract_file_entries();
-    // リクエストがマルチパートだった場合, それを分解する
-    void decompose_multipart(const light_string &body, const light_string &boundary);
-    // マルチパートを分解した後のサブパートを解析する
-    void analyze_subpart(const light_string &subpart);
-    // FileEntryの内容をディスクに書き込む
-    void write_file(const FileEntry &file) const;
+    // リクエストがマルチパートだった場合, それを FileEntry に分解する
+    void decompose_multipart_into_entries(const light_string &body, const light_string &boundary);
+    // マルチパートを分解した後のサブパートを解析して FileEntry を得る
+    FileEntry *subpart_to_entry(const light_string &subpart);
+    // 可能なら, entries の先頭を切り離してアップロード処理を開始させる
+    void shift_entry_if_needed();
+
     ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:

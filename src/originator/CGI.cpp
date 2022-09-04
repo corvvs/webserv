@@ -120,7 +120,7 @@ void CGI::check_executable() const {
 
 void CGI::start_origination(IObserver &observer) {
     check_executable();
-    set_content(attr.configuration_provider_.get_body());
+    set_content(attr.configuration_provider_.generate_body_data());
 
     std::pair<SocketUNIX *, t_fd> socks = SocketUNIX::socket_pair();
     ObjectHolder<SocketUNIX> parent_holder(socks.first);
@@ -320,7 +320,6 @@ t_port CGI::get_port() const {
 }
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    // DXOUT("CGI received: " << cat);
     if (leaving) {
         return;
     }
@@ -459,8 +458,9 @@ void CGI::leave() {
         return;
     }
     DXOUT("leaving.");
-    leaving = true;
-    if (attr.observer != NULL) {
+    leaving                         = true;
+    const bool is_under_observation = (attr.observer != NULL);
+    if (is_under_observation) {
         attr.observer->reserve_unhold(this);
     } else {
         // Observerに渡される前に leave されることがある

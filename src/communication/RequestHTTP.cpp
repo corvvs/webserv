@@ -683,7 +683,7 @@ HTTP::t_method RequestHTTP::get_method() const {
     return this->rp.http_method;
 }
 
-RequestHTTP::byte_string RequestHTTP::get_content_type() const {
+const RequestHTTP::byte_string &RequestHTTP::get_content_type() const {
     return this->rp.content_type.value;
 }
 
@@ -699,7 +699,7 @@ const HTTP::CH::IfModifiedSince &RequestHTTP::get_if_modified_since() const {
     return this->rp.if_modified_since;
 }
 
-RequestHTTP::byte_string RequestHTTP::get_body() const {
+RequestHTTP::byte_string RequestHTTP::generate_body_data() const {
     if (rp.is_body_chunked) {
         return chunked_body.body();
     } else {

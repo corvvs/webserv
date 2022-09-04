@@ -6,31 +6,89 @@
 #include <unistd.h>
 #define READ_SIZE 1048576
 
+FileReader::Attribute::Attribute() : observer(NULL), master(NULL), fd_(-1) {}
+
+void FileReader::Attribute::close_fd() throw() {
+    if (fd_ >= 0) {
+        close(fd_);
+        fd_ = -1;
+    }
+}
+
+FileReader::Status::Status() : originated(false), is_not_modified(false), leaving(false), is_responsive(false) {}
+
 FileReader::FileReader(const RequestMatchingResult &match_result,
                        FileCacher &cacher,
                        const ICacheInfoProvider *info_provider)
     : file_path_(HTTP::restrfy(match_result.path_local))
-    , originated_(false)
     , cacher_(cacher)
     , last_modified(0)
-    , cache_info_provider(info_provider)
-    , is_not_modified(false) {}
+    , cache_info_provider(info_provider) {}
 
 FileReader::FileReader(const char_string &path, FileCacher &cacher)
-    : file_path_(path)
-    , originated_(false)
-    , cacher_(cacher)
-    , last_modified(0)
-    , cache_info_provider(NULL)
-    , is_not_modified(false) {}
+    : file_path_(path), cacher_(cacher), last_modified(0), cache_info_provider(NULL) {}
 
-FileReader::~FileReader() {}
+FileReader::~FileReader() {
+    attr.close_fd();
+}
+
+t_fd FileReader::get_fd() const {
+    return attr.fd_;
+}
+
+t_port FileReader::get_port() const {
+    return 0;
+}
 
 void FileReader::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    (void)observer;
-    (void)cat;
-    (void)epoch;
-    assert(false);
+    if (status.leaving) {
+        return;
+    }
+    if (attr.master) {
+        switch (cat) {
+            case IObserver::OT_READ:
+            case IObserver::OT_EXCEPTION:
+            case IObserver::OT_TIMEOUT:
+                retransmit(observer, cat, epoch);
+                return;
+            default:
+                break;
+        }
+    }
+    switch (cat) {
+        case IObserver::OT_READ:
+        case IObserver::OT_ORIGINATOR_READ:
+            perform_receiving(observer);
+            return;
+        case IObserver::OT_TIMEOUT:
+        case IObserver::OT_ORIGINATOR_TIMEOUT:
+            // if (lifetime.is_timeout(epoch)) {
+            //     DXOUT("TIMEOUT!!");
+            //     throw http_error("cgi-script timed out", HTTP::STATUS_TIMEOUT);
+            // }
+            return;
+        default:
+            DXOUT("unexpected cat: " << cat);
+            assert(false);
+    }
+}
+
+void FileReader::retransmit(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
+    assert(attr.master != NULL);
+    switch (cat) {
+        case IObserver::OT_READ:
+            cat = IObserver::OT_ORIGINATOR_READ;
+            break;
+        case IObserver::OT_EXCEPTION:
+            cat = IObserver::OT_ORIGINATOR_EXCEPTION;
+            break;
+        case IObserver::OT_TIMEOUT:
+            cat = IObserver::OT_ORIGINATOR_TIMEOUT;
+            break;
+        default:
+            assert(false);
+    }
+    attr.master->notify(observer, cat, epoch);
 }
 
 bool FileReader::read_from_cache() {
@@ -40,7 +98,7 @@ bool FileReader::read_from_cache() {
         byte_string file_data = res.second->data;
         size_t file_size      = res.second->size;
         response_data.inject(HTTP::restrfy(file_data).c_str(), file_size, true);
-        originated_ = true;
+        status.originated = true;
         return true;
     }
 
@@ -52,9 +110,11 @@ bool FileReader::read_from_cache() {
     return false;
 }
 
-minor_error FileReader::read_from_file() {
+bool FileReader::prepare_reading() {
     // TODO: C++ way に書き直す
+    QVOUT(file_path_);
     {
+        status.is_not_modified = false;
         // 最終更新時刻のチェック
         time_t lut = file::get_last_update_time(file_path_);
         if (lut > 0) {
@@ -65,8 +125,8 @@ minor_error FileReader::read_from_file() {
                 if (if_modified_since > 0 && if_modified_since >= last_modified) {
                     // 更新なし!!
                     response_data.inject(NULL, 0, true);
-                    is_not_modified = true;
-                    return minor_error::ok();
+                    status.is_not_modified = true;
+                    return false;
                 }
             }
         } else {
@@ -77,51 +137,63 @@ minor_error FileReader::read_from_file() {
     errno = 0;
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
-    FDHolder fd_holder(open(file_path_.c_str(), O_RDONLY | O_CLOEXEC));
-    t_fd fd = fd_holder.value();
+    attr.fd_      = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
+    const t_fd fd = attr.fd_;
     if (fd < 0) {
         switch (errno) {
             case ENOENT:
-                return minor_error::make("file not found", HTTP::STATUS_NOT_FOUND);
+                throw http_error("file not found", HTTP::STATUS_NOT_FOUND);
             case EACCES:
-                return minor_error::make("permission denied", HTTP::STATUS_FORBIDDEN);
+                throw http_error("permission denied", HTTP::STATUS_FORBIDDEN);
             case EMFILE:
             case ENFILE:
-                return minor_error::make("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
+                throw http_error("exceeding fd limits", HTTP::STATUS_SERVICE_UNAVAILABLE);
             default:
                 VOUT(errno);
-                return minor_error::make("can't open", HTTP::STATUS_FORBIDDEN);
+                throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
         }
     }
+    {
+        int rv = fcntl(fd, F_SETFL, O_NONBLOCK);
+        if (rv < 0) {
+            throw http_error("failed to set nonblock", HTTP::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+    return true;
+}
+
+void FileReader::perform_receiving(IObserver &observer) {
+    DXOUT("FR on Read");
     // 読んでデータリストに注入
     byte_string read_buf;
     read_buf.resize(READ_SIZE);
 
-    ssize_t read_size;
-    for (;;) {
-        read_size = read(fd, &read_buf.front(), read_buf.size());
-        if (read_size < 0) {
-            return minor_error::make("read error", HTTP::STATUS_FORBIDDEN);
-        }
-        read_buf.resize(read_size);
-        response_data.inject(read_buf, read_size == 0);
-        if (read_size == 0) {
-            break;
-        }
+    ssize_t read_size = read(attr.fd_, &read_buf.front(), read_buf.size());
+    VOUT(read_size);
+    if (read_size < 0) {
+        throw http_error("read error", HTTP::STATUS_FORBIDDEN);
     }
-    return minor_error::ok();
+    read_buf.resize(read_size);
+    const bool is_eof = read_size == 0;
+    response_data.inject(read_buf, is_eof);
+    VOUT(is_eof);
+    if (!is_eof) {
+        return;
+    }
+    observer.reserve_unset(this, IObserver::OT_READ);
+    status.is_responsive = true;
 }
 
 void FileReader::inject_socketlike(ISocketLike *socket_like) {
-    (void)socket_like;
+    attr.master = socket_like;
 }
 
 bool FileReader::is_originatable() const {
-    return !originated_;
+    return !status.originated;
 }
 
 bool FileReader::is_origination_started() const {
-    return originated_;
+    return status.originated;
 }
 
 bool FileReader::is_reroutable() const {
@@ -134,29 +206,42 @@ HTTP::byte_string FileReader::reroute_path() const {
 }
 
 bool FileReader::is_responsive() const {
-    return originated_;
+    return status.is_responsive;
 }
 
 // キャッシュデータが存在するならデータリストにinjectするだけ
 // なかったらファイルを読みこんでキャッシュを更新する
 void FileReader::start_origination(IObserver &observer) {
-    (void)observer;
-    if (originated_) {
+    if (status.originated) {
         return;
     }
-    // if (read_from_cache()) {
-    //     originated_ = true;
-    //     return;
-    // }
-    const minor_error me = read_from_file();
-    if (me.is_error()) {
-        throw http_error(me);
+    const bool do_read = prepare_reading();
+    if (do_read) {
+        attr.observer = &observer;
+        observer.reserve_hold(this);
+        observer.reserve_set(this, IObserver::OT_READ);
     }
-    originated_ = true;
+    status.is_responsive = !do_read;
+    status.originated    = true;
 }
 
 void FileReader::leave() {
-    delete this;
+    DXOUT("now leaving...");
+    if (status.leaving) {
+        DXOUT("now already leaving.");
+        return;
+    }
+    DXOUT("leaving.");
+    status.leaving = true;
+    VOUT(attr.observer);
+    const bool is_under_observation = (attr.observer != NULL);
+    if (is_under_observation) {
+        attr.observer->reserve_unhold(this);
+    } else {
+        // Observerに渡される前に leave されることがある
+        DXOUT("leaving immediately.");
+        delete this;
+    }
 }
 
 HTTP::byte_string FileReader::infer_content_type() const {
@@ -197,7 +282,7 @@ HTTP::byte_string FileReader::infer_content_type() const {
 ResponseHTTP::header_list_type
 FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const {
     ResponseHTTP::header_list_type headers;
-    if (!is_not_modified) {
+    if (!status.is_not_modified) {
         switch (sm) {
             case ResponseDataList::SM_CHUNKED:
                 headers.push_back(std::make_pair(HeaderHTTP::transfer_encoding, HTTP::strfy("chunked")));
@@ -222,7 +307,7 @@ FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mo
 ResponseHTTP *FileReader::respond(const RequestHTTP *request, bool should_close) {
     const IResponseDataConsumer::t_sending_mode sm = response_data.determine_sending_mode();
     ResponseHTTP::header_list_type headers         = determine_response_headers(sm);
-    const HTTP::t_status status_code               = is_not_modified ? HTTP::STATUS_NOT_MODIFIED : HTTP::STATUS_OK;
+    const HTTP::t_status status_code = status.is_not_modified ? HTTP::STATUS_NOT_MODIFIED : HTTP::STATUS_OK;
     ResponseHTTP *res
         = new ResponseHTTP(request->get_http_version(), status_code, &headers, &response_data, should_close);
     return res;
