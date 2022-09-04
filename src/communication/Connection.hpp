@@ -32,13 +32,21 @@ public:
         CONNECTION_DUMMY
     };
 
-    // 準静的なコネクションの性質
-    // "準静的" = リクエストの内容次第で変更されうるが, それ以外(=時間変化など)によっては変わらない
     struct Attribute {
-        bool is_persistent;
-        t_time_epoch_ms timeout;
+        // 通信用ソケット
+        SocketConnected *sock;
 
-        Attribute();
+        Attribute(SocketConnected *sock);
+        ~Attribute();
+    };
+
+    struct Status {
+        t_phase phase;
+        // 今切断中かどうか
+        bool dying;
+        bool unrecoverable;
+
+        Status();
     };
 
     class NetworkBuffer {
@@ -74,21 +82,11 @@ public:
 
 private:
     Attribute attr;
-
-    t_phase phase;
-
-    // 今切断中かどうか
-    bool dying;
-    bool unrecoverable;
-
-    // 通信用ソケット
-    SocketConnected *sock;
-
+    Status status;
     // ラウンドトリップ
     RoundTrip rt;
-
+    // タイムアウト管理
     Lifetime lifetime;
-
     NetworkBuffer net_buffer;
 
     void perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
@@ -108,7 +106,7 @@ private:
     bool is_timeout(t_time_epoch_ms now) const;
 
 public:
-    Connection(IRouter *router, SocketConnected *sock_given, const config::config_vector &configs, FileCacher &cacher);
+    Connection(SocketConnected *sock_given, IRouter *router, const config::config_vector &configs, FileCacher &cacher);
     ~Connection();
 
     t_fd get_fd() const;

@@ -2,22 +2,26 @@
 #include "ControlHeaderHTTP.hpp"
 #include <unistd.h>
 
-ResponseHTTP::ResponseHTTP(HTTP::t_version version,
-                           HTTP::t_status status,
+ResponseHTTP::Attribute::Attribute(HTTP::t_version version,
+                                   HTTP::t_status status,
+                                   bool should_close,
+                                   IResponseDataConsumer *data_consumer)
+    : version(version), status(status), should_close(should_close), data_consumer(data_consumer) {}
+
+ResponseHTTP::Status::Status() {}
+
+ResponseHTTP::ResponseHTTP(HTTP::t_version http_version,
+                           HTTP::t_status http_status,
                            const header_list_type *headers,
                            IResponseDataConsumer *data_consumer,
                            bool should_close)
-    : version_(version)
-    , status_(status)
-    , lifetime(Lifetime::make_response())
-    , data_consumer_(data_consumer)
-    , should_close_(should_close) {
+    : attr(http_version, http_status, should_close, data_consumer), lifetime(Lifetime::make_response()) {
     if (headers != NULL) {
         for (header_list_type::const_iterator it = headers->begin(); it != headers->end(); ++it) {
             feed_header(it->first, it->second);
         }
     }
-    if (header_dict.find(HeaderHTTP::date) == header_dict.end()) {
+    if (status.header_dict.find(HeaderHTTP::date) == status.header_dict.end()) {
         feed_header(HeaderHTTP::date, HTTP::CH::Date::now().serialize());
     }
     lifetime.activate();
@@ -26,45 +30,39 @@ ResponseHTTP::ResponseHTTP(HTTP::t_version version,
 
 ResponseHTTP::~ResponseHTTP() {}
 
-void ResponseHTTP::set_version(HTTP::t_version version) {
-    version_ = version;
-}
-
-void ResponseHTTP::set_status(HTTP::t_status status) {
-    status_ = status;
-}
-
 void ResponseHTTP::feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val, bool overwrite) {
-    if (!overwrite && header_dict.find(key) != header_dict.end() && !is_error()) {
+    if (!overwrite && status.header_dict.find(key) != status.header_dict.end() && !is_error()) {
         DXOUT("warning: duplicate header: " << key);
     }
-    header_dict[key] = val;
-    header_list.push_back(HTTP::header_kvpair_type(key, val));
+    status.header_dict[key] = val;
+    status.header_list.push_back(HTTP::header_kvpair_type(key, val));
 }
 
 HTTP::byte_string ResponseHTTP::serialize_former_part() {
     // 状態行
-    message_text = HTTP::version_str(version_) + ParserHelper::SP + ParserHelper::utos(status_, 10) + ParserHelper::SP
-                   + HTTP::reason(status_) + ParserHelper::CRLF;
+    status.message_text = HTTP::version_str(attr.version) + ParserHelper::SP + ParserHelper::utos(attr.status, 10)
+                          + ParserHelper::SP + HTTP::reason(attr.status) + ParserHelper::CRLF;
     // ヘッダ
-    for (std::vector<HTTP::header_kvpair_type>::iterator it = header_list.begin(); it != header_list.end(); ++it) {
-        message_text
+    for (std::vector<HTTP::header_kvpair_type>::iterator it = status.header_list.begin();
+         it != status.header_list.end();
+         ++it) {
+        status.message_text
             += it->first + ParserHelper::HEADER_KV_SPLITTER + ParserHelper::SP + it->second + ParserHelper::CRLF;
     }
     // 空行
-    message_text += ParserHelper::CRLF;
-    return message_text;
+    status.message_text += ParserHelper::CRLF;
+    return status.message_text;
 }
 
 void ResponseHTTP::start() {
-    if (should_close_) {
+    if (attr.should_close) {
         feed_header(HeaderHTTP::connection, HTTP::strfy("close"));
     }
     consumer()->start(serialize_former_part());
 }
 
 const ResponseHTTP::byte_string &ResponseHTTP::get_message_text() const {
-    return message_text;
+    return status.message_text;
 }
 
 const ResponseHTTP::byte_string::value_type *ResponseHTTP::get_unsent_head() {
@@ -95,7 +93,7 @@ bool ResponseHTTP::is_complete() const {
 }
 
 bool ResponseHTTP::is_error() const {
-    return merror.is_error();
+    return status.merror.is_error();
 }
 
 bool ResponseHTTP::is_timeout(t_time_epoch_ms now) const {
@@ -103,13 +101,13 @@ bool ResponseHTTP::is_timeout(t_time_epoch_ms now) const {
 }
 
 bool ResponseHTTP::should_close() const {
-    return should_close_;
+    return attr.should_close;
 }
 
 IResponseDataConsumer *ResponseHTTP::consumer() {
-    return (data_consumer_ != NULL) ? data_consumer_ : &local_datalist;
+    return (attr.data_consumer != NULL) ? attr.data_consumer : &status.local_datalist;
 }
 
 const IResponseDataConsumer *ResponseHTTP::consumer() const {
-    return (data_consumer_ != NULL) ? data_consumer_ : &local_datalist;
+    return (attr.data_consumer != NULL) ? attr.data_consumer : &status.local_datalist;
 }

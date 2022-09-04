@@ -19,19 +19,33 @@ public:
     typedef HTTP::header_dict_type header_dict_type;
     typedef std::vector<HTTP::header_kvpair_type> header_list_type;
 
+    struct Attribute {
+        const HTTP::t_version version;
+        const HTTP::t_status status;
+        const bool should_close;
+        IResponseDataConsumer *data_consumer;
+
+        Attribute(HTTP::t_version version,
+                  HTTP::t_status status,
+                  bool should_close,
+                  IResponseDataConsumer *data_consumer);
+    };
+
+    struct Status {
+        minor_error merror;
+        header_list_type header_list;
+        header_dict_type header_dict;
+        byte_string body;
+        byte_string message_text;
+        ResponseDataList local_datalist;
+
+        Status();
+    };
+
 private:
-    HTTP::t_version version_;
-    HTTP::t_status status_;
-    minor_error merror;
+    Attribute attr;
+    Status status;
     Lifetime lifetime;
-    // 送信済みマーカー
-    header_list_type header_list;
-    header_dict_type header_dict;
-    byte_string body;
-    byte_string message_text;
-    ResponseDataList local_datalist;
-    IResponseDataConsumer *data_consumer_;
-    bool should_close_;
 
     IResponseDataConsumer *consumer();
     const IResponseDataConsumer *consumer() const;
@@ -45,11 +59,6 @@ public:
                  bool should_close);
 
     ~ResponseHTTP();
-
-    // HTTPバージョンを設定
-    void set_version(HTTP::t_version version);
-    // 応答ステータスを設定
-    void set_status(HTTP::t_status status);
 
     // HTTPヘッダを追加する
     void feed_header(const HTTP::header_key_type &key, const HTTP::header_val_type &val, bool overwrite = false);

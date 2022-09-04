@@ -22,27 +22,34 @@ public:
     typedef HTTP::light_string light_string;
     typedef std::deque<HTTP::char_type> extra_buffer_type;
 
+    struct Attribute {
+        IRouter &router;
+        FileCacher &cacher;
+        // 処理中のコネクションに関連するconfigの配列
+        const config::config_vector &configs;
+
+        Attribute(IRouter &router, FileCacher &cacher, const config::config_vector &configs);
+    };
+
+    struct Status {
+        // ルーティング実施回数
+        // 通常は1で終わるが, 再ルーティングが起きると増えていく
+        unsigned int reroute_count;
+        // エラーレスポンス中かどうか
+        bool in_error_responding;
+
+        Status();
+    };
+
 private:
-    IRouter &router;
-
-    // 処理中のコネクションに関連するconfigの配列
-    const config::config_vector &configs_;
-
-    FileCacher &cacher_;
-
+    Attribute attr;
+    Status status;
     RequestHTTP *request_;
     // 注意:
     // オリジネーションが終わっても, ラウンドトリップが終わるまでオリジネータを破棄しないこと.
     IOriginator *originator_;
     ResponseHTTP *response_;
     Lifetime lifetime;
-
-    // ルーティング実施回数
-    // 通常は1で終わるが, 再ルーティングが起きると増えていく
-    unsigned int reroute_count;
-
-    // エラーレスポンス中かどうか
-    bool in_error_responding;
 
     // あるHTTPステータスの時はこのファイルの中身を返す, という時の
     // ステータスとファイルパスの辞書.

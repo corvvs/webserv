@@ -23,8 +23,11 @@ HTTP::t_version discriminate_request_version(const HTTP::light_string &str) {
     throw http_error("unsupported version", HTTP::STATUS_VERSION_NOT_SUPPORTED);
 }
 
+RequestHTTP::Attribute::Attribute() : client_max_body_size(0) {}
+
 RequestHTTP::ParserStatus::ParserStatus()
-    : found_obs_fold(false)
+    : mid(0)
+    , found_obs_fold(false)
     , start_of_reqline(0)
     , end_of_reqline(0)
     , start_of_header(0)
@@ -34,11 +37,7 @@ RequestHTTP::ParserStatus::ParserStatus()
     , is_freezed(false) {}
 
 RequestHTTP::RequestHTTP()
-    : mid(0)
-    , client_max_body_size(0)
-    , lifetime(Lifetime::make_request())
-    , lifetime_header(Lifetime::make_request_header())
-    , rp() {
+    : lifetime(Lifetime::make_request()), lifetime_header(Lifetime::make_request_header()), rp() {
     DXOUT("[create_request]");
     this->ps.parse_progress = PP_REQLINE_START;
     bytebuffer.reserve(MAX_REQLINE_END);
@@ -52,7 +51,7 @@ void RequestHTTP::after_injection(bool is_disconnected) {
     size_t len;
     t_parse_progress flow;
     do {
-        len = bytebuffer.size() - this->mid;
+        len = bytebuffer.size() - this->ps.mid;
         switch (this->ps.parse_progress) {
             case PP_REQLINE_START: {
                 flow = reach_reqline_start(len, is_disconnected);
@@ -141,13 +140,13 @@ void RequestHTTP::after_injection(bool is_disconnected) {
 RequestHTTP::t_parse_progress RequestHTTP::reach_reqline_start(size_t len, bool is_disconnected) {
     (void)is_disconnected;
     DXOUT("* determining start_of_reqline... *");
-    size_t non_crlf_heading = ParserHelper::ignore_crlf(bytebuffer, this->mid, len);
-    this->mid += non_crlf_heading;
+    size_t non_crlf_heading = ParserHelper::ignore_crlf(bytebuffer, this->ps.mid, len);
+    this->ps.mid += non_crlf_heading;
     if (non_crlf_heading == len) {
         return PP_UNREACHED;
     }
     // 開始行の開始位置が定まった
-    this->ps.start_of_reqline = this->mid;
+    this->ps.start_of_reqline = this->ps.mid;
     return PP_REQLINE_END;
 }
 
@@ -174,8 +173,8 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_headers_end(size_t len, bool is
     // - 見つからなかった
     //   -> もう一度受信する
     (void)is_disconnected;
-    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-    this->mid      = res.second;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->ps.mid, len);
+    this->ps.mid   = res.second;
     if (res.is_invalid()) {
         return PP_UNREACHED;
     }
@@ -209,7 +208,7 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool
     // (-> 2.は成り立っているはず)
     // `end_of_body` = `start_of_body` + 受信済み本文長 とする.
     // さらにリクエストを不完全マークする.
-    this->mid += len;
+    this->ps.mid += len;
     if (parsed_body_size() >= this->rp.body_size) {
         this->ps.end_of_body = this->ps.start_of_body + this->rp.body_size;
         return PP_OVER;
@@ -223,8 +222,8 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_fixed_body_end(size_t len, bool
 
 RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_size_line(size_t len, bool is_disconnected) {
     (void)is_disconnected;
-    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-    this->mid      = res.second;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->ps.mid, len);
+    this->ps.mid   = res.second;
     if (res.is_invalid()) {
         return PP_UNREACHED;
     }
@@ -242,44 +241,44 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_size_line(size_t len, b
         VOUT(chunked_body.body());
         VOUT(this->ps.crlf_in_header.first);
         VOUT(this->ps.crlf_in_header.second);
-        VOUT(this->mid);
+        VOUT(this->ps.mid);
         return PP_TRAILER_FIELD_END;
     } else {
-        this->ps.start_of_current_chunk_data = this->mid;
+        this->ps.start_of_current_chunk_data = this->ps.mid;
         return PP_CHUNK_DATA_END;
     }
 }
 
 RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_data_end(size_t len, bool is_disconnected) {
     (void)is_disconnected;
-    const byte_string::size_type received_data_size = this->mid - this->ps.start_of_current_chunk_data;
+    const byte_string::size_type received_data_size = this->ps.mid - this->ps.start_of_current_chunk_data;
     const byte_string::size_type data_end           = this->ps.current_chunk.chunk_size - received_data_size;
     if (data_end > len) {
-        this->mid += len;
+        this->ps.mid += len;
         return PP_UNREACHED;
     }
-    this->mid += data_end;
-    this->ps.current_chunk.chunk_str = light_string(bytebuffer, this->ps.start_of_current_chunk, this->mid);
-    this->ps.current_chunk.data_str  = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
+    this->ps.mid += data_end;
+    this->ps.current_chunk.chunk_str = light_string(bytebuffer, this->ps.start_of_current_chunk, this->ps.mid);
+    this->ps.current_chunk.data_str  = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->ps.mid);
     QVOUT(this->ps.current_chunk.chunk_str);
     QVOUT(this->ps.current_chunk.data_str);
     return PP_CHUNK_DATA_CRLF;
 }
 
 RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_data_termination(size_t len, bool is_disconnected) {
-    VOUT(this->mid);
-    IndexRange nl = ParserHelper::find_leading_crlf(bytebuffer, this->mid, len, is_disconnected);
+    VOUT(this->ps.mid);
+    IndexRange nl = ParserHelper::find_leading_crlf(bytebuffer, this->ps.mid, len, is_disconnected);
     if (nl.is_invalid()) {
         throw http_error("invalid chunk-data end?", HTTP::STATUS_BAD_REQUEST);
     }
     if (nl.length() == 0) {
         return PP_UNREACHED;
     }
-    this->ps.current_chunk.data_str = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->mid);
-    this->mid                       = nl.second;
-    this->ps.start_of_current_chunk = this->mid;
+    this->ps.current_chunk.data_str = light_string(bytebuffer, this->ps.start_of_current_chunk_data, this->ps.mid);
+    this->ps.mid                    = nl.second;
+    this->ps.start_of_current_chunk = this->ps.mid;
     chunked_body.add_chunk(this->ps.current_chunk);
-    VOUT(this->mid);
+    VOUT(this->ps.mid);
     return PP_CHUNK_SIZE_LINE_END;
 }
 
@@ -295,8 +294,8 @@ RequestHTTP::t_parse_progress RequestHTTP::reach_chunked_trailer_end(size_t len,
     // - 見つからなかった
     //   -> もう一度受信する
     (void)is_disconnected;
-    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-    this->mid      = res.second;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->ps.mid, len);
+    this->ps.mid   = res.second;
     if (res.is_invalid()) {
         return PP_UNREACHED;
     }
@@ -333,14 +332,14 @@ minor_error RequestHTTP::analyze_headers(IndexRange res) {
 
 bool RequestHTTP::seek_reqline_end(size_t len) {
     // DSOUT() << "* determining end_of_reqline... *" << std::endl;
-    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-    this->mid      = res.second;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->ps.mid, len);
+    this->ps.mid   = res.second;
     if (res.is_invalid()) {
         return false;
     }
     // CRLFが見つかった
     this->ps.end_of_reqline  = res.first;
-    this->ps.start_of_header = this->mid;
+    this->ps.start_of_header = this->ps.mid;
     // -> end_of_reqline が8192バイト以内かどうか調べる。
     if (MAX_REQLINE_END <= this->ps.end_of_reqline) {
         throw http_error("Invalid Response: request line is too long", HTTP::STATUS_URI_TOO_LONG);
@@ -494,8 +493,8 @@ void RequestHTTP::inject_reroute_path(const HTTP::byte_string &path) {
 
 void RequestHTTP::check_size_limitation() {
     // ボディ
-    if (client_max_body_size > 0) {
-        if (effective_parsed_body_size() > (size_t)client_max_body_size) {
+    if (attr.client_max_body_size > 0) {
+        if (effective_parsed_body_size() > (size_t)attr.client_max_body_size) {
             // ダメ
             throw http_error("request body size exceeded the limit", HTTP::STATUS_PAYLOAD_TOO_LARGE);
         }
@@ -661,7 +660,7 @@ size_t RequestHTTP::receipt_size() const {
 }
 
 size_t RequestHTTP::parsed_body_size() const {
-    return this->mid - this->ps.start_of_body;
+    return this->ps.mid - this->ps.start_of_body;
 }
 
 size_t RequestHTTP::effective_parsed_body_size() const {
@@ -672,7 +671,7 @@ size_t RequestHTTP::effective_parsed_body_size() const {
 }
 
 size_t RequestHTTP::parsed_size() const {
-    return this->mid;
+    return this->ps.mid;
 }
 
 HTTP::t_version RequestHTTP::get_http_version() const {
@@ -708,11 +707,11 @@ RequestHTTP::byte_string RequestHTTP::generate_body_data() const {
 }
 
 RequestHTTP::byte_string RequestHTTP::get_plain_message() const {
-    return RequestHTTP::byte_string(bytebuffer.begin(), bytebuffer.begin() + mid);
+    return RequestHTTP::byte_string(bytebuffer.begin(), bytebuffer.begin() + this->ps.mid);
 }
 
 void RequestHTTP::set_max_body_size(ssize_t size) {
-    client_max_body_size = size;
+    attr.client_max_body_size = size;
     check_size_limitation();
 }
 
