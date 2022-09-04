@@ -6,7 +6,15 @@
 #include <unistd.h>
 #define READ_SIZE 1048576
 
-FileReader::Attribute::Attribute() : observer(NULL), master(NULL), fd_(-1) {}
+FileReader::Attribute::Attribute(FileCacher &cacher_,
+                                 const ICacheInfoProvider *cache_info_provider,
+                                 char_string file_path_)
+    : cacher_(cacher_)
+    , cache_info_provider(cache_info_provider)
+    , file_path_(file_path_)
+    , observer(NULL)
+    , master(NULL)
+    , fd_(-1) {}
 
 void FileReader::Attribute::close_fd() throw() {
     if (fd_ >= 0) {
@@ -15,18 +23,15 @@ void FileReader::Attribute::close_fd() throw() {
     }
 }
 
-FileReader::Status::Status() : originated(false), is_not_modified(false), leaving(false), is_responsive(false) {}
+FileReader::Status::Status()
+    : last_modified(0), originated(false), is_not_modified(false), leaving(false), is_responsive(false) {}
 
 FileReader::FileReader(const RequestMatchingResult &match_result,
                        FileCacher &cacher,
                        const ICacheInfoProvider *info_provider)
-    : file_path_(HTTP::restrfy(match_result.path_local))
-    , cacher_(cacher)
-    , last_modified(0)
-    , cache_info_provider(info_provider) {}
+    : attr(cacher, info_provider, HTTP::restrfy(match_result.path_local)) {}
 
-FileReader::FileReader(const char_string &path, FileCacher &cacher)
-    : file_path_(path), cacher_(cacher), last_modified(0), cache_info_provider(NULL) {}
+FileReader::FileReader(const char_string &path, FileCacher &cacher) : attr(cacher, NULL, path) {}
 
 FileReader::~FileReader() {
     attr.close_fd();
@@ -92,7 +97,7 @@ void FileReader::retransmit(IObserver &observer, IObserver::observation_category
 }
 
 bool FileReader::read_from_cache() {
-    std::pair<minor_error, const FileCacher::entry_type *> res = cacher_.fetch(file_path_.c_str());
+    std::pair<minor_error, const FileCacher::entry_type *> res = attr.cacher_.fetch(attr.file_path_.c_str());
     if (res.first.is_ok()) {
         // Deep copyする
         byte_string file_data = res.second->data;
@@ -112,17 +117,17 @@ bool FileReader::read_from_cache() {
 
 bool FileReader::prepare_reading() {
     // TODO: C++ way に書き直す
-    QVOUT(file_path_);
+    QVOUT(attr.file_path_);
     {
         status.is_not_modified = false;
         // 最終更新時刻のチェック
-        time_t lut = file::get_last_update_time(file_path_);
+        time_t lut = file::get_last_update_time(attr.file_path_);
         if (lut > 0) {
-            last_modified = lut * 1000;
+            status.last_modified = lut * 1000;
 
-            if (cache_info_provider != NULL) {
-                t_time_epoch_ms if_modified_since = cache_info_provider->get_if_modified_since().value;
-                if (if_modified_since > 0 && if_modified_since >= last_modified) {
+            if (attr.cache_info_provider != NULL) {
+                t_time_epoch_ms if_modified_since = attr.cache_info_provider->get_if_modified_since().value;
+                if (if_modified_since > 0 && if_modified_since >= status.last_modified) {
                     // 更新なし!!
                     response_data.inject(NULL, 0, true);
                     status.is_not_modified = true;
@@ -130,14 +135,14 @@ bool FileReader::prepare_reading() {
                 }
             }
         } else {
-            last_modified = 0;
+            status.last_modified = 0;
         }
     }
 
     errno = 0;
     // ファイルを読み込み用に開く
     // 開けなかったらエラー
-    attr.fd_      = open(file_path_.c_str(), O_RDONLY | O_CLOEXEC);
+    attr.fd_      = open(attr.file_path_.c_str(), O_RDONLY | O_CLOEXEC);
     const t_fd fd = attr.fd_;
     if (fd < 0) {
         switch (errno) {
@@ -246,10 +251,10 @@ void FileReader::leave() {
 
 HTTP::byte_string FileReader::infer_content_type() const {
     HTTP::CH::ContentType ct;
-    HTTP::char_string::size_type dot = file_path_.find_last_of(".");
+    HTTP::char_string::size_type dot = attr.file_path_.find_last_of(".");
     HTTP::byte_string mt;
     if (dot != HTTP::char_string::npos) {
-        mt = HTTP::MIME::mime_type_for_extension(HTTP::strfy(file_path_.substr(dot + 1)));
+        mt = HTTP::MIME::mime_type_for_extension(HTTP::strfy(attr.file_path_.substr(dot + 1)));
     }
     if (!mt.empty()) {
         ct.value = mt;
@@ -298,8 +303,9 @@ FileReader::determine_response_headers(const IResponseDataConsumer::t_sending_mo
     // Content-Type: の推測
     headers.push_back(std::make_pair(HeaderHTTP::content_type, infer_content_type()));
     // Last-Modifiedがもしあれば
-    if (last_modified > 0) {
-        headers.push_back(std::make_pair(HeaderHTTP::last_modified, HTTP::CH::LastModified(last_modified).serialize()));
+    if (status.last_modified > 0) {
+        headers.push_back(
+            std::make_pair(HeaderHTTP::last_modified, HTTP::CH::LastModified(status.last_modified).serialize()));
     }
     return headers;
 }

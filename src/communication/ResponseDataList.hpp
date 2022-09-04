@@ -63,12 +63,18 @@ class ResponseDataList : public IResponseDataProducer, public IResponseDataConsu
 public:
     typedef std::list<ResponseDataBucket> list_type;
 
+    struct Status {
+        size_t total;
+        size_t sent_serialized;      // serialized_data のうち送信済みのバイト数
+        t_sending_mode sending_mode; // 送信モード
+
+        Status();
+    };
+
 private:
+    Status status;
     list_type list;                    // バケットリスト
     HTTP::byte_string serialized_data; // サイズ行など込みで展開されたデータ
-    size_t total;
-    size_t sent_serialized;      // serialized_data のうち送信済みのバイト数
-    t_sending_mode sending_mode; // 送信モード
 
     void set_mode(t_sending_mode mode);
 
