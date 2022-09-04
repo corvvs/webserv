@@ -120,7 +120,7 @@ void CGI::check_executable() const {
 
 void CGI::start_origination(IObserver &observer) {
     check_executable();
-    set_content(attr.configuration_provider_.get_body());
+    set_content(attr.configuration_provider_.generate_body_data());
 
     std::pair<SocketUNIX *, t_fd> socks = SocketUNIX::socket_pair();
     ObjectHolder<SocketUNIX> parent_holder(socks.first);

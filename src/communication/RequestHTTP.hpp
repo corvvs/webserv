@@ -42,8 +42,8 @@ public:
     virtual HTTP::t_method get_method() const                               = 0;
     virtual const IRequestMatchingParam &get_request_matching_param() const = 0;
     virtual header_holder_type::joined_dict_type get_cgi_meta_vars() const  = 0;
-    virtual HTTP::byte_string get_content_type() const                      = 0;
-    virtual HTTP::byte_string get_body() const                              = 0;
+    virtual const HTTP::byte_string &get_content_type() const               = 0;
+    virtual HTTP::byte_string generate_body_data() const                    = 0;
     virtual bool is_complete() const                                        = 0;
 };
 
@@ -55,7 +55,7 @@ public:
     virtual const HTTP::CH::ContentType &get_content_type_item() const               = 0;
     virtual const HTTP::CH::ContentDisposition &get_content_disposition_item() const = 0;
     virtual bool is_complete() const                                                 = 0;
-    virtual byte_string get_body() const                                             = 0;
+    virtual byte_string generate_body_data() const                                   = 0;
 };
 
 class ICacheInfoProvider {
@@ -246,13 +246,13 @@ public:
     // リクエストのHTTPメソッド
     HTTP::t_method get_method() const;
 
-    HTTP::byte_string get_content_type() const;
+    const HTTP::byte_string &get_content_type() const;
     const HTTP::CH::ContentType &get_content_type_item() const;
     const HTTP::CH::ContentDisposition &get_content_disposition_item() const;
     const HTTP::CH::IfModifiedSince &get_if_modified_since() const;
 
     // 受信したデータから本文を抽出して返す
-    byte_string get_body() const;
+    byte_string generate_body_data() const;
     // HTTPメッセージ全文を返す
     byte_string get_plain_message() const;
 

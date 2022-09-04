@@ -72,9 +72,6 @@ public:
     struct Attribute {
         IObserver *observer;
         ISocketLike *master;
-        t_fd fd_;
-
-        void close_fd() throw();
 
         Attribute();
     };
@@ -83,6 +80,7 @@ public:
         bool originated;
         bool leaving;
         bool is_responsive;
+        // 今アップロードが走っている FileEntry
         FileEntry *running_entry;
 
         Status();
@@ -99,17 +97,21 @@ private:
     Attribute attr;
     Status status;
 
+    void clear_entries();
+
     // ファイルアップロード処理
     void prepare_posting();
     // リクエストターゲットがディレクトリであることを確認
     void check_target_directory();
     // リクエストを解析してFileEntryを取り出す
     void extract_file_entries();
-    // リクエストがマルチパートだった場合, それを分解する
-    void decompose_multipart(const light_string &body, const light_string &boundary);
-    // マルチパートを分解した後のサブパートを解析する
-    void analyze_subpart(const light_string &subpart);
-    void shift_entry();
+    // リクエストがマルチパートだった場合, それを FileEntry に分解する
+    void decompose_multipart_into_entries(const light_string &body, const light_string &boundary);
+    // マルチパートを分解した後のサブパートを解析して FileEntry を得る
+    FileEntry *subpart_to_entry(const light_string &subpart);
+    // 可能なら, entries の先頭を切り離してアップロード処理を開始させる
+    void shift_entry_if_needed();
+
     ResponseHTTP::header_list_type determine_response_headers(const IResponseDataConsumer::t_sending_mode sm) const;
 
 public:
