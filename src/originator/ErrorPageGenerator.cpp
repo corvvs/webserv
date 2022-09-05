@@ -80,7 +80,8 @@ void ErrorPageGenerator::start_origination(IObserver &observer) {
     // 簡易ページ生成
     DXOUT("GENERATE");
     generate_html();
-    status.originated = true;
+    status.originated    = true;
+    status.is_responsive = true;
 }
 
 ResponseHTTP::header_list_type
