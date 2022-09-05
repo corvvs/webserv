@@ -8,7 +8,6 @@ const (
 		"User-Agent: curl/7.77.0\r\n" +
 		"Accept: */*\r\n" +
 		"Connection: close\r\n\r\n"
-	requestLineGetRootHTTP11 = "GET / HTTP/1.1\r\n"
 )
 
 var (

@@ -9,17 +9,19 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	go func() {
-		_, err := exec.Command("../../webserv", "./webserv.conf").Output()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	}()
-	err := exec.Command("chmod", "-R", "777", "./script/execute").Run()
-
+	cmd := exec.Command("../../webserv", "./webserv.conf")
+	err := cmd.Start()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	err = exec.Command("chmod", "-R", "777", "./script/execute").Run()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	for {
-		c, _ := client.NewClient("default", "", "8080")
+		c, _ := client.NewClient("default", "", webservPort)
 		if c != nil {
 			c.Close()
 			break
@@ -27,8 +29,5 @@ func TestMain(m *testing.M) {
 	}
 
 	m.Run()
-	err = exec.Command("pkill", "webserv").Run()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
+	cmd.Process.Kill()
 }
