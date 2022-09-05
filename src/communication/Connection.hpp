@@ -23,13 +23,38 @@ public:
     typedef HTTP::light_string light_string;
     typedef std::deque<HTTP::char_type> extra_buffer_type;
 
+    // ソケットには読み込み側と書き込み側があり,
+    // それぞれ個別に閉じることができる(両方を閉じるとソケット自体が閉じたことになる).
+    // また, こちら側と相手側のどちらが閉じたかで意味も変わってくる:
+    // - 読み込み側 を 相手側 が閉じた
+    //   -> 相手側に通信の意思なしとし, 直ちに接続を閉じる.
+    //      グレースフルシャットダウンは最終的にこの状態になる
+    // - 読み込み側 を こちら側 が閉じる
+    //   -> 基本やらない; 送信エラー時にやってもいいかもしれない
+    // - 書き込み側 を 相手側 が閉じた
+    //   -> 特に何もしない; グレースフルシャットダウンに移行してもいいかもしれない
+    // - 書き込み側 を こちら側 が閉じる
+    //   -> グレースフルシャットダウンに移行
+    //
+    // 読み込み側と書き込み側の状態について:
+    // - 読み込み open / 書き込み open
+    //   -> 通常状態
+    // - 読み込み close / 書き込み open
+    //   -> 書き込み側もただちに閉じる.
+    // - 読み込み open / 書き込み close
+    //   -> こちら側が閉じた場合はグレースフルシャットダウンに移行する
+    // - 読み込み close / 書き込み close
+    //   -> 接続を破棄
+    //
+
     // コネクションオブジェクトの内部状態
     enum t_phase {
-        // 通常モード
+        // 通常の状態:
+        // ソケットの読み書き両方が使える.
         CONNECTION_ESTABLISHED,
-        // Gracefulに接続を切っていくモード
-        CONNECTION_SHUTTING_DOWN,
-        CONNECTION_DUMMY
+        // グレースフルシャットダウン中の状態:
+        // ソケットの書き込み側が閉鎖されている; 読み込み側は使えるが, 読み込んだデータは解釈せず捨てる.
+        CONNECTION_SHUTTING_DOWN
     };
 
     struct Attribute {
@@ -44,9 +69,12 @@ public:
         t_phase phase;
         // 今切断中かどうか
         bool dying;
-        bool unrecoverable;
+        // 読み込み側のデータを破棄するかどうか
+        bool spilling_readside;
 
         Status();
+
+        bool is_readside_active() const throw();
     };
 
     class NetworkBuffer {
@@ -68,8 +96,9 @@ public:
         NetworkBuffer();
 
         // ソケットから内部バッファにデータを受信する
-        // discard == true なら, 受信したデータを保存しない
-        ssize_t receive(SocketConnected &sock, bool discard = false);
+        ssize_t receive(SocketConnected &sock);
+        // ソケットからデータを受信してそれを捨てる
+        ssize_t spill(SocketConnected &sock);
         // 内部バッファの先頭チャンクを取り出す
         const byte_string &top_front() const;
         // 内部バッファの先頭チャンクを除去する
@@ -89,6 +118,8 @@ private:
     Lifetime lifetime;
     NetworkBuffer net_buffer;
 
+    static bool is_extra_readable_cat(IObserver::observation_category cat) throw();
+
     void perform_reaction(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch);
     void perform_receiving(IObserver &observer);
     void perform_sending(IObserver &observer);
@@ -97,13 +128,13 @@ private:
     void detect_update(IObserver &observer);
 
     // gracefulに接続を閉じるモードに移行する
-    void shutdown_gracefully(IObserver &observer);
+    void start_shutdown(IObserver &observer);
 
     // 次のupdateで接続を完全に閉じる
     // 以降すべての通知をシャットアウトする
     void die(IObserver &observer);
 
-    bool is_timeout(t_time_epoch_ms now) const;
+    bool is_extra_readable() const throw();
 
 public:
     Connection(SocketConnected *sock_given, IRouter *router, const config::config_vector &configs, FileCacher &cacher);
