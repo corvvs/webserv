@@ -81,14 +81,20 @@ public:
     public:
         typedef std::list<byte_string> extra_buffer_type;
 
+        struct Status {
+            ssize_t read_size;
+            // extra_buffer のサイズ合計
+            size_t extra_amount;
+
+            Status();
+        };
+
     private:
-        ssize_t read_size;
+        Status status;
         // ソケットからのデータが入るバッファ
         byte_string read_buffer;
         // 「余ったデータ」が入るバッファ
         extra_buffer_type extra_buffer;
-        // extra_buffer のサイズ合計
-        size_t extra_amount;
 
         void check_extra_overflow();
 
