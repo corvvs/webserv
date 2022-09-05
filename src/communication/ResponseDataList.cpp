@@ -3,7 +3,9 @@
 
 ResponseDataBucket::ResponseDataBucket() : is_completed(false) {}
 
-ResponseDataList::ResponseDataList() : total(0), sent_serialized(0), sending_mode(SM_UNKNOWN) {
+ResponseDataList::Status::Status() : total(0), sent_serialized(0), sending_mode(SM_UNKNOWN) {}
+
+ResponseDataList::ResponseDataList() {
     list.push_back(ResponseDataBucket());
 }
 
@@ -16,7 +18,7 @@ void ResponseDataList::inject(const char *src, size_t n, bool is_completed) {
     bucket.buffer.reserve(n);
     bucket.buffer.assign(src, src + n);
     bucket.is_completed = true;
-    total += n;
+    status.total += n;
     if (n > 0) {
         list.push_back(ResponseDataBucket());
         if (is_completed) {
@@ -37,7 +39,7 @@ void ResponseDataList::inject(const HTTP::light_string &src, bool is_completed) 
     bucket.buffer.reserve(src.size());
     bucket.buffer.assign(src.begin(), src.end());
     bucket.is_completed = true;
-    total += src.size();
+    status.total += src.size();
     if (src.size() > 0) {
         list.push_back(ResponseDataBucket());
         if (is_completed) {
@@ -52,7 +54,7 @@ bool ResponseDataList::is_injection_closed() const {
 
 void ResponseDataList::set_mode(t_sending_mode mode) {
     assert(mode != SM_UNKNOWN);
-    sending_mode = mode;
+    status.sending_mode = mode;
 }
 
 // [As IResponseDataConsumer]
@@ -71,9 +73,9 @@ ResponseDataList::t_sending_mode ResponseDataList::determine_sending_mode() {
 
 void ResponseDataList::start(const HTTP::byte_string &initial_data) {
     // BVOUT(initial_data);
-    VOUT(sent_serialized);
-    serialized_data = initial_data;
-    sent_serialized = 0;
+    VOUT(status.sent_serialized);
+    serialized_data        = initial_data;
+    status.sent_serialized = 0;
 }
 
 void ResponseDataList::serialize_if_needed() {
@@ -92,28 +94,28 @@ void ResponseDataList::serialize_if_needed() {
 
     const ResponseDataBucket &bucket = list.front();
     serialized_data                  = serialize_bucket(bucket);
-    sent_serialized                  = 0;
+    status.sent_serialized           = 0;
     list.pop_front();
 }
 
 const HTTP::byte_string::value_type *ResponseDataList::serialized_head() const {
-    return &serialized_data.front() + sent_serialized;
+    return &serialized_data.front() + status.sent_serialized;
 }
 
 size_t ResponseDataList::rest_serialized() const {
-    return serialized_data.size() - sent_serialized;
+    return serialized_data.size() - status.sent_serialized;
 }
 
 void ResponseDataList::mark_sent(size_t n) {
-    sent_serialized += n;
+    status.sent_serialized += n;
 }
 
 bool ResponseDataList::is_sending_current() const {
-    return sending_mode != SM_UNKNOWN && sent_serialized < serialized_data.size();
+    return status.sending_mode != SM_UNKNOWN && status.sent_serialized < serialized_data.size();
 }
 
 bool ResponseDataList::is_sent_current() const {
-    return sending_mode != SM_UNKNOWN && !is_sending_current();
+    return status.sending_mode != SM_UNKNOWN && !is_sending_current();
 }
 
 bool ResponseDataList::is_sending_over() const {
@@ -121,7 +123,7 @@ bool ResponseDataList::is_sending_over() const {
 }
 
 size_t ResponseDataList::current_total_size() const {
-    return total;
+    return status.total;
 }
 
 //
@@ -137,7 +139,7 @@ bool ResponseDataList::is_all_serialized() const {
 HTTP::byte_string ResponseDataList::serialize_bucket(const ResponseDataBucket &bucket) {
     // VOUT(sending_mode);
     HTTP::byte_string serialized;
-    switch (sending_mode) {
+    switch (status.sending_mode) {
         case SM_CHUNKED: {
             if (bucket.buffer.empty()) {
                 // 終端チャンク
@@ -165,7 +167,7 @@ HTTP::byte_string ResponseDataList::serialize_bucket(const ResponseDataBucket &b
 }
 
 ResponseDataList::t_sending_mode ResponseDataList::get_sending_mode() const {
-    return sending_mode;
+    return status.sending_mode;
 }
 
 bool ResponseDataList::empty() const {

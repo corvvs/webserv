@@ -3,15 +3,17 @@
 #include "Connection.hpp"
 #include <cassert>
 
+RoundTrip::Attribute::Attribute(IRouter &router, FileCacher &cacher, const config::config_vector &configs)
+    : router(router), cacher(cacher), configs(configs) {}
+
+RoundTrip::Status::Status() : reroute_count(0), in_error_responding(false) {}
+
 RoundTrip::RoundTrip(IRouter &router, const config::config_vector &configs, FileCacher &cacher)
-    : router(router)
-    , configs_(configs)
-    , cacher_(cacher)
+    : attr(router, cacher, configs)
     , request_(NULL)
     , originator_(NULL)
     , response_(NULL)
-    , lifetime(Lifetime::make_round_trip())
-    , reroute_count(0) {}
+    , lifetime(Lifetime::make_round_trip()) {}
 
 RoundTrip::~RoundTrip() {
     wipeout();
@@ -80,23 +82,23 @@ IOriginator *RoundTrip::make_originator(const RequestMatchingResult &result, con
         default:
             break;
     }
-    return new FileReader(result, cacher_, &request);
+    return new FileReader(result, attr.cacher, &request);
 }
 
 void RoundTrip::route(Connection &connection) {
     DXOUT("[route]");
     assert(request_ != NULL);
-    reroute_count += 1;
-    const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
+    status.reroute_count += 1;
+    const RequestMatchingResult result = attr.router.route(request_->get_request_matching_param(), attr.configs);
 
     // エラーページの情報をRoundTripに引き継ぐ
     status_page_dict_ = result.status_page_dict;
     if (request_->current_error().is_error()) {
         const minor_error me = request_->purge_error();
-        originator_          = new ErrorPageGenerator(me, status_page_dict_, cacher_);
+        originator_          = new ErrorPageGenerator(me, status_page_dict_, attr.cacher);
         DXOUT("purged error: " << me);
     } else if (result.error.is_error()) {
-        originator_ = new ErrorPageGenerator(result.error, status_page_dict_, cacher_);
+        originator_ = new ErrorPageGenerator(result.error, status_page_dict_, attr.cacher);
     } else {
         originator_ = make_originator(result, *request_);
         request_->set_max_body_size(result.client_max_body_size);
@@ -142,8 +144,8 @@ bool RoundTrip::is_reroutable() const {
 
 void RoundTrip::reroute(Connection &connection) {
     DXOUT("[reroute]");
-    reroute_count += 1;
-    if (reroute_count >= 10) {
+    status.reroute_count += 1;
+    if (status.reroute_count >= 10) {
         // リルートしすぎな時
         throw http_error("too many redirect", HTTP::STATUS_INTERNAL_SERVER_ERROR);
     }
@@ -152,7 +154,7 @@ void RoundTrip::reroute(Connection &connection) {
     assert(originator_ != NULL);
     request_->inject_reroute_path(originator_->reroute_path());
 
-    const RequestMatchingResult result = router.route(request_->get_request_matching_param(), configs_);
+    const RequestMatchingResult result = attr.router.route(request_->get_request_matching_param(), attr.configs);
 
     VOUT(result.result_type);
     IOriginator *reoriginator = make_originator(result, *request_);
@@ -199,10 +201,10 @@ void RoundTrip::respond_unrecoverable_error(IObserver &observer, const http_erro
     DXOUT(err.get_status() << ":" << err.what());
     VOUT(response_);
     destroy_response();
-    in_error_responding = true;
+    status.in_error_responding = true;
 
     destroy_originator();
-    originator_ = new ErrorPageGenerator(err, status_page_dict_, cacher_, true);
+    originator_ = new ErrorPageGenerator(err, status_page_dict_, attr.cacher, true);
     originator_->start_origination(observer);
     response_ = originator_->respond(request_, true);
 }
@@ -219,7 +221,7 @@ void RoundTrip::wipeout() {
     destroy_request();
     destroy_response();
     destroy_originator();
-    reroute_count = 0;
+    status = Status();
     lifetime.deactivate();
 }
 

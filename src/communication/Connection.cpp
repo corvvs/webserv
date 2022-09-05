@@ -5,12 +5,14 @@
 #define MAX_REQLINE_END 8192
 #define MAX_EXTRA_AMOUNT 1048576
 
-// [[Attribute]]
+Connection::Attribute::Attribute(SocketConnected *sock) : sock(sock) {}
 
-Connection::Attribute::Attribute() {
-    is_persistent = true;
-    timeout       = 60 * 1000;
+Connection::Attribute::~Attribute() {
+    delete sock;
 }
+
+// [[Status]]
+Connection::Status::Status() : phase(CONNECTION_ESTABLISHED), dying(false), unrecoverable(false) {}
 
 // [[NetwotkBuffer]]
 
@@ -90,47 +92,41 @@ void Connection::NetworkBuffer::check_extra_overflow() {
 
 // [[Connection]]
 
-Connection::Connection(IRouter *router,
-                       SocketConnected *sock_given,
+Connection::Connection(SocketConnected *sock_given,
+                       IRouter *router,
+
                        const config::config_vector &configs,
                        FileCacher &cacher)
-    : attr(Attribute())
-    , phase(CONNECTION_ESTABLISHED)
-    , dying(false)
-    , unrecoverable(false)
-    , sock(sock_given)
-    , rt(*router, configs, cacher)
-    , lifetime(Lifetime::make_connection()) {
-    DXOUT("[established] " << sock->get_fd());
+    : attr(sock_given), status(Status()), rt(*router, configs, cacher), lifetime(Lifetime::make_connection()) {
+    DXOUT("[established] " << attr.sock->get_fd());
 }
 
 Connection::~Connection() {
-    delete sock;
     DXOUT("DESTROYED: " << this);
 }
 
 t_fd Connection::get_fd() const {
-    return sock->get_fd();
+    return attr.sock->get_fd();
 }
 
 t_port Connection::get_port() const {
-    return sock->get_port();
+    return attr.sock->get_port();
 }
 
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     try {
         for (;;) {
-            if (dying) {
+            if (status.dying) {
                 return;
             }
-            switch (phase) {
+            switch (status.phase) {
                 case CONNECTION_ESTABLISHED:
                     perform_reaction(observer, cat, epoch);
                     if (cat == IObserver::OT_TIMEOUT) {
                         return;
                     }
                     detect_update(observer);
-                    if (!unrecoverable && !rt.is_freezed() && net_buffer.should_redo()) {
+                    if (!status.unrecoverable && !rt.is_freezed() && net_buffer.should_redo()) {
                         // - リクエストが凍結されていない
                         // - NetworkBuffer に余ったデータがある
                         // なら, イベントハンドラをもう一度やり直す.
@@ -145,7 +141,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
                     perform_shutting_down(observer);
                     return;
                 default:
-                    DXOUT("unexpected phase: " << phase);
+                    DXOUT("unexpected phase: " << status.phase);
                     assert(false);
             }
             return;
@@ -155,8 +151,8 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
         // この状態になったら:
         // - 受信データはすべて捨てる
         // - リクエストの状態は変化させず, 状態検査もしない
-        unrecoverable = true;
-        if (phase != CONNECTION_SHUTTING_DOWN && !rt.is_responding()) {
+        status.unrecoverable = true;
+        if (status.phase != CONNECTION_SHUTTING_DOWN && !rt.is_responding()) {
             try {
                 // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
                 rt.respond_unrecoverable_error(observer, err);
@@ -206,13 +202,13 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-    const ssize_t received_size = net_buffer.receive(*sock, unrecoverable);
+    const ssize_t received_size = net_buffer.receive(*attr.sock, status.unrecoverable);
     if (received_size <= 0) {
         // なにも受信できなかったか, 受信エラーが起きた場合
         die(observer);
         return;
     }
-    if (unrecoverable) {
+    if (status.unrecoverable) {
         return;
     }
 
@@ -272,7 +268,7 @@ void Connection::perform_sending(IObserver &observer) {
         return;
     }
 
-    const ssize_t sent = sock->send(rt.res()->get_unsent_head(), rt.res()->get_unsent_size(), 0);
+    const ssize_t sent = attr.sock->send(rt.res()->get_unsent_head(), rt.res()->get_unsent_size(), 0);
     // 送信ができなかったか, エラーが起きた場合
     if (sent < 0) {
         // TODO: とりあえず接続を閉じておくが, 本当はどうするべき？
@@ -285,7 +281,7 @@ void Connection::perform_sending(IObserver &observer) {
 
 void Connection::perform_shutting_down(IObserver &observer) {
     u8t buf[MAX_REQLINE_END];
-    const ssize_t received_size = sock->receive(&buf, MAX_REQLINE_END, 0);
+    const ssize_t received_size = attr.sock->receive(&buf, MAX_REQLINE_END, 0);
     if (received_size > 0) {
         return;
     }
@@ -295,12 +291,12 @@ void Connection::perform_shutting_down(IObserver &observer) {
 void Connection::shutdown_gracefully(IObserver &observer) {
     observer.reserve_unset(this, IObserver::OT_WRITE);
     observer.reserve_set(this, IObserver::OT_READ);
-    sock->shutdown_write();
-    phase = CONNECTION_SHUTTING_DOWN;
+    attr.sock->shutdown_write();
+    status.phase = CONNECTION_SHUTTING_DOWN;
 }
 
 void Connection::die(IObserver &observer) {
     observer.reserve_unhold(this);
-    sock->shutdown();
-    dying = true;
+    attr.sock->shutdown();
+    status.dying = true;
 }

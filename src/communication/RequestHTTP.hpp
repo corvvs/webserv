@@ -102,7 +102,14 @@ public:
     typedef HeaderItem::header_val_type header_val_type;
     typedef HeaderHolderHTTP header_holder_type;
 
+    struct Attribute {
+        ssize_t client_max_body_size;
+
+        Attribute();
+    };
+
     struct ParserStatus {
+        ssize_t mid;
         // ヘッダ終端探索時において, 最後に遭遇したCRLFのレンジ
         IndexRange crlf_in_header;
         // ヘッダ行解析において obs-fold に遭遇したかどうか
@@ -170,14 +177,14 @@ public:
     };
 
 private:
+    Attribute attr;
+    // 解析中の情報
+    ParserStatus ps;
+
     byte_string bytebuffer;
-    ssize_t mid;
-    ssize_t client_max_body_size;
     Lifetime lifetime;
     Lifetime lifetime_header;
 
-    // 解析中の情報
-    ParserStatus ps;
     // ルーティングパラメータ
     RoutingParameters rp;
 

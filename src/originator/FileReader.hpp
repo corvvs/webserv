@@ -15,16 +15,20 @@ public:
     typedef byte_string::size_type size_type;
 
     struct Attribute {
+        FileCacher &cacher_;
+        const ICacheInfoProvider *cache_info_provider;
+        char_string file_path_;
         IObserver *observer;
         ISocketLike *master;
         t_fd fd_;
 
         void close_fd() throw();
 
-        Attribute();
+        Attribute(FileCacher &cacher_, const ICacheInfoProvider *cache_info_provider, char_string file_path_);
     };
 
     struct Status {
+        t_time_epoch_ms last_modified;
         bool originated;
         bool is_not_modified;
         bool leaving;
@@ -34,11 +38,7 @@ public:
     };
 
 protected:
-    char_string file_path_;
     ResponseDataList response_data;
-    FileCacher &cacher_;
-    t_time_epoch_ms last_modified;
-    const ICacheInfoProvider *cache_info_provider;
     Attribute attr;
     Status status;
 

@@ -23,9 +23,8 @@ int redirect_fd(t_fd from, t_fd to) {
     return dup2(from, to);
 }
 
-CGI::ParserStatus::ParserStatus() : parse_progress(PP_HEADER_SECTION_END), start_of_header(0), is_freezed(false) {}
-
-CGI::Status::Status() : is_started(false), to_script_content_sent_(0), is_responsive(false), is_complete(false) {}
+CGI::ParserStatus::ParserStatus()
+    : mid(0), parse_progress(PP_HEADER_SECTION_END), start_of_header(0), is_freezed(false) {}
 
 CGI::Attribute::Attribute(const RequestMatchingResult &matching_result,
                           const ICGIConfigurationProvider &configuration_provider)
@@ -37,6 +36,15 @@ CGI::Attribute::Attribute(const RequestMatchingResult &matching_result,
     , master(NULL)
     , cgi_pid(0)
     , sock(NULL) {}
+
+CGI::Status::Status(const metavar_dict_type &metavar)
+    : metavar(metavar)
+    , to_script_content_sent(0)
+    , to_script_content_length(0)
+    , is_started(false)
+    , is_responsive(false)
+    , is_complete(false)
+    , leaving(false) {}
 
 const CGI::byte_string CGI::META_GATEWAY_INTERFACE = HTTP::strfy("GATEWAY_INTERFACE");
 const CGI::byte_string CGI::META_REQUEST_METHOD    = HTTP::strfy("REQUEST_METHOD");
@@ -51,30 +59,25 @@ const CGI::byte_string CGI::META_QUERY_STRING      = HTTP::strfy("QUERY_STRING")
 const CGI::byte_string CGI::META_REQUEST_URI       = HTTP::strfy("REQUEST_URI");
 
 CGI::CGI(const RequestMatchingResult &match_result, const ICGIConfigurationProvider &request)
-    : leaving(false)
-    , attr(Attribute(match_result, request))
-    , lifetime(Lifetime::make_response())
-    , metavar_(request.get_cgi_meta_vars())
-    , to_script_content_length_(0)
-    , mid(0) {
-    ps.start_of_header               = 0;
-    metavar_[META_GATEWAY_INTERFACE] = HTTP::strfy("CGI/1.1");
-    metavar_[META_REQUEST_METHOD]    = HTTP::method_str(attr.configuration_provider_.get_method());
-    metavar_[META_SERVER_PROTOCOL]   = HTTP::version_str(attr.configuration_provider_.get_http_version());
-    metavar_[META_CONTENT_TYPE]      = attr.configuration_provider_.get_content_type();
+    : attr(Attribute(match_result, request)), status(request.get_cgi_meta_vars()), lifetime(Lifetime::make_response()) {
+    ps.start_of_header                     = 0;
+    status.metavar[META_GATEWAY_INTERFACE] = HTTP::strfy("CGI/1.1");
+    status.metavar[META_REQUEST_METHOD]    = HTTP::method_str(attr.configuration_provider_.get_method());
+    status.metavar[META_SERVER_PROTOCOL]   = HTTP::version_str(attr.configuration_provider_.get_http_version());
+    status.metavar[META_CONTENT_TYPE]      = attr.configuration_provider_.get_content_type();
     if (match_result.cgi_resource.script_name == HTTP::strfy("/")) {
-        metavar_[META_SCRIPT_NAME] = HTTP::strfy("");
+        status.metavar[META_SCRIPT_NAME] = HTTP::strfy("");
     } else {
-        metavar_[META_SCRIPT_NAME] = match_result.cgi_resource.script_name;
+        status.metavar[META_SCRIPT_NAME] = match_result.cgi_resource.script_name;
     }
-    metavar_[META_PATH_INFO]    = match_result.cgi_resource.path_info;
-    metavar_[META_QUERY_STRING] = match_result.target->query.str();
-    metavar_[META_REQUEST_URI]  = match_result.target->path.str();
+    status.metavar[META_PATH_INFO]    = match_result.cgi_resource.path_info;
+    status.metavar[META_QUERY_STRING] = match_result.target->query.str();
+    status.metavar[META_REQUEST_URI]  = match_result.target->path.str();
     if (match_result.target->query.size() > 0) {
-        metavar_[META_REQUEST_URI] += HTTP::strfy("?");
-        metavar_[META_REQUEST_URI] += match_result.target->query.str();
+        status.metavar[META_REQUEST_URI] += HTTP::strfy("?");
+        status.metavar[META_REQUEST_URI] += match_result.target->query.str();
     }
-    metavar_[META_SERVER_NAME] = match_result.server_name;
+    status.metavar[META_SERVER_NAME] = match_result.server_name;
 }
 
 CGI::~CGI() {
@@ -98,8 +101,8 @@ CGI::~CGI() {
 }
 
 void CGI::inject_socketlike(ISocketLike *socket_like) {
-    attr.master                = socket_like;
-    metavar_[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port(), 10);
+    attr.master                      = socket_like;
+    status.metavar[META_SERVER_PORT] = ParserHelper::utos(attr.master->get_port(), 10);
 }
 
 void CGI::check_executable() const {
@@ -148,7 +151,7 @@ void CGI::start_origination(IObserver &observer) {
         if (argv == NULL) {
             exit(1);
         }
-        char **mvs = flatten_metavar(metavar_);
+        char **mvs = flatten_metavar(status.metavar);
         if (mvs == NULL) {
             exit(1);
         }
@@ -285,10 +288,10 @@ IResponseDataProducer &CGI::response_data_producer() {
 }
 
 void CGI::set_content(const byte_string &content) {
-    to_script_content_        = content;
-    to_script_content_length_ = content.size();
-    if (to_script_content_length_ > 0) {
-        metavar_[META_CONTENT_LENGTH] = ParserHelper::utos(to_script_content_length_, 10);
+    status.to_script_content_       = content;
+    status.to_script_content_length = content.size();
+    if (status.to_script_content_length > 0) {
+        status.metavar[META_CONTENT_LENGTH] = ParserHelper::utos(status.to_script_content_length, 10);
     }
 }
 
@@ -320,7 +323,7 @@ t_port CGI::get_port() const {
 }
 
 void CGI::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
-    if (leaving) {
+    if (status.leaving) {
         return;
     }
     if (attr.master) {
@@ -382,17 +385,17 @@ void CGI::retransmit(IObserver &observer, IObserver::observation_category cat, t
 void CGI::perform_sending(IObserver &observer) {
     DXOUT("CGI on Write");
     ssize_t sent_size = 0;
-    if (status.to_script_content_sent_ < to_script_content_length_) {
-        ssize_t rest_to_script = to_script_content_length_ - status.to_script_content_sent_;
-        const char *head       = &to_script_content_.front() + status.to_script_content_sent_;
+    if (status.to_script_content_sent < status.to_script_content_length) {
+        ssize_t rest_to_script = status.to_script_content_length - status.to_script_content_sent;
+        const char *head       = &status.to_script_content_.front() + status.to_script_content_sent;
         sent_size              = attr.sock->send(head, rest_to_script, 0);
         VOUT(sent_size);
         if (sent_size < 0) {
             throw http_error("failed to send data to CGI script", HTTP::STATUS_INTERNAL_SERVER_ERROR);
         }
-        status.to_script_content_sent_ += sent_size;
+        status.to_script_content_sent += sent_size;
     }
-    if (sent_size > 0 && status.to_script_content_sent_ < to_script_content_length_) {
+    if (sent_size > 0 && status.to_script_content_sent < status.to_script_content_length) {
         return;
     }
     observer.reserve_unset(this, IObserver::OT_WRITE);
@@ -453,12 +456,12 @@ HTTP::byte_string CGI::reroute_path() const {
 }
 
 void CGI::leave() {
-    if (leaving) {
+    if (status.leaving) {
         DXOUT("now already leaving.");
         return;
     }
     DXOUT("leaving.");
-    leaving                         = true;
+    status.leaving                  = true;
     const bool is_under_observation = (attr.observer != NULL);
     if (is_under_observation) {
         attr.observer->reserve_unhold(this);
@@ -484,8 +487,8 @@ CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {
     //     -> はずれ. このCRLFを crlf_in_header として続行.
     // - 見つからなかった
     //   -> もう一度受信する
-    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->mid, len);
-    this->mid      = res.second;
+    IndexRange res = ParserHelper::find_crlf(bytebuffer, this->ps.mid, len);
+    this->ps.mid   = res.second;
     if (!is_disconnected && res.is_invalid()) {
         // はずれ: CRLFが見つからなかった
         return PP_UNREACHED;
@@ -500,9 +503,9 @@ CGI::t_parse_progress CGI::reach_headers_end(size_t len, bool is_disconnected) {
     analyze_headers(res);
 
     // bytebuffer のあまった部分(本文と思われる部分)をProducerに注入
-    const size_t rest_size = bytebuffer.size() - this->mid;
+    const size_t rest_size = bytebuffer.size() - this->ps.mid;
     if (rest_size > 0 || is_disconnected) {
-        const char *rest_head = &(bytebuffer.front()) + this->mid;
+        const char *rest_head = &(bytebuffer.front()) + this->ps.mid;
         response_data_producer().inject(rest_head, rest_size, is_disconnected);
     }
     return PP_BODY;
@@ -523,7 +526,7 @@ void CGI::after_injection(bool is_disconnected) {
     t_parse_progress flow;
     VOUT(is_disconnected);
     do {
-        len = bytebuffer.size() - this->mid;
+        len = bytebuffer.size() - this->ps.mid;
         VOUT(len);
         switch (this->ps.parse_progress) {
             case PP_HEADER_SECTION_END: {
@@ -681,11 +684,11 @@ CGI::t_parse_progress CGI::reach_fixed_body_end(size_t len, bool is_disconnected
     // > 鯖は CGIスクリプトが提供したデータをすべて、 EOF に到達するまで読まなければなりません。
     // > それをそのまま無変更で送信するべきです。
 
-    this->mid += len;
+    this->ps.mid += len;
     if (!is_disconnected) {
         return PP_UNREACHED;
     }
-    this->ps.end_of_body = this->mid;
+    this->ps.end_of_body = this->ps.mid;
     this->rp.body_size   = this->ps.end_of_body - this->ps.start_of_body;
     return PP_OVER;
 }
@@ -701,7 +704,7 @@ void CGI::RoutingParameters::determine_body_size(const header_holder_type &holde
 }
 
 size_t CGI::parsed_body_size() const {
-    return this->mid - this->ps.start_of_body;
+    return this->ps.mid - this->ps.start_of_body;
 }
 
 HTTP::t_status CGI::determine_response_status() const {

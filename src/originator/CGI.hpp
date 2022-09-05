@@ -60,19 +60,25 @@ public:
     };
 
     struct Status {
-        bool is_started;
+        ResponseDataList response_data;
+        byte_string to_script_content_;
+        metavar_dict_type metavar;
+
         // 送信済み content_request のバイト数
-        size_type to_script_content_sent_;
+        size_type to_script_content_sent;
+        size_type to_script_content_length;
+        bool is_started;
         // レスポンス送信可能フラグ
         bool is_responsive;
         // オリジネーション完了フラグ
         bool is_complete;
-        ResponseDataList response_data;
+        bool leaving;
 
-        Status();
+        Status(const metavar_dict_type &metavar);
     };
 
     struct ParserStatus {
+        ssize_t mid;
         // ヘッダ終端探索時において, 最後に遭遇したCRLFのレンジ
         IndexRange crlf_in_header;
 
@@ -95,7 +101,6 @@ public:
         CGIP::CH::SetCookie set_cookie;
 
         // いろいろ抽出関数群
-
         void determine_body_size(const header_holder_type &holder);
 
         // CGIレスポンスタイプの判定
@@ -115,21 +120,13 @@ public:
     static const byte_string META_REQUEST_URI;
 
 private:
-    bool leaving;
     Attribute attr;
+    Status status;
     Lifetime lifetime;
 
-    metavar_dict_type metavar_;
-    size_type to_script_content_length_;
-    byte_string to_script_content_;
-
-    // bool is_disconnected;
     byte_string bytebuffer;
-    ssize_t mid;
     ParserStatus ps;
     RoutingParameters rp;
-
-    Status status;
 
     // [CGIヘッダ]
     header_holder_type from_script_header_holder;

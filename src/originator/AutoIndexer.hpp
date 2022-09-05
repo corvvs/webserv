@@ -28,16 +28,28 @@ public:
 
     typedef std::vector<Entry> entry_list;
 
+    struct Attribute {
+        // ファイルシステム上のディレクトリパス
+        const char_string directory_path;
+        // リクエストされたパス(パーセントデコード済み)
+        const char_string requested_path;
+        // リクエストされたパス(パーセントデコード済み & スラッシュ縮約済み)
+        const char_string effective_requested_path;
+
+        Attribute(char_string directory_path, char_string requested_path, char_string effective_requested_path);
+    };
+
+    struct Status {
+        DIR *dir;
+        bool originated;
+
+        Status();
+    };
+
 private:
-    // ファイルシステム上のディレクトリパス
-    char_string directory_path_;
-    // リクエストされたパス(パーセントデコード済み)
-    char_string requested_path_;
-    // リクエストされたパス(パーセントデコード済み & スラッシュ縮約済み)
-    char_string effective_requested_path_;
-    bool originated_;
+    const Attribute attr;
+    Status status;
     ResponseDataList response_data;
-    DIR *dir;
     entry_list entries;
 
     // ターゲットのディレクトリ内をスキャンして entries を取り出す

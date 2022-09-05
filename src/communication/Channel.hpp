@@ -20,11 +20,18 @@ public:
     // プロトコルファミリーとポートの組
     typedef std::pair<t_socket_domain, t_port> t_channel_id;
 
+    struct Attribute {
+        SocketListening *sock;
+        IRouter *router;
+        const config::config_vector &configs;
+        FileCacher &cacher;
+
+        Attribute(SocketListening *sock, IRouter *router, const config::config_vector &configs, FileCacher &cacher);
+        ~Attribute();
+    };
+
 private:
-    SocketListening *sock;
-    IRouter *router_;
-    const config::config_vector &configs_;
-    FileCacher &cacher_;
+    Attribute attr;
 
 public:
     Channel(IRouter *router,
@@ -33,7 +40,6 @@ public:
             t_port port,
             const config::config_vector &configs,
             FileCacher &cacher);
-
     ~Channel();
 
     t_fd get_fd() const;

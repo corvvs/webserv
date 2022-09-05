@@ -11,9 +11,9 @@ ErrorPageGenerator::ErrorPageGenerator(const minor_error &err,
     RequestMatchingResult::status_dict_type::const_iterator res = status_page_dict.find(err.status_code());
     if (res != status_page_dict.end()) {
         // エラーページ定義があった
-        file_path_ = HTTP::restrfy(res->second);
+        attr.file_path_ = HTTP::restrfy(res->second);
     } else {
-        file_path_.clear();
+        attr.file_path_.clear();
     }
 }
 
@@ -57,9 +57,9 @@ void ErrorPageGenerator::start_origination(IObserver &observer) {
         return;
     }
 
-    if (file_path_.size() > 0) {
+    if (attr.file_path_.size() > 0) {
         DXOUT("READ");
-        QVOUT(file_path_);
+        QVOUT(attr.file_path_);
         try {
             const bool do_read = prepare_reading();
             if (do_read) {

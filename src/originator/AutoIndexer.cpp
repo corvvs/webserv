@@ -96,12 +96,19 @@ HTTP::byte_string AutoIndexer::Entry::serialize(const HTTP::char_string &request
     return str;
 }
 
+AutoIndexer::Attribute::Attribute(char_string directory_path,
+                                  char_string requested_path,
+                                  char_string effective_requested_path)
+    : directory_path(directory_path)
+    , requested_path(requested_path)
+    , effective_requested_path(effective_requested_path) {}
+
+AutoIndexer::Status::Status() : dir(NULL), originated(false) {}
+
 AutoIndexer::AutoIndexer(const RequestMatchingResult &match_result)
-    : directory_path_(HTTP::restrfy(match_result.path_local))
-    , requested_path_(HTTP::restrfy(match_result.target->dpath()))
-    , effective_requested_path_(HTTP::restrfy(match_result.target->dpath_slash_reduced()))
-    , originated_(false)
-    , dir(NULL) {}
+    : attr(HTTP::restrfy(match_result.path_local),
+           HTTP::restrfy(match_result.target->dpath()),
+           HTTP::restrfy(match_result.target->dpath_slash_reduced())) {}
 
 AutoIndexer::~AutoIndexer() {
     close_if_needed();
@@ -116,11 +123,11 @@ void AutoIndexer::notify(IObserver &observer, IObserver::observation_category ca
 
 void AutoIndexer::scan_from_directory() {
     // TODO: C++ way に書き直す
-    if (originated_) {
+    if (status.originated) {
         return;
     }
     errno     = 0;
-    DIR *dird = opendir(directory_path_.c_str());
+    DIR *dird = opendir(attr.directory_path.c_str());
     if (dird == NULL) {
         switch (errno) {
             case ENOENT:
@@ -135,9 +142,9 @@ void AutoIndexer::scan_from_directory() {
                 throw http_error("can't open", HTTP::STATUS_FORBIDDEN);
         }
     }
-    dir = dird;
+    status.dir = dird;
     for (;;) {
-        t_dirent *ent = readdir(dir);
+        t_dirent *ent = readdir(status.dir);
         if (ent == NULL) {
             break;
         }
@@ -147,7 +154,7 @@ void AutoIndexer::scan_from_directory() {
             continue;
         }
         HTTP::char_string fpath
-            = HTTP::restrfy(HTTP::Utils::join_path(HTTP::strfy(directory_path_), HTTP::strfy(fname)));
+            = HTTP::restrfy(HTTP::Utils::join_path(HTTP::strfy(attr.directory_path), HTTP::strfy(fname)));
         const int result = stat(fpath.c_str(), &st);
         if (result < 0) {
             continue;
@@ -159,7 +166,7 @@ void AutoIndexer::scan_from_directory() {
         entries.back().is_dir = S_ISDIR(st.st_mode);
     }
     render_html();
-    originated_ = true;
+    status.originated = true;
     close_if_needed();
 }
 
@@ -174,7 +181,7 @@ void AutoIndexer::render_html() {
                                      "<head>\n"
                                      "  <title>\n"),
                          false);
-    response_data.inject(HTTP::strfy(HTML::escape_html(effective_requested_path_)), false);
+    response_data.inject(HTTP::strfy(HTML::escape_html(attr.effective_requested_path)), false);
     response_data.inject(HTTP::strfy("  </title>\n"
                                      "  <style>\n" CSS_AUTOINDEXER "  </style>\n"
                                      "</head>\n"
@@ -182,7 +189,7 @@ void AutoIndexer::render_html() {
                          false);
 
     // 見出し部
-    response_data.inject(HTTP::strfy("<h2>Index of " + HTML::escape_html(requested_path_) + "</h2>\n"), false);
+    response_data.inject(HTTP::strfy("<h2>Index of " + HTML::escape_html(attr.requested_path) + "</h2>\n"), false);
     response_data.inject(HTTP::strfy("<hr>"), false);
     // テーブル部
     response_data.inject(HTTP::strfy("<table class=\"autoindex-table\">\n"
@@ -197,7 +204,7 @@ void AutoIndexer::render_html() {
                          false);
     for (entry_list::size_type i = 0; i < entries.size(); ++i) {
         const Entry &ent             = entries[i];
-        HTTP::byte_string serialized = ent.serialize(effective_requested_path_);
+        HTTP::byte_string serialized = ent.serialize(attr.effective_requested_path);
         response_data.inject(serialized, false);
     }
     response_data.inject(HTTP::strfy("  </tbody>\n"
@@ -210,11 +217,11 @@ void AutoIndexer::render_html() {
 }
 
 void AutoIndexer::close_if_needed() {
-    if (dir == NULL) {
+    if (status.dir == NULL) {
         return;
     }
-    closedir(dir);
-    dir = NULL;
+    closedir(status.dir);
+    status.dir = NULL;
 }
 
 void AutoIndexer::inject_socketlike(ISocketLike *socket_like) {
@@ -222,11 +229,11 @@ void AutoIndexer::inject_socketlike(ISocketLike *socket_like) {
 }
 
 bool AutoIndexer::is_originatable() const {
-    return !originated_;
+    return !status.originated;
 }
 
 bool AutoIndexer::is_origination_started() const {
-    return originated_;
+    return status.originated;
 }
 
 bool AutoIndexer::is_reroutable() const {
@@ -239,7 +246,7 @@ HTTP::byte_string AutoIndexer::reroute_path() const {
 }
 
 bool AutoIndexer::is_responsive() const {
-    return originated_;
+    return status.originated;
 }
 
 void AutoIndexer::start_origination(IObserver &observer) {
