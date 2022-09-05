@@ -73,7 +73,7 @@ public:
         bool spilling_readside;
 
         Status();
-
+        // ソケットの読み込み側が通常状態(openかつデータを受け入れる状態)であるかどうか
         bool is_readside_active() const throw();
     };
 
@@ -82,6 +82,10 @@ public:
         typedef std::list<byte_string> extra_buffer_type;
 
         struct Status {
+            // read処理できるかどうか
+            // read処理をするとfalseになる
+            bool is_readable;
+            // `read_buffer` のサイズ
             ssize_t read_size;
             // extra_buffer のサイズ合計
             size_t extra_amount;
@@ -93,18 +97,20 @@ public:
         Status status;
         // ソケットからのデータが入るバッファ
         byte_string read_buffer;
-        // 「余ったデータ」が入るバッファ
+        // 「余ったデータ」が入るバッファリスト
         extra_buffer_type extra_buffer;
-
+        // extra_buffer にあまりに大量のデータがある場合はエラーを投げる
         void check_extra_overflow();
 
     public:
         NetworkBuffer();
 
         // ソケットから内部バッファにデータを受信する
-        ssize_t receive(SocketConnected &sock);
+        bool receive(SocketConnected &sock);
         // ソケットからデータを受信してそれを捨てる
-        ssize_t spill(SocketConnected &sock);
+        bool spill(SocketConnected &sock);
+        // read_buffer のデータを extra_buffer に待避する
+        void save_read_buffer();
         // 内部バッファの先頭チャンクを取り出す
         const byte_string &top_front() const;
         // 内部バッファの先頭チャンクを除去する
@@ -113,6 +119,7 @@ public:
         void push_front(const light_string &data);
         // 再実行すべきか
         bool should_redo() const;
+        void rewind(IObserver::observation_category cat) throw();
     };
 
 private:

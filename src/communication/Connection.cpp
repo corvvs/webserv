@@ -20,39 +20,47 @@ bool Connection::Status::is_readside_active() const throw() {
 
 // [[NetwotkBuffer]]
 
-Connection::NetworkBuffer::Status::Status() : read_size(0), extra_amount(0) {}
+Connection::NetworkBuffer::Status::Status() : is_readable(false), read_size(0), extra_amount(0) {}
 
 Connection::NetworkBuffer::NetworkBuffer() {
     read_buffer.resize(MAX_REQLINE_END);
 }
 
-ssize_t Connection::NetworkBuffer::spill(SocketConnected &sock) {
+bool Connection::NetworkBuffer::spill(SocketConnected &sock) {
+    if (!status.is_readable) {
+        return true;
+    }
+    DXOUT("SPILling...");
     u8t buf[MAX_REQLINE_END];
-    const ssize_t received_size = sock.receive(&buf, MAX_REQLINE_END, 0);
-    return received_size;
+    return sock.receive(&buf, MAX_REQLINE_END, 0);
 }
 
-ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock) {
-    if (status.read_size > 0) {
-        // read_buffer にデータがあるならそれを待避させる
-        extra_buffer.push_back(read_buffer);
-        status.extra_amount += extra_buffer.back().size();
-        check_extra_overflow();
-        status.read_size = 0;
-        read_buffer.resize(status.read_size);
-        return extra_buffer.front().size();
+void Connection::NetworkBuffer::save_read_buffer() {
+    if (status.read_size <= 0) {
+        return;
     }
+    // read_buffer にデータがあるならそれを待避させる
+    extra_buffer.push_back(read_buffer);
+    status.extra_amount += extra_buffer.back().size();
+    check_extra_overflow();
+    read_buffer.resize(0);
+    status.read_size = read_buffer.size();
+}
 
-    read_buffer.resize(MAX_REQLINE_END);
-    byte_string::value_type *rb = &read_buffer.front();
-    status.read_size            = sock.receive(rb, MAX_REQLINE_END, 0);
-    if (status.read_size >= 0) {
-        read_buffer.resize(status.read_size);
+bool Connection::NetworkBuffer::receive(SocketConnected &sock) {
+    if (status.is_readable) {
+        read_buffer.resize(MAX_REQLINE_END);
+        byte_string::value_type *rb = &read_buffer.front();
+        status.read_size            = sock.receive(rb, MAX_REQLINE_END, 0);
+        status.is_readable          = false;
+        if (status.read_size >= 0) {
+            read_buffer.resize(status.read_size);
+        }
     }
     if (extra_buffer.size() > 0) {
-        return extra_buffer.front().size();
+        return extra_buffer.front().size() > 0;
     }
-    return status.read_size;
+    return status.read_size > 0;
 }
 
 const Connection::byte_string &Connection::NetworkBuffer::top_front() const {
@@ -84,6 +92,7 @@ void Connection::NetworkBuffer::push_front(const light_string &data) {
 }
 
 bool Connection::NetworkBuffer::should_redo() const {
+    // extra_buffer に要素があるか, read_buffer が生き残っている
     return extra_buffer.size() > 0 || status.read_size > 0;
 }
 
@@ -94,11 +103,21 @@ void Connection::NetworkBuffer::check_extra_overflow() {
     }
 }
 
+void Connection::NetworkBuffer::rewind(IObserver::observation_category cat) throw() {
+    status.is_readable = false;
+    switch (cat) {
+        case IObserver::OT_READ:
+            status.is_readable = true;
+            break;
+        default:
+            break;
+    }
+}
+
 // [[Connection]]
 
 Connection::Connection(SocketConnected *sock_given,
                        IRouter *router,
-
                        const config::config_vector &configs,
                        FileCacher &cacher)
     : attr(sock_given), status(Status()), rt(*router, configs, cacher), lifetime(Lifetime::make_connection()) {
@@ -129,6 +148,7 @@ t_port Connection::get_port() const {
 
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     try {
+        net_buffer.rewind(cat);
         if (status.dying) {
             return;
         }
@@ -150,7 +170,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
                 if (is_extra_readable_cat(cat)) {
                     while (is_extra_readable()) {
                         DXOUT("Extra Read");
-                        perform_reaction(observer, IObserver::OT_READ, epoch);
+                        perform_receiving(observer);
                         detect_update(observer);
                     }
                 }
@@ -230,11 +250,14 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-    const ssize_t received_size = net_buffer.receive(*attr.sock);
-    if (received_size <= 0) {
-        // なにも受信できなかったか, 受信エラーが起きた場合
-        die(observer);
-        return;
+    {
+        net_buffer.save_read_buffer();
+        const bool succeeded = net_buffer.receive(*attr.sock);
+        if (!succeeded) {
+            // なにも受信できなかったか, 受信エラーが起きた場合
+            die(observer);
+            return;
+        }
     }
 
     // データ注入
@@ -306,8 +329,8 @@ void Connection::perform_sending(IObserver &observer) {
 }
 
 void Connection::perform_shutting_down(IObserver &observer) {
-    const ssize_t received_size = net_buffer.spill(*attr.sock);
-    if (received_size <= 0) {
+    const bool succeeded = net_buffer.spill(*attr.sock);
+    if (!succeeded) {
         die(observer);
     }
 }
