@@ -23,6 +23,7 @@ func TestMain(m *testing.M) {
 			break
 		}
 	}
+	os.Mkdir(uploadedDirPath, 0750)
 
 	m.Run()
 	err := exec.Command("pkill", "webserv").Run()
