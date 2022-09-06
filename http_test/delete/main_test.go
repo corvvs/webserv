@@ -22,6 +22,7 @@ func TestMain(m *testing.M) {
 			break
 		}
 	}
+	os.Mkdir(deletedDirPath, 0750)
 
 	m.Run()
 	cmd.Process.Kill()

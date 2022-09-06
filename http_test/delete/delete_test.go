@@ -27,7 +27,7 @@ func TestUpload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			file, err := os.Create(fmt.Sprintf("./deleted/%s", tt.fileName))
+			file, err := os.Create(fmt.Sprintf("%s/%s", deletedDirPath, tt.fileName))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -46,7 +46,7 @@ func TestUpload(t *testing.T) {
 			if res.StatusCode != tt.statusCode {
 				t.Errorf("unexpected status code got = %d, want %d", res.StatusCode, tt.statusCode)
 			}
-			find, err := findFile("./deleted", tt.fileName)
+			find, err := findFile(deletedDirPath, tt.fileName)
 			if err != nil {
 				t.Fatal(err)
 			}

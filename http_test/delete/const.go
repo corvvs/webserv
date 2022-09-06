@@ -8,4 +8,5 @@ const (
 		"User-Agent: curl/7.77.0\r\n" +
 		"Accept: */*\r\n" +
 		"Connection: close\r\n\r\n"
+	deletedDirPath = "./deleted"
 )
