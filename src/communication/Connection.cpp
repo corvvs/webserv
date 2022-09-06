@@ -12,43 +12,55 @@ Connection::Attribute::~Attribute() {
 }
 
 // [[Status]]
-Connection::Status::Status() : phase(CONNECTION_ESTABLISHED), dying(false), unrecoverable(false) {}
+Connection::Status::Status() : phase(CONNECTION_ESTABLISHED), dying(false), spilling_readside(false) {}
+
+bool Connection::Status::is_readside_active() const throw() {
+    return !dying && !spilling_readside;
+}
 
 // [[NetwotkBuffer]]
 
-Connection::NetworkBuffer::NetworkBuffer() : read_size(0), extra_amount(0) {
+Connection::NetworkBuffer::Status::Status() : is_readable(false), read_size(0), extra_amount(0) {}
+
+Connection::NetworkBuffer::NetworkBuffer() {
     read_buffer.resize(MAX_REQLINE_END);
 }
 
-ssize_t Connection::NetworkBuffer::receive(SocketConnected &sock, bool discard) {
-    if (discard) {
-        // データをreadして捨てる
-        DXOUT("DISCARDING...");
-        char rb[MAX_REQLINE_END];
-        read_size = sock.receive(rb, MAX_REQLINE_END, 0);
-        return read_size;
+bool Connection::NetworkBuffer::spill(SocketConnected &sock) {
+    if (!status.is_readable) {
+        return true;
     }
+    DXOUT("SPILling...");
+    u8t buf[MAX_REQLINE_END];
+    return sock.receive(&buf, MAX_REQLINE_END, 0);
+}
 
-    if (read_size > 0) {
-        // read_buffer にデータがあるならそれを待避させる
-        extra_buffer.push_back(read_buffer);
-        extra_amount += extra_buffer.back().size();
-        check_extra_overflow();
-        read_size = 0;
-        read_buffer.resize(read_size);
-        return extra_buffer.front().size();
+void Connection::NetworkBuffer::save_read_buffer() {
+    if (status.read_size <= 0) {
+        return;
     }
+    // read_buffer にデータがあるならそれを待避させる
+    extra_buffer.push_back(read_buffer);
+    status.extra_amount += extra_buffer.back().size();
+    check_extra_overflow();
+    read_buffer.resize(0);
+    status.read_size = read_buffer.size();
+}
 
-    read_buffer.resize(MAX_REQLINE_END);
-    byte_string::value_type *rb = &read_buffer.front();
-    read_size                   = sock.receive(rb, MAX_REQLINE_END, 0);
-    if (read_size >= 0) {
-        read_buffer.resize(read_size);
+bool Connection::NetworkBuffer::receive(SocketConnected &sock) {
+    if (status.is_readable) {
+        read_buffer.resize(MAX_REQLINE_END);
+        byte_string::value_type *rb = &read_buffer.front();
+        status.read_size            = sock.receive(rb, MAX_REQLINE_END, 0);
+        status.is_readable          = false;
+        if (status.read_size >= 0) {
+            read_buffer.resize(status.read_size);
+        }
     }
     if (extra_buffer.size() > 0) {
-        return extra_buffer.front().size();
+        return extra_buffer.front().size() > 0;
     }
-    return read_size;
+    return status.read_size > 0;
 }
 
 const Connection::byte_string &Connection::NetworkBuffer::top_front() const {
@@ -62,31 +74,43 @@ const Connection::byte_string &Connection::NetworkBuffer::top_front() const {
 
 void Connection::NetworkBuffer::pop_front() {
     if (extra_buffer.size() > 0) {
-        extra_amount -= extra_buffer.front().size();
+        status.extra_amount -= extra_buffer.front().size();
         extra_buffer.pop_front();
-        VOUT(extra_amount);
+        VOUT(status.extra_amount);
     } else {
         read_buffer.resize(0);
-        read_size = 0;
+        status.read_size = 0;
     }
 }
 
 void Connection::NetworkBuffer::push_front(const light_string &data) {
     if (data.size() > 0) {
         extra_buffer.push_front(data.str());
-        extra_amount += extra_buffer.front().size();
+        status.extra_amount += extra_buffer.front().size();
         check_extra_overflow();
     }
 }
 
 bool Connection::NetworkBuffer::should_redo() const {
-    return extra_buffer.size() > 0 || read_size > 0;
+    // extra_buffer に要素があるか, read_buffer が生き残っている
+    return extra_buffer.size() > 0 || status.read_size > 0;
 }
 
 void Connection::NetworkBuffer::check_extra_overflow() {
-    VOUT(extra_amount);
-    if (extra_amount > MAX_EXTRA_AMOUNT) {
+    VOUT(status.extra_amount);
+    if (status.extra_amount > MAX_EXTRA_AMOUNT) {
         throw http_error("pipeline is full", HTTP::STATUS_PAYLOAD_TOO_LARGE);
+    }
+}
+
+void Connection::NetworkBuffer::rewind(IObserver::observation_category cat) throw() {
+    status.is_readable = false;
+    switch (cat) {
+        case IObserver::OT_READ:
+            status.is_readable = true;
+            break;
+        default:
+            break;
     }
 }
 
@@ -94,7 +118,6 @@ void Connection::NetworkBuffer::check_extra_overflow() {
 
 Connection::Connection(SocketConnected *sock_given,
                        IRouter *router,
-
                        const config::config_vector &configs,
                        FileCacher &cacher)
     : attr(sock_given), status(Status()), rt(*router, configs, cacher), lifetime(Lifetime::make_connection()) {
@@ -103,6 +126,16 @@ Connection::Connection(SocketConnected *sock_given,
 
 Connection::~Connection() {
     DXOUT("DESTROYED: " << this);
+}
+
+bool Connection::is_extra_readable_cat(IObserver::observation_category cat) throw() {
+    switch (cat) {
+        case IObserver::OT_READ:
+        case IObserver::OT_WRITE:
+            return true;
+        default:
+            return false;
+    }
 }
 
 t_fd Connection::get_fd() const {
@@ -115,46 +148,57 @@ t_port Connection::get_port() const {
 
 void Connection::notify(IObserver &observer, IObserver::observation_category cat, t_time_epoch_ms epoch) {
     try {
-        for (;;) {
-            if (status.dying) {
-                return;
-            }
-            switch (status.phase) {
-                case CONNECTION_ESTABLISHED:
-                    perform_reaction(observer, cat, epoch);
-                    if (cat == IObserver::OT_TIMEOUT) {
-                        return;
-                    }
-                    detect_update(observer);
-                    if (!status.unrecoverable && !rt.is_freezed() && net_buffer.should_redo()) {
-                        // - リクエストが凍結されていない
-                        // - NetworkBuffer に余ったデータがある
-                        // なら, イベントハンドラをもう一度やり直す.
-                        // ただし, イベントを Read に切り替える.
-                        // (HTTPパイプライン)
-                        DXOUT("REDO");
-                        cat = IObserver::OT_READ;
-                        continue;
-                    }
-                    return;
-                case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
-                    perform_shutting_down(observer);
-                    return;
-                default:
-                    DXOUT("unexpected phase: " << status.phase);
-                    assert(false);
-            }
+        net_buffer.rewind(cat);
+        if (status.dying) {
             return;
         }
-    } catch (const http_error &err) { // 回復不可能なエラー
+        switch (status.phase) {
+            case CONNECTION_ESTABLISHED:
+                perform_reaction(observer, cat, epoch);
+                if (cat == IObserver::OT_TIMEOUT) {
+                    return;
+                }
+                detect_update(observer);
+
+                // ネットワークバッファに残余データがある場合,
+                // それを使って新しいHTTPリクエストを構成する必要がある(HTTPパイプライン対応).
+                // - 残余データが増加するのは:
+                //   -> HTTPリクエストが凍結された時に余分なデータがある場合.
+                // - 残余データが消費されるのは:
+                //   -> Connection 自身についてのI/Oイベントの後で残余データが存在し,
+                //      かつラウンドトリップにHTTPリクエストがないか, あっても凍結していない場合.
+                if (is_extra_readable_cat(cat)) {
+                    while (is_extra_readable()) {
+                        DXOUT("Extra Read");
+                        perform_receiving(observer);
+                        detect_update(observer);
+                    }
+                }
+                return;
+            case CONNECTION_SHUTTING_DOWN: // コネクション 切断中
+                if (cat == IObserver::OT_READ) {
+                    // read していい場合だけ
+                    perform_shutting_down(observer);
+                }
+                return;
+            default:
+                DXOUT("unexpected phase: " << status.phase);
+                assert(false);
+        }
+        return;
+    } catch (const http_error &err) {
+        // [回復不可能なHTTPエラーが発生]
         DXOUT("UNRECOVERABLE ERROR occurred");
         // この状態になったら:
         // - 受信データはすべて捨てる
         // - リクエストの状態は変化させず, 状態検査もしない
-        status.unrecoverable = true;
-        if (status.phase != CONNECTION_SHUTTING_DOWN && !rt.is_responding()) {
+        status.spilling_readside = true;
+        if (status.phase == CONNECTION_SHUTTING_DOWN) {
+            return;
+        }
+        if (!rt.is_responding()) {
+            // 送信中のレスポンスがないなら, エラーレスポンスを作成して送信する
             try {
-                // レスポンス送信前のHTTPエラー -> エラーレスポンス送信開始
                 rt.respond_unrecoverable_error(observer, err);
                 observer.reserve_set(this, IObserver::OT_WRITE);
                 return;
@@ -164,7 +208,7 @@ void Connection::notify(IObserver &observer, IObserver::observation_category cat
             }
         }
         // レスポンス送信中のHTTPエラー -> 全てを諦めて終了
-        shutdown_gracefully(observer);
+        start_shutdown(observer);
     }
 }
 
@@ -187,7 +231,11 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
             break;
 
         case IObserver::OT_READ:
-            perform_receiving(observer);
+            if (status.spilling_readside) {
+                perform_shutting_down(observer);
+            } else {
+                perform_receiving(observer);
+            }
             break;
 
         case IObserver::OT_WRITE:
@@ -202,28 +250,29 @@ void Connection::perform_reaction(IObserver &observer, IObserver::observation_ca
 
 void Connection::perform_receiving(IObserver &observer) {
     // データ受信
-    const ssize_t received_size = net_buffer.receive(*attr.sock, status.unrecoverable);
-    if (received_size <= 0) {
-        // なにも受信できなかったか, 受信エラーが起きた場合
-        die(observer);
-        return;
-    }
-    if (status.unrecoverable) {
-        return;
+    {
+        net_buffer.save_read_buffer();
+        const bool succeeded = net_buffer.receive(*attr.sock);
+        if (!succeeded) {
+            // なにも受信できなかったか, 受信エラーが起きた場合
+            die(observer);
+            return;
+        }
     }
 
     // データ注入
     // インバウンド許容
     // -> 受信したデータをリクエストに注入する
-    if (!rt.is_freezed()) {
-        rt.start_if_needed();
-        lifetime.activate();
-        const light_string buf = net_buffer.top_front();
-        bool is_disconnected   = rt.inject_data(buf);
-        net_buffer.pop_front();
-        rt.req()->after_injection(is_disconnected);
-        rt.req()->check_size_limitation();
+    if (rt.is_freezed()) {
+        return;
     }
+    rt.start_if_needed();
+    lifetime.activate();
+    const light_string buf     = net_buffer.top_front();
+    const bool is_disconnected = rt.inject_data(buf);
+    net_buffer.pop_front();
+    rt.req()->after_injection(is_disconnected);
+    rt.req()->check_size_limitation();
 }
 
 void Connection::detect_update(IObserver &observer) {
@@ -246,7 +295,7 @@ void Connection::detect_update(IObserver &observer) {
         } else if (rt.is_terminatable()) { // ラウンドトリップが終了できる場合 -> ラウンドトリップ終了
             if (rt.res() == NULL || rt.res()->should_close()) {
                 DXOUT("CLOSE");
-                shutdown_gracefully(observer);
+                start_shutdown(observer);
             } else {
                 DXOUT("KEEP");
                 observer.reserve_unset(this, IObserver::OT_WRITE);
@@ -280,15 +329,13 @@ void Connection::perform_sending(IObserver &observer) {
 }
 
 void Connection::perform_shutting_down(IObserver &observer) {
-    u8t buf[MAX_REQLINE_END];
-    const ssize_t received_size = attr.sock->receive(&buf, MAX_REQLINE_END, 0);
-    if (received_size > 0) {
-        return;
+    const bool succeeded = net_buffer.spill(*attr.sock);
+    if (!succeeded) {
+        die(observer);
     }
-    die(observer);
 }
 
-void Connection::shutdown_gracefully(IObserver &observer) {
+void Connection::start_shutdown(IObserver &observer) {
     observer.reserve_unset(this, IObserver::OT_WRITE);
     observer.reserve_set(this, IObserver::OT_READ);
     attr.sock->shutdown_write();
@@ -299,4 +346,8 @@ void Connection::die(IObserver &observer) {
     observer.reserve_unhold(this);
     attr.sock->shutdown();
     status.dying = true;
+}
+
+bool Connection::is_extra_readable() const throw() {
+    return status.is_readside_active() && !rt.is_freezed() && net_buffer.should_redo();
 }
